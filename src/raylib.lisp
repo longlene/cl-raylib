@@ -632,7 +632,7 @@
  )
 
 ;;RLAPI bool WindowShouldClose(void);                               // Detect if KEY_ESCAPE pressed or Close icon pressed
-(defcfun "WindowShouldClose":boolean
+(defcfun "WindowShouldClose" :boolean
 "Detect if KEY_ESCAPE pressed or Close icon pressed"
  )
 
@@ -674,19 +674,19 @@
 
 ;;RLAPI void EnableCursor(void);                                    // Enables cursor
 (defcfun "EnableCursor" :void
-"Enables cursor"
+ "Enables cursor"
  )
 
 ;;RLAPI void DisableCursor(void);                                   // Disables cursor
 ;;#endif
 (defcfun "DisableCursor" :void
-"Disables cursor"
+ "Disables cursor"
  )
 
 ;;RLAPI void ClearBackground(Color color);                          // Sets Background Color
 (defcfun "ClearBackgroud" :void
-"Sets Background Color"
-  (color (:struct %color)))
+ "Sets Background Color"
+ (color (:struct %color)))
   
 ;;RLAPI void BeginDrawing(void);                                    // Setup drawing canvas to start drawing
 (defcfun "BeginDrawing" :void
@@ -737,7 +737,7 @@
 ;;RLAPI Vector2 GetWorldToScreen(Vector3 position, Camera camera);  // Returns the screen space position from a 3d world space position
 (defcfun "GetWorldToScreen" (:struct %vector2)
 "Returns the screen space position from a 3d world space position"
-  (position (:struct %vector-3))
+  (position (:struct %vector3))
   (camera (:struct %camera)))
 
 ;;RLAPI Matrix GetCameraMatrix(Camera camera);                      // Returns camera transform matrix (view matrix)
@@ -778,7 +778,7 @@
 ;;RLAPI float *VectorToFloat(Vector3 vec);                          // Converts Vector3 to float array
 (defcfun "VectorToFloat" (:pointer :float)
 "Converts Vector3 to float array"
-  (vec (:struct %vector-3)))
+  (vec (:struct %vector3)))
 
 ;;RLAPI float *MatrixToFloat(Matrix mat);                           // Converts Matrix to float array
 (defcfun "MatrixToFloat" (:pointer :float)
@@ -805,6 +805,7 @@
 
 ;;RLAPI bool IsFileDropped(void);                                   // Check if a file have been dropped into window
 (defcfun "IsFileDropped" :boolean)
+
 ;;RLAPI char **GetDroppedFiles(int *count);                         // Retrieve dropped files into window
 (defcfun "GetFileDropped" (:pointer :string)
   (count :pointer :int))
@@ -1480,21 +1481,21 @@
 ;;//------------------------------------------------------------------------------------
 ;;RLAPI void DrawLine3D(Vector3 startPos, Vector3 endPos, Color color);                                    // Draw a line in 3D world space
 (defcfun "DrawLine3D" :void
- (start-pos (:struct %vector-3))
- (end-pos (:struct %vector-3))
+ (start-pos (:struct %vector3))
+ (end-pos (:struct %vector3))
  (color (:struct %color)))
 
 ;;RLAPI void DrawCircle3D(Vector3 center, float radius, Vector3 rotationAxis, float rotationAngle, Color color); // Draw a circle in 3D world space
 (defcfun "DrawCircle3D" :void
- (position (:struct %vector-3))
+ (position (:struct %vector3))
  (radius :float)
- (rotation-axis (:struct %vector-3))
+ (rotation-axis (:struct %vector3))
  (rotation-angle :float)
  (color (:struct %color)))
 
 ;;RLAPI void DrawCube(Vector3 position, float width, float height, float length, Color color);             // Draw cube
 (defcfun "DrawCube" :void
- (position (:struct %vector-3))
+ (position (:struct %vector3))
  (width :float)
  (height :float)
  (length :float)
@@ -1502,13 +1503,13 @@
 
 ;;RLAPI void DrawCubeV(Vector3 position, Vector3 size, Color color);                                       // Draw cube (Vector version)
 (defcfun "DrawCubeV" :void
- (position (:struct %vector-3))
- (size (:struct %vector-3))
+ (position (:struct %vector3))
+ (size (:struct %vector3))
  (color (:struct %color)))
 
 ;;RLAPI void DrawCubeWires(Vector3 position, float width, float height, float length, Color color);        // Draw cube wires
 (defcfun "DrawCubeWires" :void
- (position (:struct %vector-3))
+ (position (:struct %vector3))
  (width :float)
  (height :float)
  (length :float)
@@ -1517,7 +1518,7 @@
 ;;RLAPI void DrawCubeTexture(Texture2D texture, Vector3 position, float width, float height, float length, Color color); // Draw cube textured
 (defcfun "DrawCubeTexture" :void
  (texture (:struct %texture2d))
- (position (:struct %vector-3))
+ (position (:struct %vector3))
  (width :float)
  (height :float)
  (length :float)
@@ -1525,13 +1526,13 @@
 
 ;;RLAPI void DrawSphere(Vector3 centerPos, float radius, Color color);                                     // Draw sphere
 (defcfun "DrawSphere" :void
- (center-pos (:struct %vector-3))
+ (center-pos (:struct %vector3))
  (radius :float)
  (color (:struct %color)))
 
 ;;RLAPI void DrawSphereEx(Vector3 centerPos, float radius, int rings, int slices, Color color);            // Draw sphere with extended parameters
 (defcfun "DrawSphereEx" :void
- (center-pos (:struct %vector-3))
+ (center-pos (:struct %vector3))
  (radius :float)
  (rings :int)
  (slices :int)
@@ -1539,7 +1540,7 @@
 
 ;;RLAPI void DrawSphereWires(Vector3 centerPos, float radius, int rings, int slices, Color color);         // Draw sphere wires
 (defcfun "DrawSphereWires" :void
- (center-pos (:struct %vector-3))
+ (center-pos (:struct %vector3))
  (radius :float)
  (rings :int)
  (slices :int)
@@ -1547,7 +1548,7 @@
 
 ;;RLAPI void DrawCylinder(Vector3 position, float radiusTop, float radiusBottom, float height, int slices, Color color); // Draw a cylinder/cone
 (defcfun "DrawCylinder" :void
- (position (:struct %vector-3))
+ (position (:struct %vector3))
  (radius-top :float)
  (radius-bottom :float)
  (height :float)
@@ -1556,7 +1557,7 @@
 
 ;;RLAPI void DrawCylinderWires(Vector3 position, float radiusTop, float radiusBottom, float height, int slices, Color color); // Draw a cylinder/cone wires
 (defcfun "DrawCylinderWires" :void
- (position (:struct %vector-3))
+ (position (:struct %vector3))
  (radius-top :float)
  (radius-bottom :float)
  (height :float)
@@ -1565,7 +1566,7 @@
 
 ;;RLAPI void DrawPlane(Vector3 centerPos, Vector2 size, Color color);                                      // Draw a plane XZ
 (defcfun "DrawPlance" :void
- (current-pos (:struct %vector-3))
+ (current-pos (:struct %vector3))
  (size  (:struct %vector2))
  (color (:struct %color)))
 
@@ -1581,7 +1582,7 @@
 
 ;;RLAPI void DrawGizmo(Vector3 position);                                                                  // Draw simple gizmo
 (defcfun "DrawGizmo" :void
- (position (:struct %vector-3)))
+ (position (:struct %vector3)))
 
 ;;RLAPI void DrawLight(Light light);                                                                       // Draw light in 3D world
 (defcfun "DrawLight" :void
@@ -1609,7 +1610,7 @@
 ;;RLAPI Model LoadHeightmap(Image heightmap, Vector3 size);             // Load a heightmap image as a 3d model
 (defcfun "LoadHeightmap" (:struct %model)
  (heightmap (:struct %image))
- (size (:struct %vector-3)))
+ (size (:struct %vector3)))
 
 ;;RLAPI Model LoadCubicmap(Image cubicmap);                             // Load a map image as a 3d model (cubes based)
 (defcfun "LoadCubicmap" (:struct %model)
@@ -1636,33 +1637,33 @@
 ;;RLAPI void DrawModel(Model model, Vector3 position, float scale, Color tint);                            // Draw a model (with texture if set)
 (defcfun "DrawModel" :void
   (model (:struct %model))
-  (position (:struct %vector-3))
-  (scale (:struct %vector-3))
+  (position (:struct %vector3))
+  (scale (:struct %vector3))
   (tint (:struct %color)))
 
 ;;RLAPI void DrawModelEx(Model model, Vector3 position, Vector3 rotationAxis, float rotationAngle, Vector3 scale, Color tint);      // Draw a model with extended parameters
 (defcfun "DrawModelEx" :void
   (model (:struct %model))
-  (position (:struct %vector-3))
-  (rotation-axis (:struct %vector-3))
+  (position (:struct %vector3))
+  (rotation-axis (:struct %vector3))
   (rotation-angle :float)
-  (scale (:struct %vector-3))
+  (scale (:struct %vector3))
   (tint (:struct %color)))
 
 ;;RLAPI void DrawModelWires(Model model, Vector3 position, float scale, Color tint);                      // Draw a model wires (with texture if set)
 (defcfun "DrawModelWires" :void
   (model (:struct %model))
-  (position (:struct %vector-3))
-  (scale (:struct %vector-3))
+  (position (:struct %vector3))
+  (scale (:struct %vector3))
   (tint (:struct %color)))
 
 ;;RLAPI void DrawModelWiresEx(Model model, Vector3 position, Vector3 rotationAxis, float rotationAngle, Vector3 scale, Color tint); // Draw a model wires (with texture if set) with extended parameters
 (defcfun "DrawModelWiresEx" :void
   (model (:struct %model))
-  (position (:struct %vector-3))
-  (rotation-axis (:struct %vector-3))
+  (position (:struct %vector3))
+  (rotation-axis (:struct %vector3))
   (rotation-angle :float)
-  (scale (:struct %vector-3))
+  (scale (:struct %vector3))
   (tint (:struct %color)))
 
 ;;RLAPI void DrawBoundingBox(BoundingBox box, Color color);                                                // Draw bounding box (wires)
@@ -1674,7 +1675,7 @@
 (defcfun "DrawBillboard" :void
   (camera (:struct %camera))
   (texture (:struct %texture2d))
-  (center (:struct %vector-3))
+  (center (:struct %vector3))
   (size :float)
   (tint (:struct %color)))
 
@@ -1683,7 +1684,7 @@
   (camera (:struct %camera))
   (texture (:struct %texture2d))
   (source-rec (:struct %rectangle))
-  (center (:struct %vector-3))
+  (center (:struct %vector3))
   (size :float)
   (tint (:struct %color)))
 
@@ -1694,9 +1695,9 @@
 
 ;;RLAPI bool CheckCollisionSpheres(Vector3 centerA, float radiusA, Vector3 centerB, float radiusB);                     // Detect collision between two spheres
 (defcfun "CheckCollisionSpheres" bool
-  (center-a (:struct %vector-3))
+  (center-a (:struct %vector3))
   (radius-a :float)
-  (center-b (:struct %vector-3))
+  (center-b (:struct %vector3))
   (radius-b :float))
 
 ;;RLAPI bool CheckCollisionBoxes(BoundingBox box1, BoundingBox box2);                                                   // Detect collision between two bounding boxes
@@ -1707,21 +1708,21 @@
 ;;RLAPI bool CheckCollisionBoxSphere(BoundingBox box, Vector3 centerSphere, float radiusSphere);                        // Detect collision between box and sphere
 (defcfun "CheckCollisionBoxSphere" bool
   (box (:struct %bounding-box))
-  (center-sphere (:struct %vector-3))
+  (center-sphere (:struct %vector3))
   (sphere-radius :float))
 
 ;;RLAPI bool CheckCollisionRaySphere(Ray ray, Vector3 spherePosition, float sphereRadius);                              // Detect collision between ray and sphere
 (defcfun "CheckCollisionRaySphere" bool
   (ray (:struct %ray))
-  (sphere-position (:struct %vector-3))
+  (sphere-position (:struct %vector3))
   (sphere-radius :float))
 
 ;;RLAPI bool CheckCollisionRaySphereEx(Ray ray, Vector3 spherePosition, float sphereRadius, Vector3 *collisionPoint);   // Detect collision between ray and sphere with extended parameters and collision point detection
 (defcfun "CheckCollisionRaySphereEx" bool
   (ray (:struct %ray))
-  (sphere-position (:struct %vector-3))
+  (sphere-position (:struct %vector3))
   (sphere-radius :float)
-  (collision-point (:pointer (:struct %vector-3))))
+  (collision-point (:pointer (:struct %vector3))))
 
 ;;RLAPI bool CheckCollisionRayBox(Ray ray, BoundingBox box);                                                            // Detect collision between ray and box
 (defcfun "CheckCollisionRayBox" bool
@@ -1800,7 +1801,7 @@
 ;;RLAPI Light CreateLight(int type, Vector3 position, Color diffuse);       // Create a new light, initialize it and add to pool
 (defcfun "CreateLight" :pointer
   (type :int)
-  (position (:struct %vector-3))
+  (position (:struct %vector3))
   (diffuse (:struct %color)))
 
 ;;RLAPI void DestroyLight(Light light);                                     // Destroy a light and take it out of the list

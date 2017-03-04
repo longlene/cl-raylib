@@ -270,6 +270,33 @@
            #:resume-audio-stream
            #:stop-audio-stream
 
-;; high level api
+           #:+lightgray+
+           #:+gray+
+           #:+darkgray+
+           #:+yellow+
+           #:+gold+
+           #:+orange+
+           #:+pink+
+           #:+red+
+           #:+maroon+
+           #:+green+
+           #:+lime+
+           #:+darkgreen+
+           #:+skyblue+
+           #:+blue+
+           #:+darkblue+
+           #:+purple+
+           #:+violet+
+           #:+darkpurple+
+           #:+beige+
+           #:+brown+
+           #:+darkbrown+
+           #:+white+
+           #:+black+
+           #:+blank+
+           #:+magenta+
+           #:+raywhite+
+
+           ;; high level api
            #:with-window
            #:with-drawing))

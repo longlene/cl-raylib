@@ -1,5 +1,8 @@
 (in-package #:cl-user)
 
+#+sbcl
+(declaim (sb-ext:muffle-conditions sb-kernel:character-decoding-error-in-comment))
+
 (defpackage #:cl-raylib-asd
   (:use :cl :asdf))
 
@@ -11,8 +14,8 @@
   :license "MIT"
   :description "Common Lisp bindings of libraylib"
   :depends-on (#:cffi-libffi)
-  :pathname "src"
   :serial t
+  :pathname "src"
   :components
   ((:file "package")
    (:file "library")

@@ -267,20 +267,20 @@
 ;    float y;
 ;    float z;
 ;} Vector3;
-(defcstruct (%vector-3 :class vector-3-type)
+(defcstruct (%vector3 :class vector3-type)
  "Vector3 type"
  (x :float)
  (y :float)
  (z :float))
 
-(defmethod translate-into-foreign-memory (object (type vector-3-type) pointer)
-  (with-foreign-slots ((x y z) pointer (:struct %vector-3))
+(defmethod translate-into-foreign-memory (object (type vector3-type) pointer)
+  (with-foreign-slots ((x y z) pointer (:struct %vector3))
                       (setf x (nth 0 object))
                       (setf y (nth 1 object))
                       (setf z (nth 2 object))))
 
-(defmethod translate-from-foreign (pointer (type vector-3-type))
-  (with-foreign-slots ((x y z) pointer (:struct %vector-3))
+(defmethod translate-from-foreign (pointer (type vector3-type))
+  (with-foreign-slots ((x y z) pointer (:struct %vector3))
                       (list x y z)))
 
 ;// Matrix type (OpenGL style 4x4 - right handed, column major)
@@ -498,9 +498,9 @@
 ;} Camera;
 (defcstruct (%camera :class camera-type)
  "Camera type, defines a camera position/orientation in 3d space"
- (position (:struct %vector-3))
- (target (:struct %vector-3))
- (up (:struct %vector-3))
+ (position (:struct %vector3))
+ (target (:struct %vector3))
+ (up (:struct %vector3))
  (fovy :float))
 
 (defmethod translate-into-foreign-memory (object (type camera-type) pointer)
@@ -546,8 +546,8 @@
 ;} BoundingBox;
 (defcstruct (%bounding-box :class bounding-box-type)
  "Bounding box type"
- (min (:struct %vector-3))
- (max (:struct %vector-3)))
+ (min (:struct %vector3))
+ (max (:struct %vector3)))
 
 (defmethod translate-into-foreign-memory (object (type bounding-box-type) pointer)
  (with-foreign-slots ((min max) pointer (:struct %bounding-box))
@@ -756,8 +756,8 @@
 ;} Ray;
 (defcstruct (%ray :class ray-type)
  "Ray type (useful for raycast)"
- (position (:struct %vector-3))
- (direction (:struct %vector-3)))
+ (position (:struct %vector3))
+ (direction (:struct %vector3)))
 
 (defmethod translate-into-foreign-memory (object (type ray-type) pointer)
  (with-foreign-slots ((position direction) pointer (:struct %ray))
