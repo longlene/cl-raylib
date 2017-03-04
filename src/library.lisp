@@ -1,7 +1,8 @@
 (in-package #:cl-raylib)
 
 (define-foreign-library libraylib
-    (:unix "libraylib")
+  (:darwin "libraylib.dylib")
+  (:unix "libraylib.so")
   (:windows "raylib.dll")
   (t (:default "libraylib")))
 

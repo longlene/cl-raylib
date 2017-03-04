@@ -632,7 +632,7 @@
  )
 
 ;;RLAPI bool WindowShouldClose(void);                               // Detect if KEY_ESCAPE pressed or Close icon pressed
-(defcfun "WindowShouldClose" bool
+(defcfun "WindowShouldClose":boolean
 "Detect if KEY_ESCAPE pressed or Close icon pressed"
  )
 
@@ -664,12 +664,12 @@
 
 ;;RLAPI void HideCursor(void);                                      // Hides cursor
 (defcfun "HideCursor" :void
-"Hides cursor"
+ "Hides cursor"
  )
 
 ;;RLAPI bool IsCursorHidden(void);                                  // Returns true if cursor is not visible
-(defcfun "IsCursorHidden" bool
-"Returns true if cursor is not visible"
+(defcfun "IsCursorHidden":boolean
+ "Returns true if cursor is not visible"
  )
 
 ;;RLAPI void EnableCursor(void);                                    // Enables cursor
@@ -701,7 +701,7 @@
 ;;RLAPI void Begin2dMode(Camera2D camera);                          // Initialize 2D mode with custom camera
 (defcfun "Begin2dMode" :void
 "Initialize 2D mode with custom camera"
-  (camera (:struct %camera-2-d)))
+  (camera (:struct %camera2d)))
   
 ;;RLAPI void End2dMode(void);                                       // Ends 2D mode custom camera usage
 (defcfun "End2dMode" :void
@@ -721,7 +721,7 @@
 ;;RLAPI void BeginTextureMode(RenderTexture2D target);              // Initializes render texture for drawing
 (defcfun "BeginTextureMode" :void
 "Initializes render texture for drawing"
-  (target (:struct %render-texture-2-d)))
+  (target (:struct %render-texture2d)))
   
 ;;RLAPI void EndTextureMode(void);                                  // Ends drawing to render texture
 (defcfun "EndTextureMode" :void
@@ -731,11 +731,11 @@
 ;;RLAPI Ray GetMouseRay(Vector2 mousePosition, Camera camera);      // Returns a ray trace from mouse position
 (defcfun "GetMouseRay" (:struct %ray)
 "Returns a ray trace from mouse position"
-  (mouse-position (:struct %vector-2))
+  (mouse-position (:struct %vector2))
   (camera (:struct %camera)))
   
 ;;RLAPI Vector2 GetWorldToScreen(Vector3 position, Camera camera);  // Returns the screen space position from a 3d world space position
-(defcfun "GetWorldToScreen" (:struct %vector-2)
+(defcfun "GetWorldToScreen" (:struct %vector2)
 "Returns the screen space position from a 3d world space position"
   (position (:struct %vector-3))
   (camera (:struct %camera)))
@@ -804,7 +804,7 @@
 (defcfun "ShowLogo" :void)
 
 ;;RLAPI bool IsFileDropped(void);                                   // Check if a file have been dropped into window
-(defcfun "IsFileDropped" bool)
+(defcfun "IsFileDropped" :boolean)
 ;;RLAPI char **GetDroppedFiles(int *count);                         // Retrieve dropped files into window
 (defcfun "GetFileDropped" (:pointer :string)
   (count :pointer :int))
@@ -825,19 +825,19 @@
 ;;// Input Handling Functions (Module: core)
 ;;//------------------------------------------------------------------------------------
 ;;RLAPI bool IsKeyPressed(int key);                             // Detect if a key has been pressed once
-(defcfun "IsKeyPressed" bool
+(defcfun "IsKeyPressed":boolean
   (key :int))
 
 ;;RLAPI bool IsKeyDown(int key);                                // Detect if a key is being pressed
-(defcfun "IsKeyDown" bool
+(defcfun "IsKeyDown":boolean
   (key :int))
 
 ;;RLAPI bool IsKeyReleased(int key);                            // Detect if a key has been released once
-(defcfun "IsKeyReleased" bool
+(defcfun "IsKeyReleased":boolean
   (key :int))
 
 ;;RLAPI bool IsKeyUp(int key);                                  // Detect if a key is NOT being pressed
-(defcfun "IsKeyUp" bool
+(defcfun "IsKeyUp":boolean
   (key :int))
 
 ;;RLAPI int GetKeyPressed(void);                                // Get latest key pressed
@@ -848,11 +848,11 @@
   (key :int))
 
 ;;RLAPI bool IsGamepadAvailable(int gamepad);                   // Detect if a gamepad is available
-(defcfun "IsGamepadAvailable" bool
+(defcfun "IsGamepadAvailable":boolean
   (gamepad :int))
 
 ;;RLAPI bool IsGamepadName(int gamepad, const char *name);      // Check gamepad name (if available)
-(defcfun "IsGamepadName" bool
+(defcfun "IsGamepadName":boolean
   (gamepad :int)
   (name :string))
 
@@ -861,22 +861,22 @@
   (gamepad :int))
 
 ;;RLAPI bool IsGamepadButtonPressed(int gamepad, int button);   // Detect if a gamepad button has been pressed once
-(defcfun "IsGamepadButtonPressed" bool
+(defcfun "IsGamepadButtonPressed":boolean
   (gamepad :int)
   (button :int))
 
 ;;RLAPI bool IsGamepadButtonDown(int gamepad, int button);      // Detect if a gamepad button is being pressed
-(defcfun "IsGamepadButtonDown" bool
+(defcfun "IsGamepadButtonDown":boolean
   (gamepad :int)
   (button :int))
 
 ;;RLAPI bool IsGamepadButtonReleased(int gamepad, int button);  // Detect if a gamepad button has been released once
-(defcfun "IsGamepadButtonReleased" bool
+(defcfun "IsGamepadButtonReleased":boolean
   (gamepad :int)
   (button :int))
 
 ;;RLAPI bool IsGamepadButtonUp(int gamepad, int button);        // Detect if a gamepad button is NOT being pressed
-(defcfun "IsGamepadButtonUp" bool
+(defcfun "IsGamepadButtonUp":boolean
   (gamepad :int)
   (button :int))
 
@@ -893,19 +893,19 @@
   (axis :int))
 
 ;;RLAPI bool IsMouseButtonPressed(int button);                  // Detect if a mouse button has been pressed once
-(defcfun "IsMouseButtonPressed" bool
+(defcfun "IsMouseButtonPressed":boolean
   (button :int))
 
 ;;RLAPI bool IsMouseButtonDown(int button);                     // Detect if a mouse button is being pressed
-(defcfun "IsMouseButtonDown" bool
+(defcfun "IsMouseButtonDown":boolean
   (button :int))
 
 ;;RLAPI bool IsMouseButtonReleased(int button);                 // Detect if a mouse button has been released once
-(defcfun "IsMouseButtonReleased" bool
+(defcfun "IsMouseButtonReleased":boolean
   (button :int))
 
 ;;RLAPI bool IsMouseButtonUp(int button);                       // Detect if a mouse button is NOT being pressed
-(defcfun "IsMouseButtonUp" bool
+(defcfun "IsMouseButtonUp":boolean
   (button :int))
 
 ;;RLAPI int GetMouseX(void);                                    // Returns mouse position X
@@ -915,11 +915,11 @@
 (defcfun "GetMouseY" :int)
 
 ;;RLAPI Vector2 GetMousePosition(void);                         // Returns mouse position XY
-(defcfun "GetMousePosition" (:struct %vector-2))
+(defcfun "GetMousePosition" (:struct %vector2))
 
 ;;RLAPI void SetMousePosition(Vector2 position);                // Set mouse position XY
 (defcfun "SetMousePosition" :void
-  (position (:struct %vector-2)))
+  (position (:struct %vector2)))
 
 ;;RLAPI int GetMouseWheelMove(void);                            // Returns mouse wheel movement Y
 (defcfun "GetMouseWheelMove" :int)
@@ -931,7 +931,7 @@
 (defcfun "GetTouchY" :int)
 
 ;;RLAPI Vector2 GetTouchPosition(int index);                    // Returns touch position XY for a touch point index (relative to screen size)
-(defcfun "GetTouchPosition" (:struct %vector-2)
+(defcfun "GetTouchPosition" (:struct %vector2)
  (index :int))
 
 ;;//------------------------------------------------------------------------------------
@@ -942,7 +942,7 @@
  (gestureFlags :unsigned-int))
 
 ;;RLAPI bool IsGestureDetected(int gesture);                    // Check if a gesture have been detected
-(defcfun "IsGestureDetected" bool
+(defcfun "IsGestureDetected":boolean
  (gesture :int))
 
 ;;RLAPI int GetGestureDetected(void);                           // Get latest detected gesture
@@ -955,244 +955,1006 @@
 (defcfun "GetGestureHoldDuration" :float)
 
 ;;RLAPI Vector2 GetGestureDragVector(void);                     // Get gesture drag vector
-(defcfun "GetGestureDragVector" (:struct %vector-2))
+(defcfun "GetGestureDragVector" (:struct %vector2))
 
 ;;RLAPI float GetGestureDragAngle(void);                        // Get gesture drag angle
+(defcfun "GetGestureDragAngle" :float)
+
 ;;RLAPI Vector2 GetGesturePinchVector(void);                    // Get gesture pinch delta
+(defcfun "GetGesturePinchVector" (:struct %vector2))
+
 ;;RLAPI float GetGesturePinchAngle(void);                       // Get gesture pinch angle
-;;
+(defcfun "GetGesturePinchAngle" :float)
+
 ;;//------------------------------------------------------------------------------------
 ;;// Camera System Functions (Module: camera)
 ;;//------------------------------------------------------------------------------------
 ;;RLAPI void SetCameraMode(Camera camera, int mode);                // Set camera mode (multiple camera modes available)
+(defcfun "SetCameraMode" :void
+ (camera (:struct %camera))
+ (mode :int))
+
 ;;RLAPI void UpdateCamera(Camera *camera);                          // Update camera position for selected mode
-;;
+(defcfun "UpdateCamera" :void
+ (camera (:pointer (:struct %camera))))
+
 ;;RLAPI void SetCameraPanControl(int panKey);                       // Set camera pan key to combine with mouse movement (free camera)
+(defcfun "SetCameraPanControl" :void
+ (pan-key :int))
+
 ;;RLAPI void SetCameraAltControl(int altKey);                       // Set camera alt key to combine with mouse movement (free camera)
+(defcfun "SetCameraAltControl" :void
+ (alt-key :int))
+
 ;;RLAPI void SetCameraSmoothZoomControl(int szKey);                 // Set camera smooth zoom key to combine with mouse (free camera)
+(defcfun "SetCameraSmoothZoomControl" :void
+ (sz-key :int))
+
 ;;RLAPI void SetCameraMoveControls(int frontKey, int backKey,
 ;;                                 int rightKey, int leftKey,
 ;;                                 int upKey, int downKey);         // Set camera move controls (1st person and 3rd person cameras)
-;;
+(defcfun "SetCameraMoveControls" :void
+ (front-key :int)
+ (back-key :int)
+ (right-key :int)
+ (left-key :int)
+ (up-key :int)
+ (down-key :int))
+
 ;;//------------------------------------------------------------------------------------
 ;;// Basic Shapes Drawing Functions (Module: shapes)
 ;;//------------------------------------------------------------------------------------
 ;;RLAPI void DrawPixel(int posX, int posY, Color color);                                                   // Draw a pixel
+(defcfun "DrawPixel" :void
+ (pos-x :int)
+ (pos-y :int)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawPixelV(Vector2 position, Color color);                                                    // Draw a pixel (Vector version)
+(defcfun "DrawPixelV" :void
+ (position (:struct %vector2))
+ (color (:struct %color)))
+
 ;;RLAPI void DrawLine(int startPosX, int startPosY, int endPosX, int endPosY, Color color);                // Draw a line
+(defcfun "DrawLine" :void
+ (start-pos-x :int)
+ (start-pos-y :int)
+ (end-pos-x :int)
+ (end-pos-y :int)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawLineV(Vector2 startPos, Vector2 endPos, Color color);                                     // Draw a line (Vector version)
+(defcfun "DrawLineV" :void
+ (start-pos (:struct %vector2))
+ (end-pos (:struct %vector2))
+ (color (:struct %color)))
+
 ;;RLAPI void DrawCircle(int centerX, int centerY, float radius, Color color);                              // Draw a color-filled circle
+(defcfun "DrawCircle" :void
+ (center-x :int)
+ (center-y :int)
+ (radius :float)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawCircleGradient(int centerX, int centerY, float radius, Color color1, Color color2);       // Draw a gradient-filled circle
+(defcfun "DrawCircleGradient" :void
+ (center-x :int)
+ (center-y :int)
+ (radius :float)
+ (color1 (:struct %color))
+ (color2 (:struct %color)))
+
 ;;RLAPI void DrawCircleV(Vector2 center, float radius, Color color);                                       // Draw a color-filled circle (Vector version)
+(defcfun "DrawCircleV" :void
+ (center (:struct %vector2))
+ (radius :float)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawCircleLines(int centerX, int centerY, float radius, Color color);                         // Draw circle outline
+(defcfun "DrawCircleLines" :void
+ (center-x :int)
+ (center-y :int)
+ (radius :float)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawRectangle(int posX, int posY, int width, int height, Color color);                        // Draw a color-filled rectangle
+(defcfun "DrawRectangle" :void
+ (pos-x :int)
+ (pos-y :int)
+ (width :int)
+ (height :int)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawRectangleRec(Rectangle rec, Color color);                                                 // Draw a color-filled rectangle
+(defcfun "DrawRectangleRec" :void
+ (rec (:struct %rectangle))
+ (color (:struct %color)))
+
 ;;RLAPI void DrawRectangleGradient(int posX, int posY, int width, int height, Color color1, Color color2); // Draw a gradient-filled rectangle
+(defcfun "DrawRectangleGradient" :void
+ (pos-x :int)
+ (pos-y :int)
+ (width :int)
+ (height :int)
+ (color1 (:struct %color))
+ (color2 (:struct %color)))
+
 ;;RLAPI void DrawRectangleV(Vector2 position, Vector2 size, Color color);                                  // Draw a color-filled rectangle (Vector version)
+(defcfun "DrawRectangleV" :void
+ (position (:struct %vector2))
+ (size (:struct %vector2))
+ (color (:struct %color)))
+
 ;;RLAPI void DrawRectangleLines(int posX, int posY, int width, int height, Color color);                   // Draw rectangle outline
+(defcfun "DrawRectangleLines" :void
+ (pos-x :int)
+ (pos-y :int)
+ (width :int)
+ (height :int)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawTriangle(Vector2 v1, Vector2 v2, Vector2 v3, Color color);                                // Draw a color-filled triangle
+(defcfun "DrawTriangle" :void
+ (v1 (:struct %vector2))
+ (v2 (:struct %vector2))
+ (v3 (:struct %vector2))
+ (color (:struct %color)))
+
 ;;RLAPI void DrawTriangleLines(Vector2 v1, Vector2 v2, Vector2 v3, Color color);                           // Draw triangle outline
+(defcfun "DrawTriangleLines" :void
+ (v1 (:struct %vector2))
+ (v2 (:struct %vector2))
+ (v3 (:struct %vector2))
+ (color (:struct %color)))
+
 ;;RLAPI void DrawPoly(Vector2 center, int sides, float radius, float rotation, Color color);               // Draw a regular polygon (Vector version)
+(defcfun "DrawPoly" :void
+ (center (:struct %vector2))
+ (sides :int)
+ (radius :float)
+ (rotation :float)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawPolyEx(Vector2 *points, int numPoints, Color color);                                      // Draw a closed polygon defined by points
+(defcfun "DrawPolyEx" :void
+ (points (:pointer (:struct %vector2)))
+ (num-points :int)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawPolyExLines(Vector2 *points, int numPoints, Color color);                                 // Draw polygon lines
-;;
+(defcfun "DrawPolyExLines" :void
+ (points (:pointer (:struct %vector2)))
+ (num-points :int)
+ (color (:struct %color)))
+
 ;;RLAPI bool CheckCollisionRecs(Rectangle rec1, Rectangle rec2);                                           // Check collision between two rectangles
+(defcfun "CheckCollisionRecs" bool
+ (rec1 (:struct %rectangle))
+ (rec2 (:struct %rectangle)))
+
 ;;RLAPI bool CheckCollisionCircles(Vector2 center1, float radius1, Vector2 center2, float radius2);        // Check collision between two circles
+(defcfun "CheckCollisionCircles" bool
+ (center1 (:struct %vector2))
+ (radius1 :float)
+ (center2 (:struct %vector2))
+ (radius2 :float))
+
 ;;RLAPI bool CheckCollisionCircleRec(Vector2 center, float radius, Rectangle rec);                         // Check collision between circle and rectangle
+(defcfun "CheckCollisionCircleRec" bool
+ (center (:struct %vector2))
+ (radius :float)
+ (rec (:struct %rectangle)))
+
 ;;RLAPI Rectangle GetCollisionRec(Rectangle rec1, Rectangle rec2);                                         // Get collision rectangle for two rectangles collision
+(defcfun "GetCollisionRec" (:struct %rectangle)
+ (rec1 (:struct %rectangle))
+ (rec2 (:struct %rectangle)))
+
 ;;RLAPI bool CheckCollisionPointRec(Vector2 point, Rectangle rec);                                         // Check if point is inside rectangle
+(defcfun "CheckCollisionPointRec" bool
+ (point (:struct %vector2))
+ (rec (:struct %rectangle)))
+
 ;;RLAPI bool CheckCollisionPointCircle(Vector2 point, Vector2 center, float radius);                       // Check if point is inside circle
+(defcfun "CheckCollisionPointCircle" bool
+ (point (:struct %vector2))
+ (center (:struct %vector2))
+ (radius :float))
+
 ;;RLAPI bool CheckCollisionPointTriangle(Vector2 point, Vector2 p1, Vector2 p2, Vector2 p3);               // Check if point is inside a triangle
-;;
+(defcfun "CheckCollisionPointTriangle" bool
+ (point (:struct %vector2))
+ (p1 (:struct %vector2))
+ (p2 (:struct %vector2))
+ (p3 (:struct %vector2)))
+
 ;;//------------------------------------------------------------------------------------
 ;;// Texture Loading and Drawing Functions (Module: textures)
 ;;//------------------------------------------------------------------------------------
 ;;RLAPI Image LoadImage(const char *fileName);                                                             // Load an image into CPU memory (RAM)
+(defcfun "LoadImage" (:struct %image)
+ (file-name :string))
+
 ;;RLAPI Image LoadImageEx(Color *pixels, int width, int height);                                           // Load image data from Color array data (RGBA - 32bit)
+(defcfun "LoadImageEx" (:struct %image)
+ (pixels (:pointer (:struct %color)))
+ (width :int)
+ (height :int))
+
 ;;RLAPI Image LoadImageRaw(const char *fileName, int width, int height, int format, int headerSize);       // Load image data from RAW file
+(defcfun "LoadImageRaw" (:struct %image)
+ (file-name :string)
+ (width :int)
+ (height :int)
+ (format :int)
+ (header-size :int))
+
 ;;RLAPI Image LoadImageFromRES(const char *rresName, int resId);                                           // Load an image from rRES file (raylib Resource)
+(defcfun "LoadImageFromRES" (:struct %image)
+ (rres-name :string)
+ (res-id :int))
+
 ;;RLAPI Texture2D LoadTexture(const char *fileName);                                                       // Load an image as texture into GPU memory
+(defcfun "LoadTexture" (:struct %texture2d)
+ (file-name :string))
+
 ;;RLAPI Texture2D LoadTextureEx(void *data, int width, int height, int textureFormat);                     // Load a texture from raw data into GPU memory
+(defcfun "LoadTextureEx" (:struct %texture2d)
+ (data :pointer)
+ (width :int)
+ (height :int)
+ (texture-format :int))
+
 ;;RLAPI Texture2D LoadTextureFromRES(const char *rresName, int resId);                                     // Load an image as texture from rRES file (raylib Resource)
+(defcfun "LoadTextureFromRES" (:struct %texture2d)
+ (rres-name :string)
+ (res-id :int))
+
 ;;RLAPI Texture2D LoadTextureFromImage(Image image);                                                       // Load a texture from image data
+(defcfun "LoadTextureFromImage" (:struct %texture2d)
+ (image (:struct %image)))
+
 ;;RLAPI RenderTexture2D LoadRenderTexture(int width, int height);                                          // Load a texture to be used for rendering
+(defcfun "LoadRenderTexture" (:struct %render-texture2d)
+ (width :int)
+ (height :int))
+
 ;;RLAPI void UnloadImage(Image image);                                                                     // Unload image from CPU memory (RAM)
+(defcfun "UnloadImage" :void
+ (image (:struct %image)))
+
 ;;RLAPI void UnloadTexture(Texture2D texture);                                                             // Unload texture from GPU memory
+(defcfun "UnloadTexture" :void
+ (texture (:struct %texture2d)))
+
 ;;RLAPI void UnloadRenderTexture(RenderTexture2D target);                                                  // Unload render texture from GPU memory
+(defcfun "UnloadRenderTexture" :void
+ (target (:struct %render-texture2d)))
+
 ;;RLAPI Color *GetImageData(Image image);                                                                  // Get pixel data from image as a Color struct array
+(defcfun "GetImageData" (:pointer (:struct %color))
+ (image (:struct %image)))
+
 ;;RLAPI Image GetTextureData(Texture2D texture);                                                           // Get pixel data from GPU texture and return an Image
+(defcfun "GetTextureData" (:struct %image)
+ (texture (:struct %texture2d)))
+
 ;;RLAPI void UpdateTexture(Texture2D texture, void *pixels);                                               // Update GPU texture with new data
+(defcfun "UpdateTexture" :void
+ (texture (:struct %texture2d))
+ (pixels :pointer))
+
 ;;RLAPI void ImageToPOT(Image *image, Color fillColor);                                                    // Convert image to POT (power-of-two)
+(defcfun "ImageToPOT" :void
+ (image (:pointer (:struct %image)))
+ (fill-color (:struct %color)))
+
 ;;RLAPI void ImageFormat(Image *image, int newFormat);                                                     // Convert image data to desired format
+(defcfun "ImageFormat" :void
+ (image (:pointer (:struct %image)))
+ (new-format :int))
+
 ;;RLAPI void ImageAlphaMask(Image *image, Image alphaMask);                                                // Apply alpha mask to image
+(defcfun "ImageAlphaMask" :void
+ (image (:pointer (:struct %image)))
+ (alpha-mask (:struct %image)))
+
 ;;RLAPI void ImageDither(Image *image, int rBpp, int gBpp, int bBpp, int aBpp);                            // Dither image data to 16bpp or lower (Floyd-Steinberg dithering)
+(defcfun "ImageDither" :void
+ (image (:pointer (:struct %image)))
+ (r-bpp :int)
+ (g-bpp :int)
+ (b-bpp :int)
+ (a-bpp :int))
+
 ;;RLAPI Image ImageCopy(Image image);                                                                      // Create an image duplicate (useful for transformations)
+(defcfun "ImageCopy" (:struct %image)
+ (image (:struct %image)))
+
 ;;RLAPI void ImageCrop(Image *image, Rectangle crop);                                                      // Crop an image to a defined rectangle
+(defcfun "ImageCrop" :void
+ (image (:pointer (:struct %image)))
+ (crop (:struct %rectangle)))
+
 ;;RLAPI void ImageResize(Image *image, int newWidth, int newHeight);                                       // Resize and image (bilinear filtering)
+(defcfun "ImageResize" :void
+ (image (:pointer (:struct %image)))
+ (new-width :int)
+ (new-height :int))
+
 ;;RLAPI void ImageResizeNN(Image *image,int newWidth,int newHeight);                                       // Resize and image (Nearest-Neighbor scaling algorithm)
+(defcfun "ImageResizeNN" :void
+ (image (:pointer (:struct %image)))
+ (new-width :int)
+ (new-height :int))
+
 ;;RLAPI Image ImageText(const char *text, int fontSize, Color color);                                      // Create an image from text (default font)
+(defcfun "ImageText" (:struct %image)
+ (text :string)
+ (font-size :int)
+ (color (:struct %color)))
+
 ;;RLAPI Image ImageTextEx(SpriteFont font, const char *text, float fontSize, int spacing, Color tint);     // Create an image from text (custom sprite font)
+(defcfun "ImageTextEx" (:struct %image)
+ (sprite-font (:struct %sprite-font))
+ (text :string)
+ (font-size :float)
+ (spacing :int)
+ (tint (:struct %color)))
+
 ;;RLAPI void ImageDraw(Image *dst, Image src, Rectangle srcRec, Rectangle dstRec);                         // Draw a source image within a destination image
+(defcfun "ImageDraw" :void
+ (dst (:pointer (:struct %image)))
+ (src (:struct %image))
+ (src-rec (:struct %rectangle))
+ (dst-rec (:struct %rectangle)))
+
 ;;RLAPI void ImageDrawText(Image *dst, Vector2 position, const char *text, int fontSize, Color color);     // Draw text (default font) within an image (destination)
+(defcfun "ImageDrawText" :void
+ (dst (:pointer (:struct %image)))
+ (position (:struct %vector2))
+ (text :string)
+ (font-size :int)
+ (color (:struct %color)))
+
 ;;RLAPI void ImageDrawTextEx(Image *dst, Vector2 position, SpriteFont font, const char *text, float fontSize, int spacing, Color color); // Draw text (custom sprite font) within an image (destination)
+(defcfun "ImageDrawTextEx" :void
+ (dst (:pointer (:struct %image)))
+ (position (:struct %vector2))
+ (sprite-font (:struct %sprite-font))
+ (text :string)
+ (font-size :int)
+ (spacing :int)
+ (color (:struct %color)))
+
 ;;RLAPI void ImageFlipVertical(Image *image);                                                              // Flip image vertically
+(defcfun "ImageFlipVertical" :void
+ (image (:pointer (:struct %image))))
+
 ;;RLAPI void ImageFlipHorizontal(Image *image);                                                            // Flip image horizontally
+(defcfun "ImageFlipHorizontal" :void
+ (image (:pointer (:struct %image))))
+
 ;;RLAPI void ImageColorTint(Image *image, Color color);                                                    // Modify image color: tint
+(defcfun "ImageColorTint" :void
+ (image (:pointer (:struct %image)))
+ (color (:struct %color)))
+
 ;;RLAPI void ImageColorInvert(Image *image);                                                               // Modify image color: invert
+(defcfun "ImageColorInvert" :void
+ (image (:pointer (:struct %image))))
+
 ;;RLAPI void ImageColorGrayscale(Image *image);                                                            // Modify image color: grayscale
+(defcfun "ImageColorGrayscale" :void
+ (image (:pointer (:struct %image))))
+
 ;;RLAPI void ImageColorContrast(Image *image, float contrast);                                             // Modify image color: contrast (-100 to 100)
+(defcfun "ImageColorContrast" :void
+ (image (:pointer (:struct %image)))
+ (contrast :float))
+
 ;;RLAPI void ImageColorBrightness(Image *image, int brightness);                                           // Modify image color: brightness (-255 to 255)
+(defcfun "ImageColorBrightness" :void
+ (image (:pointer (:struct %image)))
+ (brightness :int))
+
 ;;RLAPI void GenTextureMipmaps(Texture2D *texture);                                                        // Generate GPU mipmaps for a texture
+(defcfun "GenTextureMipmaps" :void
+ (texture (:pointer (:struct %texture2d))))
+
 ;;RLAPI void SetTextureFilter(Texture2D texture, int filterMode);                                          // Set texture scaling filter mode
+(defcfun "SetTextureFilter" :void
+ (texture (:struct %texture2d))
+ (filter-mode :int))
+
 ;;RLAPI void SetTextureWrap(Texture2D texture, int wrapMode);                                              // Set texture wrapping mode
-;;
+(defcfun "SetTextureWrap" :void
+ (texture (:struct %texture2d))
+ (wrap-mode :int))
+
 ;;RLAPI void DrawTexture(Texture2D texture, int posX, int posY, Color tint);                               // Draw a Texture2D
+(defcfun "DrawTexture" :void
+ (texture (:struct %texture2d))
+ (pos-x :int)
+ (pos-y :int)
+ (tint (:struct %color)))
+
 ;;RLAPI void DrawTextureV(Texture2D texture, Vector2 position, Color tint);                                // Draw a Texture2D with position defined as Vector2
+(defcfun "DrawTextureV" :void
+ (texture (:struct %texture2d))
+ (position (:struct %vector2))
+ (tint (:struct %color)))
+
 ;;RLAPI void DrawTextureEx(Texture2D texture, Vector2 position, float rotation, float scale, Color tint);  // Draw a Texture2D with extended parameters
+(defcfun "DrawTextureEx" :void
+ (texture (:struct %texture2d))
+ (position (:struct %vector2))
+ (rotation :float)
+ (scale :float)
+ (tint (:struct %color)))
+
 ;;RLAPI void DrawTextureRec(Texture2D texture, Rectangle sourceRec, Vector2 position, Color tint);         // Draw a part of a texture defined by a rectangle
+(defcfun "DrawTextureRec" :void
+ (texture (:struct %texture2d))
+ (source-rec (:struct %rectangle))
+ (position (:struct %vector2))
+ (tint (:struct %color)))
+
 ;;RLAPI void DrawTexturePro(Texture2D texture, Rectangle sourceRec, Rectangle destRec, Vector2 origin,     // Draw a part of a texture defined by a rectangle with 'pro' parameters
 ;;                    float rotation, Color tint);
-;;
+(defcfun "DrawTexturePro" :void
+ (texture (:struct %texture2d))
+ (source-rec (:struct %rectangle))
+ (dst-rec (:struct %rectangle))
+ (origin (:struct %vector2))
+ (rotation :float)
+ (tint (:struct %color)))
+
 ;;//------------------------------------------------------------------------------------
 ;;// Font Loading and Text Drawing Functions (Module: text)
 ;;//------------------------------------------------------------------------------------
 ;;RLAPI SpriteFont GetDefaultFont(void);                                                                   // Get the default SpriteFont
+(defcfun "GetDefaultFont" (:struct %sprite-font))
+
 ;;RLAPI SpriteFont LoadSpriteFont(const char *fileName);                                                   // Load a SpriteFont image into GPU memory
+(defcfun "LoadSpriteFont" (:struct %sprite-font)
+ (file-name :string))
+
 ;;RLAPI SpriteFont LoadSpriteFontTTF(const char *fileName, int fontSize, int numChars, int *fontChars);    // Load a SpriteFont from TTF font with parameters
+(defcfun "LoadSpriteFontTTF" (:struct %sprite-font)
+ (file-name :string)
+ (font-size :int)
+ (num-chars :int)
+ (font-chars (:pointer :int)))
+
 ;;RLAPI void UnloadSpriteFont(SpriteFont spriteFont);                                                      // Unload SpriteFont from GPU memory
-;;
+(defcfun "UnloadSpriteFont" :void
+ (sprite-font (:struct %sprite-font)))
+
 ;;RLAPI void DrawText(const char *text, int posX, int posY, int fontSize, Color color);                    // Draw text (using default font)
+(defcfun "DrawText" :void
+ (text :string)
+ (pos-x :int)
+ (pos-y :int)
+ (font-size :int)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawTextEx(SpriteFont spriteFont, const char* text, Vector2 position,                         // Draw text using SpriteFont and additional parameters
 ;;                float fontSize, int spacing, Color tint);
+(defcfun "DrawTextEx" :void
+ (sprite-font (:struct %sprite-font))
+ (text :string)
+ (position (:struct %vector2))
+ (font-size :float)
+ (spacing :int)
+ (tint (:struct %color)))
+
 ;;RLAPI int MeasureText(const char *text, int fontSize);                                                   // Measure string width for default font
+(defcfun "MeasureText" :int
+ (text :string)
+ (font-size :float))
+
 ;;RLAPI Vector2 MeasureTextEx(SpriteFont spriteFont, const char *text, float fontSize, int spacing);       // Measure string size for SpriteFont
-;;
+(defcfun "MeasureTextEx" (:struct %vector2)
+ (text :string)
+ (font-size :float))
+
 ;;RLAPI void DrawFPS(int posX, int posY);                                                                  // Shows current FPS on top-left corner
+(defcfun "DrawFPS" :void
+ (pos-x :int)
+ (pos-y :int))
+
 ;;RLAPI const char *FormatText(const char *text, ...);                                                     // Formatting of text with variables to 'embed'
+(defcfun "FormatText" :string
+ (text :string)
+ &rest)
+
 ;;RLAPI const char *SubText(const char *text, int position, int length);                                   // Get a piece of a text string
-;;
+(defcfun "SubText" :string
+ (text :string)
+ (position :int)
+ (length :int))
+
 ;;//------------------------------------------------------------------------------------
 ;;// Basic 3d Shapes Drawing Functions (Module: models)
 ;;//------------------------------------------------------------------------------------
 ;;RLAPI void DrawLine3D(Vector3 startPos, Vector3 endPos, Color color);                                    // Draw a line in 3D world space
+(defcfun "DrawLine3D" :void
+ (start-pos (:struct %vector-3))
+ (end-pos (:struct %vector-3))
+ (color (:struct %color)))
+
 ;;RLAPI void DrawCircle3D(Vector3 center, float radius, Vector3 rotationAxis, float rotationAngle, Color color); // Draw a circle in 3D world space
+(defcfun "DrawCircle3D" :void
+ (position (:struct %vector-3))
+ (radius :float)
+ (rotation-axis (:struct %vector-3))
+ (rotation-angle :float)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawCube(Vector3 position, float width, float height, float length, Color color);             // Draw cube
+(defcfun "DrawCube" :void
+ (position (:struct %vector-3))
+ (width :float)
+ (height :float)
+ (length :float)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawCubeV(Vector3 position, Vector3 size, Color color);                                       // Draw cube (Vector version)
+(defcfun "DrawCubeV" :void
+ (position (:struct %vector-3))
+ (size (:struct %vector-3))
+ (color (:struct %color)))
+
 ;;RLAPI void DrawCubeWires(Vector3 position, float width, float height, float length, Color color);        // Draw cube wires
+(defcfun "DrawCubeWires" :void
+ (position (:struct %vector-3))
+ (width :float)
+ (height :float)
+ (length :float)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawCubeTexture(Texture2D texture, Vector3 position, float width, float height, float length, Color color); // Draw cube textured
+(defcfun "DrawCubeTexture" :void
+ (texture (:struct %texture2d))
+ (position (:struct %vector-3))
+ (width :float)
+ (height :float)
+ (length :float)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawSphere(Vector3 centerPos, float radius, Color color);                                     // Draw sphere
+(defcfun "DrawSphere" :void
+ (center-pos (:struct %vector-3))
+ (radius :float)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawSphereEx(Vector3 centerPos, float radius, int rings, int slices, Color color);            // Draw sphere with extended parameters
+(defcfun "DrawSphereEx" :void
+ (center-pos (:struct %vector-3))
+ (radius :float)
+ (rings :int)
+ (slices :int)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawSphereWires(Vector3 centerPos, float radius, int rings, int slices, Color color);         // Draw sphere wires
+(defcfun "DrawSphereWires" :void
+ (center-pos (:struct %vector-3))
+ (radius :float)
+ (rings :int)
+ (slices :int)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawCylinder(Vector3 position, float radiusTop, float radiusBottom, float height, int slices, Color color); // Draw a cylinder/cone
+(defcfun "DrawCylinder" :void
+ (position (:struct %vector-3))
+ (radius-top :float)
+ (radius-bottom :float)
+ (height :float)
+ (slices :int)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawCylinderWires(Vector3 position, float radiusTop, float radiusBottom, float height, int slices, Color color); // Draw a cylinder/cone wires
+(defcfun "DrawCylinderWires" :void
+ (position (:struct %vector-3))
+ (radius-top :float)
+ (radius-bottom :float)
+ (height :float)
+ (slices :int)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawPlane(Vector3 centerPos, Vector2 size, Color color);                                      // Draw a plane XZ
+(defcfun "DrawPlance" :void
+ (current-pos (:struct %vector-3))
+ (size  (:struct %vector2))
+ (color (:struct %color)))
+
 ;;RLAPI void DrawRay(Ray ray, Color color);                                                                // Draw a ray line
+(defcfun "DrawRay" :void
+ (ray (:struct %ray))
+ (color (:struct %color)))
+
 ;;RLAPI void DrawGrid(int slices, float spacing);                                                          // Draw a grid (centered at (0, 0, 0))
+(defcfun "DrawGrid" :void
+ (slices :int)
+ (spacing :float))
+
 ;;RLAPI void DrawGizmo(Vector3 position);                                                                  // Draw simple gizmo
+(defcfun "DrawGizmo" :void
+ (position (:struct %vector-3)))
+
 ;;RLAPI void DrawLight(Light light);                                                                       // Draw light in 3D world
+(defcfun "DrawLight" :void
+ (light :pointer))
+
 ;;//DrawTorus(), DrawTeapot() could be useful?
 ;;
 ;;//------------------------------------------------------------------------------------
 ;;// Model 3d Loading and Drawing Functions (Module: models)
 ;;//------------------------------------------------------------------------------------
 ;;RLAPI Model LoadModel(const char *fileName);                          // Load a 3d model (.OBJ)
+(defcfun "LoadModel" (:struct %model)
+ (file-name :string))
+
 ;;RLAPI Model LoadModelEx(Mesh data, bool dynamic);                     // Load a 3d model (from mesh data)
+(defcfun "LoadModelEx" (:struct %model)
+ (data (:struct %mesh))
+ (bynamic bool))
+
 ;;RLAPI Model LoadModelFromRES(const char *rresName, int resId);        // Load a 3d model from rRES file (raylib Resource)
+(defcfun "LoadModelFromRES" (:struct %model)
+ (rres-name :string)
+ (res-id :int))
+
 ;;RLAPI Model LoadHeightmap(Image heightmap, Vector3 size);             // Load a heightmap image as a 3d model
+(defcfun "LoadHeightmap" (:struct %model)
+ (heightmap (:struct %image))
+ (size (:struct %vector-3)))
+
 ;;RLAPI Model LoadCubicmap(Image cubicmap);                             // Load a map image as a 3d model (cubes based)
+(defcfun "LoadCubicmap" (:struct %model)
+ (cubicmap (:struct %image)))
+
 ;;RLAPI void UnloadModel(Model model);                                  // Unload 3d model from memory
-;;
+(defcfun "UnloadModel" :void
+ (model (:struct %model)))
+
 ;;RLAPI Material LoadMaterial(const char *fileName);                    // Load material data (.MTL)
+(defcfun "LoadMaterial" (:struct %material)
+ (file-name :string))
+
 ;;RLAPI Material LoadDefaultMaterial(void);                             // Load default material (uses default models shader)
+(defcfun "LoadDefaultMaterialardMaterial" (:struct %material))
+
 ;;RLAPI Material LoadStandardMaterial(void);                            // Load standard material (uses material attributes and lighting shader)
+(defcfun "LoadStandardMaterial" (:struct %material))
+
 ;;RLAPI void UnloadMaterial(Material material);                         // Unload material textures from VRAM
-;;
+(defcfun "UnloadMaterial" :void
+  (material (:struct %material)))
+
 ;;RLAPI void DrawModel(Model model, Vector3 position, float scale, Color tint);                            // Draw a model (with texture if set)
+(defcfun "DrawModel" :void
+  (model (:struct %model))
+  (position (:struct %vector-3))
+  (scale (:struct %vector-3))
+  (tint (:struct %color)))
+
 ;;RLAPI void DrawModelEx(Model model, Vector3 position, Vector3 rotationAxis, float rotationAngle, Vector3 scale, Color tint);      // Draw a model with extended parameters
+(defcfun "DrawModelEx" :void
+  (model (:struct %model))
+  (position (:struct %vector-3))
+  (rotation-axis (:struct %vector-3))
+  (rotation-angle :float)
+  (scale (:struct %vector-3))
+  (tint (:struct %color)))
+
 ;;RLAPI void DrawModelWires(Model model, Vector3 position, float scale, Color tint);                      // Draw a model wires (with texture if set)
+(defcfun "DrawModelWires" :void
+  (model (:struct %model))
+  (position (:struct %vector-3))
+  (scale (:struct %vector-3))
+  (tint (:struct %color)))
+
 ;;RLAPI void DrawModelWiresEx(Model model, Vector3 position, Vector3 rotationAxis, float rotationAngle, Vector3 scale, Color tint); // Draw a model wires (with texture if set) with extended parameters
+(defcfun "DrawModelWiresEx" :void
+  (model (:struct %model))
+  (position (:struct %vector-3))
+  (rotation-axis (:struct %vector-3))
+  (rotation-angle :float)
+  (scale (:struct %vector-3))
+  (tint (:struct %color)))
+
 ;;RLAPI void DrawBoundingBox(BoundingBox box, Color color);                                                // Draw bounding box (wires)
-;;
+(defcfun "DrawBoundingBox" :void
+  (box (:struct %bounding-box))
+  (color (:struct %color)))
+
 ;;RLAPI void DrawBillboard(Camera camera, Texture2D texture, Vector3 center, float size, Color tint);                         // Draw a billboard texture
+(defcfun "DrawBillboard" :void
+  (camera (:struct %camera))
+  (texture (:struct %texture2d))
+  (center (:struct %vector-3))
+  (size :float)
+  (tint (:struct %color)))
+
 ;;RLAPI void DrawBillboardRec(Camera camera, Texture2D texture, Rectangle sourceRec, Vector3 center, float size, Color tint); // Draw a billboard texture defined by sourceRec
+(defcfun "DrawBillboardRec" :void
+  (camera (:struct %camera))
+  (texture (:struct %texture2d))
+  (source-rec (:struct %rectangle))
+  (center (:struct %vector-3))
+  (size :float)
+  (tint (:struct %color)))
+
 ;;
 ;;RLAPI BoundingBox CalculateBoundingBox(Mesh mesh);                                                                    // Calculate mesh bounding box limits
+(defcfun "CalculateBoundingBox" (:struct %bounding-box)
+  (mesh (:struct %mesh)))
+
 ;;RLAPI bool CheckCollisionSpheres(Vector3 centerA, float radiusA, Vector3 centerB, float radiusB);                     // Detect collision between two spheres
+(defcfun "CheckCollisionSpheres" bool
+  (center-a (:struct %vector-3))
+  (radius-a :float)
+  (center-b (:struct %vector-3))
+  (radius-b :float))
+
 ;;RLAPI bool CheckCollisionBoxes(BoundingBox box1, BoundingBox box2);                                                   // Detect collision between two bounding boxes
+(defcfun "CheckCollisionBoxes" bool
+  (box1 (:struct %bounding-box))
+  (box2 (:struct %bounding-box)))
+
 ;;RLAPI bool CheckCollisionBoxSphere(BoundingBox box, Vector3 centerSphere, float radiusSphere);                        // Detect collision between box and sphere
+(defcfun "CheckCollisionBoxSphere" bool
+  (box (:struct %bounding-box))
+  (center-sphere (:struct %vector-3))
+  (sphere-radius :float))
+
 ;;RLAPI bool CheckCollisionRaySphere(Ray ray, Vector3 spherePosition, float sphereRadius);                              // Detect collision between ray and sphere
+(defcfun "CheckCollisionRaySphere" bool
+  (ray (:struct %ray))
+  (sphere-position (:struct %vector-3))
+  (sphere-radius :float))
+
 ;;RLAPI bool CheckCollisionRaySphereEx(Ray ray, Vector3 spherePosition, float sphereRadius, Vector3 *collisionPoint);   // Detect collision between ray and sphere with extended parameters and collision point detection
+(defcfun "CheckCollisionRaySphereEx" bool
+  (ray (:struct %ray))
+  (sphere-position (:struct %vector-3))
+  (sphere-radius :float)
+  (collision-point (:pointer (:struct %vector-3))))
+
 ;;RLAPI bool CheckCollisionRayBox(Ray ray, BoundingBox box);                                                            // Detect collision between ray and box
-;;
+(defcfun "CheckCollisionRayBox" bool
+  (ray (:struct %ray))
+  (box (:struct %bounding-box)))
+
 ;;//------------------------------------------------------------------------------------
 ;;// Shaders System Functions (Module: rlgl)
 ;;// NOTE: This functions are useless when using OpenGL 1.1
 ;;//------------------------------------------------------------------------------------
 ;;RLAPI Shader LoadShader(char *vsFileName, char *fsFileName);              // Load a custom shader and bind default locations
+(defcfun "LoadShader" (:struct %shader)
+  (vs-file-name :string)
+  (fs-file-name :string))
+
 ;;RLAPI void UnloadShader(Shader shader);                                   // Unload a custom shader from memory
-;;
+(defcfun "UnloadShader" :void
+  (shader (:struct %shader)))
+
 ;;RLAPI Shader GetDefaultShader(void);                                      // Get default shader
+(defcfun "GetDefaultShader" (:struct %shader))
+
 ;;RLAPI Shader GetStandardShader(void);                                     // Get standard shader
+(defcfun "GetStandardShader" (:struct %shader))
+
 ;;RLAPI Texture2D GetDefaultTexture(void);                                  // Get default texture
-;;
+(defcfun "GetDefaultTexture" (:struct %texture2d))
+
 ;;RLAPI int GetShaderLocation(Shader shader, const char *uniformName);              // Get shader uniform location
+(defcfun "GetShaderLocation" :int
+  (shader (:struct %shader))
+  (uniform-name :string))
+
 ;;RLAPI void SetShaderValue(Shader shader, int uniformLoc, float *value, int size); // Set shader uniform value (float)
+(defcfun "SetShaderValue" :void
+  (shader (:struct %shader))
+  (uniform-loc :int)
+  (value (:pointer :float))
+  (size :int))
+
 ;;RLAPI void SetShaderValuei(Shader shader, int uniformLoc, int *value, int size);  // Set shader uniform value (int)
+(defcfun "SetShaderValuei" :void
+  (shader (:struct %shader))
+  (uniform-loc :int)
+  (value (:pointer :int))
+  (size :int))
+
 ;;RLAPI void SetShaderValueMatrix(Shader shader, int uniformLoc, Matrix mat);       // Set shader uniform value (matrix 4x4)
-;;
+(defcfun "SetShaderValueMatrix" :void
+  (shader (:struct %shader))
+  (uniform-loc :int)
+  (mat (:struct %matrix)))
+
 ;;RLAPI void SetMatrixProjection(Matrix proj);                              // Set a custom projection matrix (replaces internal projection matrix)
+(defcfun "SetMatrixProjection" :void
+  (proj (:struct %matrix)))
+
 ;;RLAPI void SetMatrixModelview(Matrix view);                               // Set a custom modelview matrix (replaces internal modelview matrix)
-;;
+(defcfun "SetMatrixModelview" :void
+  (view (:struct %matrix)))
+
 ;;RLAPI void BeginShaderMode(Shader shader);                                // Begin custom shader drawing
+(defcfun "BeginShaderMode" :void
+  (shader (:struct %shader)))
+
 ;;RLAPI void EndShaderMode(void);                                           // End custom shader drawing (use default shader)
+(defcfun "EndShaderMode" :void)
+
 ;;RLAPI void BeginBlendMode(int mode);                                      // Begin blending mode (alpha, additive, multiplied)
+(defcfun "BeginBlendMode" :void
+  (mode :int))
+
 ;;RLAPI void EndBlendMode(void);                                            // End blending mode (reset to default: alpha blending)
-;;
+(defcfun "EndBlendMode" :void)
+
 ;;RLAPI Light CreateLight(int type, Vector3 position, Color diffuse);       // Create a new light, initialize it and add to pool
+(defcfun "CreateLight" :pointer
+  (type :int)
+  (position (:struct %vector-3))
+  (diffuse (:struct %color)))
+
 ;;RLAPI void DestroyLight(Light light);                                     // Destroy a light and take it out of the list
-;;
+(defcfun "DestroyLight" :void
+  (light :pointer))
+
 ;;//------------------------------------------------------------------------------------
 ;;// VR experience Functions (Module: rlgl)
 ;;// NOTE: This functions are useless when using OpenGL 1.1
 ;;//------------------------------------------------------------------------------------
 ;;RLAPI void InitVrDevice(int vdDevice);            // Init VR device
+(defcfun "InitVrDevice" :void
+  (vd-device :int))
+
 ;;RLAPI void CloseVrDevice(void);                   // Close VR device
+(defcfun "CloseVrDevice" :void)
+
 ;;RLAPI bool IsVrDeviceReady(void);                 // Detect if VR device is ready
+(defcfun "IsVrDeviceReady" bool)
+
 ;;RLAPI bool IsVrSimulator(void);                   // Detect if VR simulator is running
+(defcfun "IsVrSimulator" bool)
+
 ;;RLAPI void UpdateVrTracking(Camera *camera);      // Update VR tracking (position and orientation) and camera
+(defcfun "UpdateVrTracking" :void
+  (camera (:pointer (:struct %camera))))
+
 ;;RLAPI void ToggleVrMode(void);                    // Enable/Disable VR experience (device or simulator)
-;;
+(defcfun "ToggleVrMode" :void)
+
 ;;//------------------------------------------------------------------------------------
 ;;// Audio Loading and Playing Functions (Module: audio)
 ;;//------------------------------------------------------------------------------------
 ;;RLAPI void InitAudioDevice(void);                                     // Initialize audio device and context
+(defcfun "InitAudioDevice" :void)
+
 ;;RLAPI void CloseAudioDevice(void);                                    // Close the audio device and context
+(defcfun "CloseAudioDevice" :void)
+
 ;;RLAPI bool IsAudioDeviceReady(void);                                  // Check if audio device has been initialized successfully
-;;
+(defcfun "IsAudioDeviceReady" bool)
+
 ;;RLAPI Wave LoadWave(const char *fileName);                            // Load wave data from file into RAM
+(defcfun "LoadWave" (:struct %wave)
+  (file-name :string))
+
 ;;RLAPI Wave LoadWaveEx(float *data, int sampleCount, int sampleRate, int sampleSize, int channels); // Load wave data from float array data (32bit)
+(defcfun "LoadWaveEx" (:struct %wave)
+  (data (:pointer :float))
+  (sample-count :int)
+  (sample-rate :int)
+  (sample-size :int)
+  (channels :int))
+
 ;;RLAPI Sound LoadSound(const char *fileName);                          // Load sound to memory
+(defcfun "LoadSound" (:struct %sound)
+  (file-name :string))
+
 ;;RLAPI Sound LoadSoundFromWave(Wave wave);                             // Load sound to memory from wave data
+(defcfun "LoadSoundFromWave" (:struct %sound)
+  (wave (:struct %wave)))
+
 ;;RLAPI Sound LoadSoundFromRES(const char *rresName, int resId);        // Load sound to memory from rRES file (raylib Resource)
+(defcfun "LoadSoundFromRES" (:struct %sound)
+  (rres-name :string)
+  (res-id :int))
+
 ;;RLAPI void UpdateSound(Sound sound, void *data, int numSamples);      // Update sound buffer with new data
+(defcfun "UpdateSound" :void
+  (sound (:struct %sound))
+  (data :pointer)
+  (num-samples :int))
+
 ;;RLAPI void UnloadWave(Wave wave);                                     // Unload wave data
+(defcfun "UnloadWave" :void
+  (wave (:struct %wave)))
+
 ;;RLAPI void UnloadSound(Sound sound);                                  // Unload sound
+(defcfun "UnloadSound" :void
+  (sound (:struct %sound)))
+
 ;;RLAPI void PlaySound(Sound sound);                                    // Play a sound
+(defcfun "PlaySound" :void
+  (sound (:struct %sound)))
+
 ;;RLAPI void PauseSound(Sound sound);                                   // Pause a sound
+(defcfun "PauseSound" :void
+  (sound (:struct %sound)))
+
 ;;RLAPI void ResumeSound(Sound sound);                                  // Resume a paused sound
+(defcfun "ResumeSound" :void
+  (sound (:struct %sound)))
+
 ;;RLAPI void StopSound(Sound sound);                                    // Stop playing a sound
+(defcfun "StopSound" :void
+  (sound (:struct %sound)))
+
 ;;RLAPI bool IsSoundPlaying(Sound sound);                               // Check if a sound is currently playing
+(defcfun "IsSoundPlaying" bool
+  (sound (:struct %sound)))
+
 ;;RLAPI void SetSoundVolume(Sound sound, float volume);                 // Set volume for a sound (1.0 is max level)
+(defcfun "SetSoundVolume" :void
+  (sound (:struct %sound))
+  (volume :float))
+
 ;;RLAPI void SetSoundPitch(Sound sound, float pitch);                   // Set pitch for a sound (1.0 is base level)
+(defcfun "SetSoundPitch" :void
+  (sound (:struct %sound))
+  (pitch :float))
+
 ;;RLAPI void WaveFormat(Wave *wave, int sampleRate, int sampleSize, int channels);  // Convert wave data to desired format
+(defcfun "WaveFormat" :void
+  (wave (:pointer (:struct %wave)))
+  (sample-rate :int)
+  (sample-size :int)
+  (channels :int))
+  
 ;;RLAPI Wave WaveCopy(Wave wave);                                       // Copy a wave to a new wave
+(defcfun "WaveCopy" (:struct %wave)
+  (wave (:pointer (:struct %wave)))
+  (init-sample :int)
+  (final-sample :int))
+  
 ;;RLAPI void WaveCrop(Wave *wave, int initSample, int finalSample);     // Crop a wave to defined samples range
+(defcfun "WaveCrop" :void
+  (wave (:pointer (:struct %wave)))
+  (init-sample :int)
+  (final-sample :int))
+  
 ;;RLAPI float *GetWaveData(Wave wave);                                  // Get samples data from wave as a floats array
+(defcfun "GetWaveData" (:pointer :float)
+  (wave (:struct %wave)))
+  
 ;;RLAPI Music LoadMusicStream(const char *fileName);                    // Load music stream from file
+(defcfun "LoadMusicStream" :pointer
+  (file-name :string))
+  
 ;;RLAPI void UnloadMusicStream(Music music);                            // Unload music stream
+(defcfun "UnloadMusicStream" :void
+  (music :pointer))
+  
 ;;RLAPI void PlayMusicStream(Music music);                              // Start music playing
+(defcfun "PlayMusicStream" :void
+  (music :pointer))
+  
 ;;RLAPI void UpdateMusicStream(Music music);                            // Updates buffers for music streaming
+(defcfun "UpdateMusicStream" :void
+  (music :pointer))
+  
 ;;RLAPI void StopMusicStream(Music music);                              // Stop music playing
+(defcfun "StopMusicStream" :void
+  (music :pointer))
+  
 ;;RLAPI void PauseMusicStream(Music music);                             // Pause music playing
 (defcfun "PauseMusicStream" :void
   (music :pointer))

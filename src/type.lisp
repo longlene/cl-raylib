@@ -1,13 +1,12 @@
 (in-package #:cl-raylib)
 
 (defmethod translate-name-from-foreign ((spec string) (package (eql *package*)) &optional varp)
- (let ((name (translate-camelcase-name spec)))
+ (let ((name (translate-camelcase-name spec :upper-initial-p t :special-words '("POT" "FPS" "RES" "TTF"))))
   (if varp (intern (format nil "*~a" name)) name)))
 
 (defmethod translate-name-to-foreign ((spec symbol) (package (eql *package*)) &optional varp)
- (let ((name (translate-camelcase-name spec :upper-initial-p t)))
+ (let ((name (translate-camelcase-name spec :upper-initial-p t :special-words '("FPS" "POT" "RES" "TTF"))))
   (if varp (subseq name 1 (1- (length name))) name)))
-
 
 ;// Keyboard Function Keys
 ;#define KEY_SPACE            32
@@ -164,37 +163,63 @@
 ;#else
 ;    #define CLITERAL    (Color)
 ;#endif
-;
+
 ;// Some Basic Colors
 ;// NOTE: Custom raylib color palette for amazing visuals on WHITE background
 ;#define LIGHTGRAY  CLITERAL{ 200, 200, 200, 255 }   // Light Gray
+(defconstant +lightgray+ '(200 200 200 255))
 ;#define GRAY       CLITERAL{ 130, 130, 130, 255 }   // Gray
+(defconstant +gray+ '(130 130 130 255))
 ;#define DARKGRAY   CLITERAL{ 80, 80, 80, 255 }      // Dark Gray
+(defconstant +darkgray+ '(80 80 80 255))
 ;#define YELLOW     CLITERAL{ 253, 249, 0, 255 }     // Yellow
+(defconstant +yellow+ '(253 249 0 255))
 ;#define GOLD       CLITERAL{ 255, 203, 0, 255 }     // Gold
+(defconstant +gold+ '(255 203 0 255))
 ;#define ORANGE     CLITERAL{ 255, 161, 0, 255 }     // Orange
+(defconstant +orange+     '(255 161 0 255 ))
 ;#define PINK       CLITERAL{ 255, 109, 194, 255 }   // Pink
+(defconstant +pink+       '(255 109 194 255))
 ;#define RED        CLITERAL{ 230, 41, 55, 255 }     // Red
+(defconstant +red+        '( 230 41 55 255 ))     
 ;#define MAROON     CLITERAL{ 190, 33, 55, 255 }     // Maroon
+(defconstant +maroon+      '(190 33 55 255)) 
 ;#define GREEN      CLITERAL{ 0, 228, 48, 255 }      // Green
+(defconstant +green+       '(0 228 48 255)) 
 ;#define LIME       CLITERAL{ 0, 158, 47, 255 }      // Lime
+(defconstant +lime+        '(0 158 47 255)) 
 ;#define DARKGREEN  CLITERAL{ 0, 117, 44, 255 }      // Dark Green
+(defconstant +darkgreen+   '(0 117 44 255)) 
 ;#define SKYBLUE    CLITERAL{ 102, 191, 255, 255 }   // Sky Blue
+(defconstant +skyblue+     '(102 191 255 255)) 
 ;#define BLUE       CLITERAL{ 0, 121, 241, 255 }     // Blue
+(defconstant +blue+        '(0 121 241 255)) 
 ;#define DARKBLUE   CLITERAL{ 0, 82, 172, 255 }      // Dark Blue
+(defconstant +darkblue+    '(0 82 172 255)) 
 ;#define PURPLE     CLITERAL{ 200, 122, 255, 255 }   // Purple
+(defconstant +purple+      '(200 122 255 255)) 
 ;#define VIOLET     CLITERAL{ 135, 60, 190, 255 }    // Violet
+(defconstant +violet+      '(135 60 190 255)) 
 ;#define DARKPURPLE CLITERAL{ 112, 31, 126, 255 }    // Dark Purple
+(defconstant +darkpurple+  '(112 31 126 255)) 
 ;#define BEIGE      CLITERAL{ 211, 176, 131, 255 }   // Beige
+(defconstant +beige+       '(211 176 131 255)) 
 ;#define BROWN      CLITERAL{ 127, 106, 79, 255 }    // Brown
+(defconstant +brown+       '(127 106 79 255)) 
 ;#define DARKBROWN  CLITERAL{ 76, 63, 47, 255 }      // Dark Brown
-;
+(defconstant +darkbrown+   '(76 63 47 255)) 
+
 ;#define WHITE      CLITERAL{ 255, 255, 255, 255 }   // White
+(defconstant +white+       '(255 255 255 255)) 
 ;#define BLACK      CLITERAL{ 0, 0, 0, 255 }         // Black
+(defconstant +black+       '(0 0 0 255)) 
 ;#define BLANK      CLITERAL{ 0, 0, 0, 0 }           // Blank (Transparent)
+(defconstant +blank+       '(0 0 0 0)) 
 ;#define MAGENTA    CLITERAL{ 255, 0, 255, 255 }     // Magenta
+(defconstant +magenta+     '(255 0 255 255)) 
 ;#define RAYWHITE   CLITERAL{ 245, 245, 245, 255 }   // My own White (raylib logo)
-;
+(defconstant +raywhite+    '(245 245 245 255)) 
+
 ;//----------------------------------------------------------------------------------
 ;// Types and Structures Definition
 ;//----------------------------------------------------------------------------------
@@ -209,25 +234,32 @@
 ;        #include <stdbool.h>
 ;    #endif
 ;#endif
+(defcenum bool
+ :false
+ :true)
 
 ;// Vector2 type
 ;typedef struct Vector2 {
 ;    float x;
 ;    float y;
 ;} Vector2;
-(defcstruct (%vector-2 :class vector-2-type)
+(defcstruct (%vector2 :class vector2-type)
  "Vector2 type"
  (x :float)
  (y :float))
 
-(defmethod translate-into-foreign-memory (object (type vector-2-type) pointer)
-  (with-foreign-slots ((x y) pointer (:struct %vector-2))
-                      (setf x (nth 0 object))
-                      (setf y (nth 1 object))))
+(defstruct vector2
+ x
+ y)
 
-(defmethod translate-from-foreign (pointer (type vector-2-type))
-  (with-foreign-slots ((x y) pointer (:struct %vector-2))
-                      (list x y)))
+(defmethod translate-into-foreign-memory (object (type vector2-type) pointer)
+  (with-foreign-slots ((x y) pointer (:struct %vector2))
+                      (setf x (vector2-x object))
+                      (setf y (vector2-y object))))
+
+(defmethod translate-from-foreign (pointer (type vector2-type))
+  (with-foreign-slots ((x y) pointer (:struct %vector2))
+                      (make-vector2 :x x :y y)))
 
 ;// Vector3 type
 ;typedef struct Vector3 {
@@ -311,7 +343,7 @@
 
 (defmethod translate-from-foreign (pointer (type color-type))
   (with-foreign-slots ((r g b a) pointer (:struct %color))
-                      (list r g b a)))
+   (list r g b a)))
 
 ;// Rectangle type
 ;typedef struct Rectangle {
@@ -355,6 +387,18 @@
   (mipmaps :int)
   (format :int))
 
+(defmethod translate-into-foreign-memory (object (type image-type) pointer)
+  (with-foreign-slots ((data width height mipmaps format) pointer (:struct %image))
+                      (setf data (nth 0 object))
+                      (setf width (nth 1 object))
+                      (setf height (nth 2 object))
+                      (setf mipmaps (nth 3 object))
+                      (setf format (nth 4 object))))
+
+(defmethod translate-from-foreign (pointer (type image-type))
+  (with-foreign-slots ((data width height mipmaps format) pointer (:struct %image))
+  (list data width height mipmaps format)))
+
 ;// Texture2D type, bpp always RGBA (32bit)
 ;// NOTE: Data stored in GPU memory
 ;typedef struct Texture2D {
@@ -364,13 +408,26 @@
 ;    int mipmaps;            // Mipmap levels, 1 by default
 ;    int format;             // Data format (TextureFormat)
 ;} Texture2D;
-(defcstruct (%texture-2-d :class texture-2-d-type)
-"Texture2D type, bpp always RGBA (32bit)"
-(id :unsigned-int)
-(width :int)
-(height :int)
-(mipmaps :int)
-(format :int))
+(defcstruct (%texture2d :class texture2d-type)
+ "Texture2D type, bpp always RGBA (32bit)"
+ (id :unsigned-int)
+ (width :int)
+ (height :int)
+ (mipmaps :int)
+ (format :int))
+
+(defmethod translate-into-foreign-memory (object (type texture2d-type) pointer)
+  (with-foreign-slots ((id width height mipmaps format) pointer (:struct %texture2d))
+                      (setf id (nth 0 object))
+                      (setf width (nth 1 object))
+                      (setf height (nth 2 object))
+                      (setf mipmaps (nth 3 object))
+                      (setf format (nth 4 object))))
+
+(defmethod translate-from-foreign (pointer (type texture2d-type))
+  (with-foreign-slots ((id width height mipmaps format) pointer (:struct %texture2d))
+  (list id width height mipmaps format)))
+
 
 ;// RenderTexture2D type, for texture rendering
 ;typedef struct RenderTexture2D {
@@ -378,11 +435,24 @@
 ;    Texture2D texture;      // Color buffer attachment texture
 ;    Texture2D depth;        // Depth buffer attachment texture
 ;} RenderTexture2D;
-(defcstruct (%render-texture-2-d :class render-texture-2-d-type)
-"RenderTexture2D type, for texture rendering"
+(defcstruct (%render-texture2d :class render-texture2d-type)
+ "RenderTexture2D type, for texture rendering"
  (id :unsigned-int)
- (texture (:struct %texture-2-d))
- (depth (:struct %texture-2-d)))
+ (texture (:struct %texture2d))
+ (depth (:struct %texture2d)))
+
+(defmethod translate-into-foreign-memory (object (type texture2d-type) pointer)
+  (with-foreign-slots ((id width height mipmaps format) pointer (:struct %texture2d))
+                      (setf id (nth 0 object))
+                      (setf width (nth 1 object))
+                      (setf height (nth 2 object))
+                      (setf mipmaps (nth 3 object))
+                      (setf format (nth 4 object))))
+
+(defmethod translate-from-foreign (pointer (type texture2d-type))
+  (with-foreign-slots ((id width height mipmaps format) pointer (:struct %texture2d))
+  (list id width height mipmaps format)))
+
 
 ;// SpriteFont type, includes texture and charSet array data
 ;typedef struct SpriteFont {
@@ -395,14 +465,29 @@
 ;    int *charAdvanceX;      // Characters x advance (on drawing)
 ;} SpriteFont;
 (defcstruct (%sprite-font :class sprite-font-type)
-"SpriteFont type, includes texture and charSet array data"
-(texture (:struct %texture-2-d))
- (size :int)
- (num-chars :int)
- (char-values (:pointer :int))
- (char-recs (:pointer (:struct %rectangle)))
- (char-offsets (:pointer (:struct %vector-2)))
-(char-advance-x (:pointer :int)))
+ "SpriteFont type, includes texture and charSet array data"
+ (texture (:struct %texture2d))
+  (size :int)
+  (num-chars :int)
+  (char-values (:pointer :int))
+  (char-recs (:pointer (:struct %rectangle)))
+  (char-offsets (:pointer (:struct %vector2)))
+  (char-advance-x (:pointer :int)))
+
+(defmethod translate-into-foreign-memory (object (type sprite-font-type) pointer)
+  (with-foreign-slots ((texture size num-chars char-values char-recs char-offsets char-advance-x) pointer (:struct %sprite-font))
+                      (setf texture (nth 0 object))
+                      (setf size (nth 1 object))
+                      (setf num-chars (nth 2 object))
+                      (setf char-values (nth 3 object))
+                      (setf char-recs (nth 4 object))
+                      (setf char-offsets (nth 5 object))
+                      (setf char-advance-x (nth 6 object))))
+
+(defmethod translate-from-foreign (pointer (type sprite-font-type))
+  (with-foreign-slots ((texture size num-chars char-values char-recs char-offsets char-advance-x) pointer (:struct %sprite-font))
+  (list texture size num-chars char-values char-recs char-offsets char-advance-x)))
+
 
 ;// Camera type, defines a camera position/orientation in 3d space
 ;typedef struct Camera {
@@ -412,11 +497,22 @@
 ;    float fovy;             // Camera field-of-view apperture in Y (degrees)
 ;} Camera;
 (defcstruct (%camera :class camera-type)
-            "Camera type, defines a camera position/orientation in 3d space"
-            (position (:struct %vector-3))
-            (target (:struct %vector-3))
-            (up (:struct %vector-3))
-            (fovy :float))
+ "Camera type, defines a camera position/orientation in 3d space"
+ (position (:struct %vector-3))
+ (target (:struct %vector-3))
+ (up (:struct %vector-3))
+ (fovy :float))
+
+(defmethod translate-into-foreign-memory (object (type camera-type) pointer)
+  (with-foreign-slots ((position target up fovy) pointer (:struct %camera))
+                      (setf position (nth 0 object))
+                      (setf target (nth 1 object))
+                      (setf up (nth 2 object))
+                      (setf fovy (nth 3 object))))
+
+(defmethod translate-from-foreign (pointer (type camera-type))
+  (with-foreign-slots ((position target up fovy) pointer (:struct %camera))
+   (list position target up fovy)))
 
 ;// Camera2D type, defines a 2d camera
 ;typedef struct Camera2D {
@@ -425,12 +521,23 @@
 ;    float rotation;         // Camera rotation in degrees
 ;    float zoom;             // Camera zoom (scaling), should be 1.0f by default
 ;} Camera2D;
-(defcstruct (%camera-2-d :class camera-2-d-type)
+(defcstruct (%camera2d :class camera2d-type)
  "Camera2D type, defines a 2d camera"
- (offset (:struct %vector-2))
- (target (:struct %vector-2))
+ (offset (:struct %vector2))
+ (target (:struct %vector2))
  (rotation :float)
  (zoom :float))
+
+(defmethod translate-into-foreign-memory (object (type camera2d-type) pointer)
+  (with-foreign-slots ((offset target rotation zoom) pointer (:struct %camera2d))
+                      (setf offset (nth 0 object))
+                      (setf target (nth 1 object))
+                      (setf rotation (nth 2 object))
+                      (setf zoom (nth 3 object))))
+
+(defmethod translate-from-foreign (pointer (type camera2d-type))
+  (with-foreign-slots ((offset target rotation zoom) pointer (:struct %camera2d))
+  (list offset target rotation zoom)))
 
 ;// Bounding box type
 ;typedef struct BoundingBox {
@@ -438,9 +545,18 @@
 ;    Vector3 max;            // maximum vertex box-corner
 ;} BoundingBox;
 (defcstruct (%bounding-box :class bounding-box-type)
-"Bounding box type"
-(min (:struct %vector-3))
+ "Bounding box type"
+ (min (:struct %vector-3))
  (max (:struct %vector-3)))
+
+(defmethod translate-into-foreign-memory (object (type bounding-box-type) pointer)
+ (with-foreign-slots ((min max) pointer (:struct %bounding-box))
+                      (setf min (nth 0 object))
+                      (setf max (nth 1 object))))
+
+(defmethod translate-from-foreign (pointer (type bounding-box-type))
+ (with-foreign-slots ((min max) pointer (:struct %bounding-box))
+  (list min max)))
 
 ;// Vertex data definning a mesh
 ;typedef struct Mesh {
@@ -471,7 +587,24 @@
   (vao-id :unsigned-int)
   (vbo-id :int :count 7))
 
-;
+(defmethod translate-into-foreign-memory (object (type mesh-type) pointer)
+ (with-foreign-slots ((vertex-count triangle-count vertices texcoords texcoords2 normals tangents colors indices vao-id vbo-id) pointer (:struct %mesh))
+                      (setf vertex-count (nth 0 object))
+                      (setf triangle-count (nth 1 object))
+                      (setf vertices (nth 2 object))
+                      (setf texcoords (nth 3 object))
+                      (setf texcoords2 (nth 4 object))
+                      (setf normals (nth 5 object))
+                      (setf tangents (nth 6 object))
+                      (setf colors (nth 7 object))
+                      (setf indices (nth 8 object))
+                      (setf vao-id (nth 9 object))
+                      (setf vbo-id (nth 10 object))))
+
+(defmethod translate-from-foreign (pointer (type mesh-type))
+ (with-foreign-slots ((vertex-count triangle-count vertices texcoords texcoords2 normals tangents colors indices vao-id vbo-id) pointer (:struct %mesh))
+ (list vertex-count triangle-count vertices texcoords texcoords2 normals tangents colors indices vao-id vbo-id)))
+
 ;// Shader type (generic shader)
 ;typedef struct Shader {
 ;    unsigned int id;        // Shader program id
@@ -495,7 +628,44 @@
 ;    int mapTexture1Loc;     // Map texture uniform location point (default-texture-unit = 1)
 ;    int mapTexture2Loc;     // Map texture uniform location point (default-texture-unit = 2)
 ;} Shader;
-;
+(defcstruct (%shader :class shader-type)
+ "Shader type (generic shader)"
+ (id :unsigned-int)
+ (vertext-loc :int)
+ (texcoord-loc :int)
+ (texcoord2-loc :int)
+ (normal-loc :int)
+ (tangent-loc :int)
+ (color-loc :int)
+ (mvp-loc :int)
+ (col-diffuse-loc :int)
+ (col-ambient-loc :int)
+ (col-specular-loc :int)
+ (map-texture0-loc :int)
+ (map-texture1-loc :int)
+ (map-texture2-loc :int))
+
+(defmethod translate-into-foreign-memory (object (type shader-type) pointer)
+ (with-foreign-slots ((id vertext-loc texcoord-loc texcoord2-loc normal-loc tangent-loc color-loc mvp-loc col-diffuse-loc col-ambient-loc col-specular-loc map-texture0-loc map-texture1-loc map-texture2-loc) pointer (:struct %shader))
+                      (setf id (nth 0 object))
+                      (setf vertext-loc (nth 1 object))
+                      (setf texcoord-loc (nth 2 object))
+                      (setf texcoord2-loc (nth 3 object))
+                      (setf normal-loc (nth 4 object))
+                      (setf tangent-loc (nth 5 object))
+                      (setf color-loc (nth 6 object))
+                      (setf mvp-loc (nth 7 object))
+                      (setf col-diffuse-loc (nth 8 object))
+                      (setf col-ambient-loc (nth 9 object))
+                      (setf col-specular-loc (nth 10 object))
+                      (setf map-texture0-loc (nth 11 object))
+                      (setf map-texture1-loc (nth 12 object))
+                      (setf map-texture2-loc (nth 13 object))))
+
+(defmethod translate-from-foreign (pointer (type shader-type))
+ (with-foreign-slots ((id vertext-loc texcoord-loc texcoord2-loc normal-loc tangent-loc color-loc mvp-loc col-diffuse-loc col-ambient-loc col-specular-loc map-texture0-loc map-texture1-loc map-texture2-loc) pointer (:struct %shader))
+ (list id vertext-loc texcoord-loc texcoord2-loc normal-loc tangent-loc color-loc mvp-loc col-diffuse-loc col-ambient-loc col-specular-loc map-texture0-loc map-texture1-loc map-texture2-loc)))
+
 ;// Material type
 ;typedef struct Material {
 ;    Shader shader;          // Standard shader (supports 3 map textures)
@@ -510,13 +680,55 @@
 ;
 ;    float glossiness;       // Glossiness level (Ranges from 0 to 1000)
 ;} Material;
-;
+(defcstruct (%material :class material-type)
+  "Material type"
+  (shader (:struct %shader))
+  (tex-diffuse (:struct %texture2d))
+  (tex-normal (:struct %texture2d))
+  (tex-specular (:struct %texture2d))
+  (col-diffuse (:struct %color))
+  (col-ambient (:struct %color))
+  (col-specular (:struct %color))
+  (glossiness :float))
+
+(defmethod translate-into-foreign-memory (object (type material-type) pointer)
+ (with-foreign-slots ((shader tex-diffuse tex-normal tex-specular col-diffuse col-ambient col-specular glossiness) pointer (:struct %material))
+                      (setf shader (nth 0 object))
+                      (setf tex-diffuse (nth 1 object))
+                      (setf tex-normal (nth 2 object))
+                      (setf tex-specular (nth 3 object))
+                      (setf col-diffuse (nth 4 object))
+                      (setf col-ambient (nth 5 object))
+                      (setf col-specular (nth 6 object))
+                      (setf glossiness (nth 7 object))))
+
+(defmethod translate-from-foreign (pointer (type material-type))
+ (with-foreign-slots ((shader tex-diffuse tex-normal tex-specular col-diffuse col-ambient col-specular glossiness) pointer (:struct %material))
+ (list shader tex-diffuse tex-normal tex-specular col-diffuse col-ambient col-specular glossiness)))
+
 ;// Model type
 ;typedef struct Model {
 ;    Mesh mesh;              // Vertex data buffers (RAM and VRAM)
 ;    Matrix transform;       // Local transform matrix
 ;    Material material;      // Shader and textures data
 ;} Model;
+(defcstruct (%model :class model-type)
+ "Model type"
+ (mesh (:struct %mesh))
+ (transform (:struct %matrix))
+ (material (:struct %material)))
+
+(defmethod translate-into-foreign-memory (object (type model-type) pointer)
+ (with-foreign-slots ((mesh transform material) pointer (:struct %model))
+                      (setf mesh (nth 0 object))
+                      (setf transform (nth 1 object))
+                      (setf material (nth 2 object))))
+
+(defmethod translate-from-foreign (pointer (type model-type))
+ (with-foreign-slots ((mesh transform material) pointer (:struct %model))
+ (list mesh transform material)))
+
+
 ;
 ;// Light type
 ;typedef struct LightData {
@@ -543,9 +755,18 @@
 ;    Vector3 direction;      // Ray direction
 ;} Ray;
 (defcstruct (%ray :class ray-type)
-            "Ray type (useful for raycast)"
-            (position (:struct %vector-3))
-            (direction (:struct %vector-3)))
+ "Ray type (useful for raycast)"
+ (position (:struct %vector-3))
+ (direction (:struct %vector-3)))
+
+(defmethod translate-into-foreign-memory (object (type ray-type) pointer)
+ (with-foreign-slots ((position direction) pointer (:struct %ray))
+                      (setf position (nth 0 object))
+                      (setf direction (nth 1 object))))
+
+(defmethod translate-from-foreign (pointer (type ray-type))
+ (with-foreign-slots ((position direction) pointer (:struct %ray))
+ (list position direction)))
 
 ;// Wave type, defines audio wave data
 ;typedef struct Wave {
@@ -555,14 +776,48 @@
 ;    unsigned int channels;      // Number of channels (1-mono, 2-stereo)
 ;    void *data;                 // Buffer data pointer
 ;} Wave;
-;
+(defcstruct (%wave :class wave-type)
+ "Wave type, defines audio wave data"
+ (sample-count :unsigned-int)
+ (sample-rate :unsigned-int)
+ (sample-size :unsigned-int)
+ (channels :unsigned-int)
+ (data :pointer))
+
+(defmethod translate-into-foreign-memory (object (type wave-type) pointer)
+ (with-foreign-slots ((sample-count sample-rate sample-size channels data) pointer (:struct %wave))
+                      (setf sample-count (nth 0 object))
+                      (setf sample-rate (nth 1 object))
+                      (setf sample-size (nth 2 object))
+                      (setf channels (nth 3 object))
+                      (setf data (nth 4 object))))
+
+(defmethod translate-from-foreign (pointer (type wave-type))
+ (with-foreign-slots ((sample-count sample-rate sample-size channels data) pointer (:struct %wave))
+ (list sample-count sample-rate sample-size channels data)))
+
 ;// Sound source type
 ;typedef struct Sound {
 ;    unsigned int source;    // OpenAL audio source id
 ;    unsigned int buffer;    // OpenAL audio buffer id
 ;    int format;             // OpenAL audio format specifier
 ;} Sound;
-;
+(defcstruct (%sound :class sound-type)
+ "Sound source type"
+ (source :unsigned-int)
+ (buffer :unsigned-int)
+ (format :int))
+
+(defmethod translate-into-foreign-memory (object (type sound-type) pointer)
+ (with-foreign-slots ((source buffer format) pointer (:struct %sound))
+                      (setf source (nth 0 object))
+                      (setf buffer (nth 1 object))
+                      (setf format (nth 2 object))))
+
+(defmethod translate-from-foreign (pointer (type sound-type))
+ (with-foreign-slots ((source buffer format) pointer (:struct %sound))
+ (list source buffer format)))
+
 ;// Music type (file streaming from memory)
 ;// NOTE: Anything longer than ~10 seconds should be streamed
 ;typedef struct MusicData *Music;
