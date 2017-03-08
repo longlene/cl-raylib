@@ -684,7 +684,7 @@
  )
 
 ;;RLAPI void ClearBackground(Color color);                          // Sets Background Color
-(defcfun "ClearBackgroud" :void
+(defcfun "ClearBackground" :void
  "Sets Background Color"
  (color (:struct %color)))
   

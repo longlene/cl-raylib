@@ -13,7 +13,7 @@
            #:is-cursor-hidden
            #:enable-cursor
            #:disable-cursor
-           #:clear-backgroud
+           #:clear-background
            #:begin-drawing
            #:end-drawing
            #:begin-2d-mode

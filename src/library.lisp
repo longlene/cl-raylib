@@ -1,5 +1,4 @@
 (in-package #:cl-raylib)
-
 (define-foreign-library libraylib
   (:darwin "libraylib.dylib")
   (:unix "libraylib.so")
@@ -8,3 +7,5 @@
 
 (unless (foreign-library-loaded-p 'libraylib)
   (use-foreign-library libraylib))
+
+
