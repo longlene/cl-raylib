@@ -1,6 +1,6 @@
 (defpackage #:cl-raylib
   (:nicknames #:raylib)
-  (:use #:cl #:cffi)
+  (:use #:cl #:cffi #:alexandria)
   (:export #:init-window
            #:close-window
            #:window-should-close

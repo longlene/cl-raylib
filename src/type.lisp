@@ -167,58 +167,58 @@
 ;// Some Basic Colors
 ;// NOTE: Custom raylib color palette for amazing visuals on WHITE background
 ;#define LIGHTGRAY  CLITERAL{ 200, 200, 200, 255 }   // Light Gray
-(defconstant +lightgray+ '(200 200 200 255))
+(define-constant +lightgray+ '(200 200 200 255) :test #'equal)
 ;#define GRAY       CLITERAL{ 130, 130, 130, 255 }   // Gray
-(defconstant +gray+ '(130 130 130 255))
+(define-constant +gray+ '(130 130 130 255) :test #'equal)
 ;#define DARKGRAY   CLITERAL{ 80, 80, 80, 255 }      // Dark Gray
-(defconstant +darkgray+ '(80 80 80 255))
+(define-constant +darkgray+ '(80 80 80 255) :test #'equal)
 ;#define YELLOW     CLITERAL{ 253, 249, 0, 255 }     // Yellow
-(defconstant +yellow+ '(253 249 0 255))
+(define-constant +yellow+ '(253 249 0 255) :test #'equal)
 ;#define GOLD       CLITERAL{ 255, 203, 0, 255 }     // Gold
-(defconstant +gold+ '(255 203 0 255))
+(define-constant +gold+ '(255 203 0 255) :test #'equal)
 ;#define ORANGE     CLITERAL{ 255, 161, 0, 255 }     // Orange
-(defconstant +orange+     '(255 161 0 255 ))
+(define-constant +orange+     '(255 161 0 255 ) :test #'equal)
 ;#define PINK       CLITERAL{ 255, 109, 194, 255 }   // Pink
-(defconstant +pink+       '(255 109 194 255))
+(define-constant +pink+       '(255 109 194 255) :test #'equal)
 ;#define RED        CLITERAL{ 230, 41, 55, 255 }     // Red
-(defconstant +red+        '( 230 41 55 255 ))     
+(define-constant +red+        '( 230 41 55 255 ) :test #'equal)     
 ;#define MAROON     CLITERAL{ 190, 33, 55, 255 }     // Maroon
-(defconstant +maroon+      '(190 33 55 255)) 
+(define-constant +maroon+      '(190 33 55 255) :test #'equal) 
 ;#define GREEN      CLITERAL{ 0, 228, 48, 255 }      // Green
-(defconstant +green+       '(0 228 48 255)) 
+(define-constant +green+       '(0 228 48 255) :test #'equal) 
 ;#define LIME       CLITERAL{ 0, 158, 47, 255 }      // Lime
-(defconstant +lime+        '(0 158 47 255)) 
+(define-constant +lime+        '(0 158 47 255) :test #'equal) 
 ;#define DARKGREEN  CLITERAL{ 0, 117, 44, 255 }      // Dark Green
-(defconstant +darkgreen+   '(0 117 44 255)) 
+(define-constant +darkgreen+   '(0 117 44 255) :test #'equal) 
 ;#define SKYBLUE    CLITERAL{ 102, 191, 255, 255 }   // Sky Blue
-(defconstant +skyblue+     '(102 191 255 255)) 
+(define-constant +skyblue+     '(102 191 255 255) :test #'equal) 
 ;#define BLUE       CLITERAL{ 0, 121, 241, 255 }     // Blue
-(defconstant +blue+        '(0 121 241 255)) 
+(define-constant +blue+        '(0 121 241 255) :test #'equal) 
 ;#define DARKBLUE   CLITERAL{ 0, 82, 172, 255 }      // Dark Blue
-(defconstant +darkblue+    '(0 82 172 255)) 
+(define-constant +darkblue+    '(0 82 172 255) :test #'equal) 
 ;#define PURPLE     CLITERAL{ 200, 122, 255, 255 }   // Purple
-(defconstant +purple+      '(200 122 255 255)) 
+(define-constant +purple+      '(200 122 255 255) :test #'equal) 
 ;#define VIOLET     CLITERAL{ 135, 60, 190, 255 }    // Violet
-(defconstant +violet+      '(135 60 190 255)) 
+(define-constant +violet+      '(135 60 190 255) :test #'equal) 
 ;#define DARKPURPLE CLITERAL{ 112, 31, 126, 255 }    // Dark Purple
-(defconstant +darkpurple+  '(112 31 126 255)) 
+(define-constant +darkpurple+  '(112 31 126 255) :test #'equal) 
 ;#define BEIGE      CLITERAL{ 211, 176, 131, 255 }   // Beige
-(defconstant +beige+       '(211 176 131 255)) 
+(define-constant +beige+       '(211 176 131 255) :test #'equal) 
 ;#define BROWN      CLITERAL{ 127, 106, 79, 255 }    // Brown
-(defconstant +brown+       '(127 106 79 255)) 
+(define-constant +brown+       '(127 106 79 255) :test #'equal) 
 ;#define DARKBROWN  CLITERAL{ 76, 63, 47, 255 }      // Dark Brown
-(defconstant +darkbrown+   '(76 63 47 255)) 
+(define-constant +darkbrown+   '(76 63 47 255) :test #'equal) 
 
 ;#define WHITE      CLITERAL{ 255, 255, 255, 255 }   // White
-(defconstant +white+       '(255 255 255 255)) 
+(define-constant +white+       '(255 255 255 255) :test #'equal) 
 ;#define BLACK      CLITERAL{ 0, 0, 0, 255 }         // Black
-(defconstant +black+       '(0 0 0 255)) 
+(define-constant +black+       '(0 0 0 255) :test #'equal) 
 ;#define BLANK      CLITERAL{ 0, 0, 0, 0 }           // Blank (Transparent)
-(defconstant +blank+       '(0 0 0 0)) 
+(define-constant +blank+       '(0 0 0 0) :test #'equal) 
 ;#define MAGENTA    CLITERAL{ 255, 0, 255, 255 }     // Magenta
-(defconstant +magenta+     '(255 0 255 255)) 
+(define-constant +magenta+     '(255 0 255 255) :test #'equal) 
 ;#define RAYWHITE   CLITERAL{ 245, 245, 245, 255 }   // My own White (raylib logo)
-(defconstant +raywhite+    '(245 245 245 255)) 
+(define-constant +raywhite+    '(245 245 245 255) :test #'equal) 
 
 ;//----------------------------------------------------------------------------------
 ;// Types and Structures Definition
