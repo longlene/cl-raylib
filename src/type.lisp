@@ -441,17 +441,15 @@
  (texture (:struct %texture2d))
  (depth (:struct %texture2d)))
 
-(defmethod translate-into-foreign-memory (object (type texture2d-type) pointer)
-  (with-foreign-slots ((id width height mipmaps format) pointer (:struct %texture2d))
+(defmethod translate-into-foreign-memory (object (type render-texture2d-type) pointer)
+  (with-foreign-slots ((id texture depth) pointer (:struct %render-texture2d))
                       (setf id (nth 0 object))
-                      (setf width (nth 1 object))
-                      (setf height (nth 2 object))
-                      (setf mipmaps (nth 3 object))
-                      (setf format (nth 4 object))))
+                      (setf texture (nth 1 object))
+                      (setf depth (nth 4 object))))
 
-(defmethod translate-from-foreign (pointer (type texture2d-type))
-  (with-foreign-slots ((id width height mipmaps format) pointer (:struct %texture2d))
-  (list id width height mipmaps format)))
+(defmethod translate-from-foreign (pointer (type render-texture2d-type))
+  (with-foreign-slots ((id texture depth) pointer (:struct %render-texture2d))
+  (list id texture depth)))
 
 
 ;// SpriteFont type, includes texture and charSet array data
