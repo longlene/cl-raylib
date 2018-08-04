@@ -20,7 +20,7 @@
   :components
   ((:file "package")
    (:file "library")
-   (:file "type")
+   ;(:file "type")
    (:file "raylib")
    (:file "macro"))
   :in-order-to ((test-op (test-op cl-raylib-test))))
