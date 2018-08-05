@@ -69,14 +69,6 @@
 ;;;*
 ;;;**********************************************************************************************/
 
-(defmethod translate-name-from-foreign ((spec string) (package (eql *package*)) &optional varp)
- (let ((name (translate-camelcase-name spec :upper-initial-p t :special-words '("FPS" "POT" "RES" "TTF"))))
-  (if varp (intern (format nil "*~a" name)) name)))
-
-(defmethod translate-name-to-foreign ((spec symbol) (package (eql *package*)) &optional varp)
- (let ((name (translate-camelcase-name spec :upper-initial-p t :special-words '("FPS" "POT" "RES" "TTF"))))
-  (if varp (subseq name 1 (1- (length name))) name)))
-
 ;;#ifndef RAYLIB_H
 ;;#define RAYLIB_H
 ;;
@@ -1971,6 +1963,13 @@
  (height :int))
  
 ;;RLAPI Image LoadImagePro(void *data, int width, int height, int format);                                 // Load image from raw data with parameters
+(defcfun "LoadImagePro" (:struct %image)
+ "Load image from raw data with parameters"
+ (data :pointer)
+ (width :int)
+ (height :int)
+ (format :int))
+
 ;;RLAPI Image LoadImageRaw(const char *fileName, int width, int height, int format, int headerSize);       // Load image from RAW file data
 (defcfun "LoadImageRaw" (:struct %image)
  (file-name :string)
@@ -1980,6 +1979,11 @@
  (header-size :int))
 
 ;;RLAPI void ExportImage(const char *fileName, Image image);                                               // Export image as a PNG file
+(defcfun "ExportImage" :void
+ "Export image as a PNG file"
+ (file-name :string)
+ (image (:struct %image)))
+
 ;;RLAPI Texture2D LoadTexture(const char *fileName);                                                       // Load texture from file into GPU memory (VRAM)
 (defcfun "LoadTexture" (:struct %texture)
  (file-name :string))
@@ -2010,6 +2014,12 @@
  (image (:struct %image)))
 
 ;;RLAPI int GetPixelDataSize(int width, int height, int format);                                           // Get pixel data size in bytes (image or texture)
+(defcfun "GetPixelDataSize" :int
+ "Get pixel data size in bytes (image or texture)"
+ (width :int)
+ (height :int)
+ (format :int))
+
 ;;RLAPI Image GetTextureData(Texture2D texture);                                                           // Get pixel data from GPU texture and return an Image
 (defcfun "GetTextureData" (:struct %image)
  (texture (:struct %texture)))
@@ -2021,6 +2031,10 @@
 
 ;;// Image manipulation functions
 ;;RLAPI Image ImageCopy(Image image);                                                                      // Create an image duplicate (useful for transformations)
+(defcfun "ImageCopy" (:struct %image)
+ "Create an image duplicate (useful for transformations)"
+ (image (:struct %image)))
+
 ;;RLAPI void ImageToPOT(Image *image, Color fillColor);                                                    // Convert image to POT (power-of-two)
 (defcfun "ImageToPOT" :void
  (image (:pointer (:struct %image)))
@@ -2059,6 +2073,7 @@
  (text :string)
  (font-size :int)
  (color (:struct %color)))
+
 ;;RLAPI Image ImageTextEx(Font font, const char *text, float fontSize, float spacing, Color tint);         // Create an image from text (custom sprite font)
 (defcfun "ImageTextEx" (:struct %image)
  (font (:struct %font))
@@ -2200,6 +2215,14 @@
  (pos-y :int))
 
 ;;RLAPI void DrawText(const char *text, int posX, int posY, int fontSize, Color color);       // Draw text (using default font)
+(defcfun "DrawText" :void
+ "Draw text (using default font)"
+ (text :string)
+ (pos-x :int)
+ (pos-y :int)
+ (font-size :int)
+ (color (:struct %color)))
+
 ;;RLAPI void DrawTextEx(Font font, const char* text, Vector2 position, float fontSize, float spacing, Color tint); // Draw text using font and additional parameters
 ;;
 ;;// Text misc. functions

@@ -8,4 +8,3 @@
 (unless (foreign-library-loaded-p 'libraylib)
   (use-foreign-library libraylib))
 
-
