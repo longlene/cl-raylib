@@ -3,6 +3,7 @@
   (:use #:cl #:cffi #:alexandria)
   (:export #:init-window
            #:close-window
+           #:is-window-ready
            #:window-should-close
            #:is-window-minimized
            #:toggle-fullscreen
@@ -36,7 +37,6 @@
            #:get-random-value
            #:fade
            #:set-config-flags
-           #:show-logo
            #:is-file-dropped
            #:get-file-dropped
            #:clear-dropped-files

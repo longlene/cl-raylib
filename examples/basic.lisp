@@ -3,8 +3,6 @@
 
 (in-package :raylib-user)
 
-(show-logo)
-
 (with-window (640 480 "basic")
 	       (loop
 		 (if (window-should-close) (return))
