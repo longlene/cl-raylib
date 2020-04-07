@@ -9,7 +9,7 @@
 ;;*       - Written in plain C code (C99) in PascalCase/camelCase notation
 ;;*       - Hardware accelerated with OpenGL (1.1, 2.1, 3.3 or ES2 - choose at compile)
 ;;*       - Unique OpenGL abstraction layer (usable as standalone module): [rlgl]
-;;*       - Powerful fonts module (XNA SpriteFonts, BMFonts, TTF)
+;;*       - Multiple Fonts formats supported (TTF, XNA fonts, AngelCode fonts)
 ;;*       - Outstanding texture formats support, including compressed formats (DXT, ETC, ASTC)
 ;;*       - Full 3d support for 3d Shapes, Models, Billboards, Heightmaps and more!
 ;;*       - Flexible Materials system, supporting classic maps and PBR maps
@@ -34,7 +34,7 @@
 ;;*       [core] rgif (Charlie Tangora, Ramon Santamaria) for GIF recording
 ;;*       [textures] stb_image (Sean Barret) for images loading (BMP, TGA, PNG, JPEG, HDR...)
 ;;*       [textures] stb_image_write (Sean Barret) for image writting (BMP, TGA, PNG, JPG)
-;;*       [textures] stb_image_resize (Sean Barret) for image resizing algorythms
+;;*       [textures] stb_image_resize (Sean Barret) for image resizing algorithms
 ;;*       [textures] stb_perlin (Sean Barret) for Perlin noise image generation
 ;;*       [text] stb_truetype (Sean Barret) for ttf fonts loading
 ;;*       [text] stb_rect_pack (Sean Barret) for rectangles packing
@@ -53,7 +53,7 @@
 ;;*   raylib is licensed under an unmodified zlib/libpng license, which is an OSI-certified,
 ;;*   BSD-like license that allows static linking with closed source software:
 ;;*
-;;*   Copyright (c) 2013-2019 Ramon Santamaria (@raysan5)
+;;*   Copyright (c) 2013-2020 Ramon Santamaria (@raysan5)
 ;;*
 ;;*   This software is provided "as-is", without any express or implied warranty. In no event
 ;;*   will the authors be held liable for any damages arising from the use of this software.
@@ -75,14 +75,19 @@
 ;;#ifndef RAYLIB_H
 ;;#define RAYLIB_H
 ;;
-;;#include <stdarg.h>                             // Required for: va_list - Only used by TraceLogCallback
+;;#include <stdarg.h>     // Required for: va_list - Only used by TraceLogCallback
 ;;
-;;#if defined(_WIN32) && defined(BUILD_LIBTYPE_SHARED)
-;;    #define RLAPI __declspec(dllexport)         // We are building raylib as a Win32 shared library (.dll)
-;;#elif defined(_WIN32) && defined(USE_LIBTYPE_SHARED)
-;;    #define RLAPI __declspec(dllimport)         // We are using raylib as a Win32 shared library (.dll)
+;;#if defined(_WIN32)
+;;    // Microsoft attibutes to tell compiler that symbols are imported/exported from a .dll
+;;    #if defined(BUILD_LIBTYPE_SHARED)
+;;        #define RLAPI __declspec(dllexport)     // We are building raylib as a Win32 shared library (.dll)
+;;    #elif defined(USE_LIBTYPE_SHARED)
+;;        #define RLAPI __declspec(dllimport)     // We are using raylib as a Win32 shared library (.dll)
+;;    #else
+;;        #define RLAPI   // We are building or using raylib as a static library
+;;    #endif
 ;;#else
-;;    #define RLAPI   // We are building or using raylib as a static library (or Linux shared library)
+;;    #define RLAPI       // We are building or using raylib as a static library (or Linux shared library)
 ;;#endif
 ;;
 ;;//----------------------------------------------------------------------------------
@@ -97,10 +102,6 @@
 ;;
 ;;#define MAX_TOUCH_POINTS        10      // Maximum number of touch points supported
 ;;
-;;// Shader and material limits
-;;#define MAX_SHADER_LOCATIONS    32      // Maximum number of predefined locations stored in shader struct
-;;#define MAX_MATERIAL_MAPS       12      // Maximum number of texture maps stored in shader struct
-;;
 ;;// Allow custom memory allocators
 ;;#ifndef RL_MALLOC
 ;;    #define RL_MALLOC(sz)       malloc(sz)
@@ -108,72 +109,75 @@
 ;;#ifndef RL_CALLOC
 ;;    #define RL_CALLOC(n,sz)     calloc(n,sz)
 ;;#endif
+;;#ifndef RL_REALLOC
+;;    #define RL_REALLOC(ptr,sz)  realloc(ptr,sz)
+;;#endif
 ;;#ifndef RL_FREE
-;;    #define RL_FREE(p)          free(p)
+;;    #define RL_FREE(ptr)        free(ptr)
 ;;#endif
 ;;
 ;;// NOTE: MSC C++ compiler does not support compound literals (C99 feature)
 ;;// Plain structures in C++ (without constructors) can be initialized from { } initializers.
 ;;#if defined(__cplusplus)
-;;    #define CLITERAL
+;;    #define CLITERAL(type)      type
 ;;#else
-;;    #define CLITERAL    (Color)
+;;    #define CLITERAL(type)      (type)
 ;;#endif
 ;;
 ;;// Some Basic Colors
 ;;// NOTE: Custom raylib color palette for amazing visuals on WHITE background
-;;#define LIGHTGRAY  CLITERAL{ 200, 200, 200, 255 }   // Light Gray
+;;#define LIGHTGRAY  CLITERAL(Color){ 200, 200, 200, 255 }   // Light Gray
 (define-constant +lightgray+ '(200 200 200 255) :test #'equal)
-;;#define GRAY       CLITERAL{ 130, 130, 130, 255 }   // Gray
+;;#define GRAY       CLITERAL(Color){ 130, 130, 130, 255 }   // Gray
 (define-constant +gray+ '(130 130 130 255) :test #'equal)
-;;#define DARKGRAY   CLITERAL{ 80, 80, 80, 255 }      // Dark Gray
+;;#define DARKGRAY   CLITERAL(Color){ 80, 80, 80, 255 }      // Dark Gray
 (define-constant +darkgray+ '(80 80 80 255) :test #'equal)
-;;#define YELLOW     CLITERAL{ 253, 249, 0, 255 }     // Yellow
+;;#define YELLOW     CLITERAL(Color){ 253, 249, 0, 255 }     // Yellow
 (define-constant +yellow+ '(253 249 0 255) :test #'equal)
-;;#define GOLD       CLITERAL{ 255, 203, 0, 255 }     // Gold
+;;#define GOLD       CLITERAL(Color){ 255, 203, 0, 255 }     // Gold
 (define-constant +gold+ '(255 203 0 255) :test #'equal)
-;;#define ORANGE     CLITERAL{ 255, 161, 0, 255 }     // Orange
+;;#define ORANGE     CLITERAL(Color){ 255, 161, 0, 255 }     // Orange
 (define-constant +orange+     '(255 161 0 255 ) :test #'equal)
-;;#define PINK       CLITERAL{ 255, 109, 194, 255 }   // Pink
+;;#define PINK       CLITERAL(Color){ 255, 109, 194, 255 }   // Pink
 (define-constant +pink+       '(255 109 194 255) :test #'equal)
-;;#define RED        CLITERAL{ 230, 41, 55, 255 }     // Red
+;;#define RED        CLITERAL(Color){ 230, 41, 55, 255 }     // Red
 (define-constant +red+        '( 230 41 55 255 ) :test #'equal)     
-;;#define MAROON     CLITERAL{ 190, 33, 55, 255 }     // Maroon
+;;#define MAROON     CLITERAL(Color){ 190, 33, 55, 255 }     // Maroon
 (define-constant +maroon+      '(190 33 55 255) :test #'equal) 
-;;#define GREEN      CLITERAL{ 0, 228, 48, 255 }      // Green
+;;#define GREEN      CLITERAL(Color){ 0, 228, 48, 255 }      // Green
 (define-constant +green+       '(0 228 48 255) :test #'equal) 
-;;#define LIME       CLITERAL{ 0, 158, 47, 255 }      // Lime
+;;#define LIME       CLITERAL(Color){ 0, 158, 47, 255 }      // Lime
 (define-constant +lime+        '(0 158 47 255) :test #'equal) 
-;;#define DARKGREEN  CLITERAL{ 0, 117, 44, 255 }      // Dark Green
+;;#define DARKGREEN  CLITERAL(Color){ 0, 117, 44, 255 }      // Dark Green
 (define-constant +darkgreen+   '(0 117 44 255) :test #'equal) 
-;;#define SKYBLUE    CLITERAL{ 102, 191, 255, 255 }   // Sky Blue
+;;#define SKYBLUE    CLITERAL(Color){ 102, 191, 255, 255 }   // Sky Blue
 (define-constant +skyblue+     '(102 191 255 255) :test #'equal) 
-;;#define BLUE       CLITERAL{ 0, 121, 241, 255 }     // Blue
+;;#define BLUE       CLITERAL(Color){ 0, 121, 241, 255 }     // Blue
 (define-constant +blue+        '(0 121 241 255) :test #'equal) 
-;;#define DARKBLUE   CLITERAL{ 0, 82, 172, 255 }      // Dark Blue
+;;#define DARKBLUE   CLITERAL(Color){ 0, 82, 172, 255 }      // Dark Blue
 (define-constant +darkblue+    '(0 82 172 255) :test #'equal) 
-;;#define PURPLE     CLITERAL{ 200, 122, 255, 255 }   // Purple
+;;#define PURPLE     CLITERAL(Color){ 200, 122, 255, 255 }   // Purple
 (define-constant +purple+      '(200 122 255 255) :test #'equal) 
-;;#define VIOLET     CLITERAL{ 135, 60, 190, 255 }    // Violet
+;;#define VIOLET     CLITERAL(Color){ 135, 60, 190, 255 }    // Violet
 (define-constant +violet+      '(135 60 190 255) :test #'equal) 
-;;#define DARKPURPLE CLITERAL{ 112, 31, 126, 255 }    // Dark Purple
+;;#define DARKPURPLE CLITERAL(Color){ 112, 31, 126, 255 }    // Dark Purple
 (define-constant +darkpurple+  '(112 31 126 255) :test #'equal) 
-;;#define BEIGE      CLITERAL{ 211, 176, 131, 255 }   // Beige
+;;#define BEIGE      CLITERAL(Color){ 211, 176, 131, 255 }   // Beige
 (define-constant +beige+       '(211 176 131 255) :test #'equal) 
-;;#define BROWN      CLITERAL{ 127, 106, 79, 255 }    // Brown
+;;#define BROWN      CLITERAL(Color){ 127, 106, 79, 255 }    // Brown
 (define-constant +brown+       '(127 106 79 255) :test #'equal) 
-;;#define DARKBROWN  CLITERAL{ 76, 63, 47, 255 }      // Dark Brown
+;;#define DARKBROWN  CLITERAL(Color){ 76, 63, 47, 255 }      // Dark Brown
 (define-constant +darkbrown+   '(76 63 47 255) :test #'equal) 
 ;;
-;;#define WHITE      CLITERAL{ 255, 255, 255, 255 }   // White
+;;#define WHITE      CLITERAL(Color){ 255, 255, 255, 255 }   // White
 (define-constant +white+       '(255 255 255 255) :test #'equal) 
-;;#define BLACK      CLITERAL{ 0, 0, 0, 255 }         // Black
+;;#define BLACK      CLITERAL(Color){ 0, 0, 0, 255 }         // Black
 (define-constant +black+       '(0 0 0 255) :test #'equal) 
-;;#define BLANK      CLITERAL{ 0, 0, 0, 0 }           // Blank (Transparent)
+;;#define BLANK      CLITERAL(Color){ 0, 0, 0, 0 }           // Blank (Transparent)
 (define-constant +blank+       '(0 0 0 0) :test #'equal) 
-;;#define MAGENTA    CLITERAL{ 255, 0, 255, 255 }     // Magenta
+;;#define MAGENTA    CLITERAL(Color){ 255, 0, 255, 255 }     // Magenta
 (define-constant +magenta+     '(255 0 255 255) :test #'equal) 
-;;#define RAYWHITE   CLITERAL{ 245, 245, 245, 255 }   // My own White (raylib logo)
+;;#define RAYWHITE   CLITERAL(Color){ 245, 245, 245, 255 }   // My own White (raylib logo)
 (define-constant +raywhite+    '(245 245 245 255) :test #'equal)
 ;;
 ;;// Temporal hack to avoid breaking old codebases using
@@ -181,6 +185,7 @@
 ;;#define FormatText  TextFormat
 ;;#define SubText     TextSubtext
 ;;#define ShowWindow  UnhideWindow
+;;#define LoadText    LoadFileText
 ;;
 ;;//----------------------------------------------------------------------------------
 ;;// Structures Definition
@@ -480,61 +485,62 @@
 ;;// Font character info
 ;;typedef struct CharInfo {
 ;;    int value;              // Character value (Unicode)
-;;    Rectangle rec;          // Character rectangle in sprite font
 ;;    int offsetX;            // Character offset X when drawing
 ;;    int offsetY;            // Character offset Y when drawing
 ;;    int advanceX;           // Character advance position X
-;;    unsigned char *data;    // Character pixel data (grayscale)
+;;    Image image;            // Character image data
 ;;} CharInfo;
 (defcstruct (%char-info :class char-info-type)
  "Font character info"
  (value :int)
- (rec (:struct %rectangle))
  (offset-x :int)
  (offset-y :int)
  (advance-x :int)
- (data :pointer))
+ (image (:struct %image)))
 
 (defmethod translate-into-foreign-memory (object (type char-info-type) pointer)
-  (with-foreign-slots ((value rec offset-x offset-y advance-x data) pointer (:struct %char-info))
+  (with-foreign-slots ((value offset-x offset-y advance-x image) pointer (:struct %char-info))
                       (setf value (nth 0 object))
-                      (setf rec (nth 1 object))
-                      (setf offset-x (nth 2 object))
-                      (setf offset-y (nth 3 object))
-                      (setf advance-x (nth 4 object))
-                      (setf data (nth 5 object))))
+                      (setf offset-x (nth 1 object))
+                      (setf offset-y (nth 2 object))
+                      (setf advance-x (nth 3 object))
+                      (setf image (nth 4 object))))
 
 (defmethod translate-from-foreign (pointer (type char-info-type))
-  (with-foreign-slots ((value rec offset-x offset-y advance-x data) pointer (:struct %char-info))
-                      (list value rec offset-x offset-y advance-x data)))
+  (with-foreign-slots ((value offset-x offset-y advance-x image) pointer (:struct %char-info))
+                      (list value offset-x offset-y advance-x image)))
  
 ;;
 ;;// Font type, includes texture and charSet array data
 ;;typedef struct Font {
-;;    Texture2D texture;      // Font texture
 ;;    int baseSize;           // Base size (default chars height)
 ;;    int charsCount;         // Number of characters
+;;    Texture2D texture;      // Characters texture atlas
+;;    Rectangle *recs;        // Characters rectangles in texture
 ;;    CharInfo *chars;        // Characters info data
 ;;} Font;
 ;;
 ;;#define SpriteFont Font     // SpriteFont type fallback, defaults to Font
 (defcstruct (%font :class font-type)
  "Font type, includes texture and charSet array data"
- (texture (:struct %texture))
  (base-size :int)
  (chars-count :int)
+ (texture (:struct %texture))
+ (recs :pointer)
  (chars (:pointer (:struct %char-info))))
 
 (defmethod translate-into-foreign-memory (object (type font-type) pointer)
-  (with-foreign-slots ((texture base-size chars-count chars) pointer (:struct %font))
-                      (setf texture (nth 0 object))
-                      (setf base-size (nth 1 object))
-                      (setf chars-count (nth 2 object))
-                      (setf chars (nth 3 object))))
+  (with-foreign-slots ((base-size chars-count texture recs chars) pointer (:struct %font))
+                      
+                      (setf base-size (nth 0 object))
+                      (setf chars-count (nth 1 object))
+					  (setf texture (nth 2 object))
+					  (setf recs (nth 3 object))
+                      (setf chars (nth 4 object))))
 
 (defmethod translate-from-foreign (pointer (type font-type))
-  (with-foreign-slots ((texture base-size chars-count chars) pointer (:struct %font))
-                      (list texture base-size chars-count chars)))
+  (with-foreign-slots ((base-size chars-count texture recs chars) pointer (:struct %font))
+                      (list base-size chars-count texture recs chars)))
 
 ;;// Camera type, defines a camera position/orientation in 3d space
 ;;typedef struct Camera3D {
@@ -545,7 +551,7 @@
 ;;    int type;               // Camera type, defines projection type: CAMERA_PERSPECTIVE or CAMERA_ORTHOGRAPHIC
 ;;} Camera3D;
 ;;
-;;#define Camera Camera3D     // Camera type fallback, defaults to Camera3D
+;;typedef Camera3D Camera;    // Camera type fallback, defaults to Camera3D
 (defcstruct (%camera3d :class camera3d-type)
  "Camera type, defines a camera position/orientation in 3d space"
  (position (:struct %vector3))
@@ -614,7 +620,7 @@
 ;;
 ;;    // OpenGL identifiers
 ;;    unsigned int vaoId;     // OpenGL Vertex Array Object id
-;;    unsigned int vboId[7];  // OpenGL Vertex Buffer Objects id (default vertex data)
+;;    unsigned int *vboId;    // OpenGL Vertex Buffer Objects id (default vertex data)
 ;;} Mesh;
 (defcstruct (%mesh :class mesh-type)
  "Vertex data definning a mesh"
@@ -632,7 +638,7 @@
   (bone-ids (:pointer :int))
   (bone-weights (:pointer :float))
   (vao-id :unsigned-int)
-  (vbo-id :int :count 7))
+  (vbo-id (:pointer :unsigned-int)))
 
 (defmethod translate-into-foreign-memory (object (type mesh-type) pointer)
   (with-foreign-slots ((vertex-count triangle-count vertices texcoords texcoords2 normals tangents colors indices anim-vertices anim-normals bone-ids bone-weights vao-id vbo-id) pointer (:struct %mesh))
@@ -658,13 +664,13 @@
 
 ;;// Shader type (generic)
 ;;typedef struct Shader {
-;;    unsigned int id;                // Shader program id
-;;    int locs[MAX_SHADER_LOCATIONS]; // Shader locations array
+;;    unsigned int id;        // Shader program id
+;;    int *locs;              // Shader locations array (MAX_SHADER_LOCATIONS)
 ;;} Shader;
 (defcstruct (%shader :class shader-type)
  "Shader type"
  (id :unsigned-int)
- (locs :int :count 32))
+ (locs (:pointer :int)))
  
  (defmethod translate-into-foreign-memory (object (type shader-type) pointer)
  (with-foreign-slots ((id locs) pointer (:struct %shader))
@@ -700,13 +706,13 @@
 ;;// Material type (generic)
 ;;typedef struct Material {
 ;;    Shader shader;          // Material shader
-;;    MaterialMap maps[MAX_MATERIAL_MAPS]; // Material maps
+;;    MaterialMap *maps;      // Material maps array (MAX_MATERIAL_MAPS)
 ;;    float *params;          // Material generic parameters (if required)
 ;;} Material;
 (defcstruct (%material :class material-type)
  "Material type"
  (shader (:struct %shader))
- (maps (:struct %material-map) :count 12)
+ (maps (:pointer (:struct %material-map)))
  (params (:pointer :float)))
 
 (defmethod translate-into-foreign-memory (object (type material-type) pointer)
@@ -841,11 +847,11 @@
 ;;
 ;;// Wave type, defines audio wave data
 ;;typedef struct Wave {
-;;    unsigned int sampleCount;   // Number of samples
-;;    unsigned int sampleRate;    // Frequency (samples per second)
-;;    unsigned int sampleSize;    // Bit depth (bits per sample): 8, 16, 32 (24 not supported)
-;;    unsigned int channels;      // Number of channels (1-mono, 2-stereo)
-;;    void *data;                 // Buffer data pointer
+;;    unsigned int sampleCount;       // Total number of samples
+;;    unsigned int sampleRate;        // Frequency (samples per second)
+;;    unsigned int sampleSize;        // Bit depth (bits per sample): 8, 16, 32 (24 not supported)
+;;    unsigned int channels;          // Number of channels (1-mono, 2-stereo)
+;;    void *data;                     // Buffer data pointer
 ;;} Wave;
 (defcstruct (%wave :class wave-type)
  "Wave type, defines audio wave data"
@@ -866,75 +872,82 @@
 (defmethod translate-from-foreign (pointer (type wave-type))
  (with-foreign-slots ((sample-count sample-rate sample-size channels data) pointer (:struct %wave))
  (list sample-count sample-rate sample-size channels data)))
-
-;;// Sound source type
-;;typedef struct Sound {
-;;    void *audioBuffer;      // Pointer to internal data used by the audio system
 ;;
-;;    unsigned int source;    // Audio source id
-;;    unsigned int buffer;    // Audio buffer id
-;;    int format;             // Audio format specifier
-;;} Sound;
-(defcstruct (%sound :class sound-type)
- "Sound source type"
- (audio-buffer :pointer)
- (source :unsigned-int)
- (buffer :unsigned-int)
- (format :int))
-
-(defmethod translate-into-foreign-memory (object (type sound-type) pointer)
- (with-foreign-slots ((audio-buffer source buffer format) pointer (:struct %sound))
-                      (setf audio-buffer (nth 0 object))
-                      (setf source (nth 1 object))
-                      (setf buffer (nth 2 object))
-                      (setf format (nth 3 object))))
-
-(defmethod translate-from-foreign (pointer (type sound-type))
- (with-foreign-slots ((audio-buffer source buffer format) pointer (:struct %sound))
- (list audio-buffer source buffer format)))
-
-;;// Music type (file streaming from memory)
-;;// NOTE: Anything longer than ~10 seconds should be streamed
-;;typedef struct MusicData *Music;
-(defctype music :pointer)
+;;typedef struct rAudioBuffer rAudioBuffer;
 ;;
 ;;// Audio stream type
 ;;// NOTE: Useful to create custom audio streams not bound to a specific file
 ;;typedef struct AudioStream {
-;;    unsigned int sampleRate;    // Frequency (samples per second)
-;;    unsigned int sampleSize;    // Bit depth (bits per sample): 8, 16, 32 (24 not supported)
-;;    unsigned int channels;      // Number of channels (1-mono, 2-stereo)
+;;    unsigned int sampleRate;        // Frequency (samples per second)
+;;    unsigned int sampleSize;        // Bit depth (bits per sample): 8, 16, 32 (24 not supported)
+;;    unsigned int channels;          // Number of channels (1-mono, 2-stereo)
 ;;
-;;    void *audioBuffer;          // Pointer to internal data used by the audio system.
-;;
-;;    int format;                 // Audio format specifier
-;;    unsigned int source;        // Audio source id
-;;    unsigned int buffers[2];    // Audio buffers (double buffering)
+;;    rAudioBuffer *buffer;           // Pointer to internal data used by the audio system
 ;;} AudioStream;
 (defcstruct (%audio-stream :class audio-stream-type)
  "Audio stream type"
   (sample-rate :unsigned-int)
   (sample-size :unsigned-int)
   (channels :unsigned-int)
-  (audio-buffer :pointer)
-  (format :int)
-  (source :unsigned-int)
-  (buffers :unsigned-int :count 2))
-
+  (buffer :pointer))
 (defmethod translate-into-foreign-memory (object (type audio-stream-type) pointer)
- (with-foreign-slots ((sample-rate sample-size channels audio-buffer format source buffers) pointer (:struct %audio-stream))
+ (with-foreign-slots ((sample-rate sample-size channels buffer) pointer (:struct %audio-stream))
                       (setf sample-rate (nth 0 object))
                       (setf sample-size (nth 1 object))
                       (setf channels (nth 2 object))
-                      (setf audio-buffer (nth 3 object))
-                      (setf format (nth 4 object))
-                      (setf source (nth 5 object))
-                      (setf (mem-aref buffers :unsigned-int 0) (nth 6 object))
-                      (setf (mem-aref buffers :unsigned-int 1) (nth 7 object))))
+                      (setf buffer (nth 3 object))))
 
 (defmethod translate-from-foreign (pointer (type audio-stream-type))
-  (with-foreign-slots ((sample-rate sample-size channels audio-buffer format source buffers) pointer (:struct %audio-stream))
-                      (list sample-rate sample-size channels audio-buffer format source (mem-aref buffers :unsigned-int 0) (mem-aref buffers :unsigned-int 1))))
+  (with-foreign-slots ((sample-rate sample-size channels buffer) pointer (:struct %audio-stream))
+                      (list sample-rate sample-size channels buffer)))
+
+;;// Sound source type
+;;typedef struct Sound {
+;;    unsigned int sampleCount;       // Total number of samples
+;;    AudioStream stream;             // Audio stream
+;;} Sound;
+(defcstruct (%sound :class sound-type)
+ "Sound source type"
+ (sample-count :unsigned-int)
+ (stream (:struct %audio-stream)))
+(defmethod translate-into-foreign-memory (object (type sound-type) pointer)
+ (with-foreign-slots ((sample-count stream) pointer (:struct %sound))
+                      (setf sample-count (nth 0 object))
+                      (setf stream (nth 1 object))))
+
+(defmethod translate-from-foreign (pointer (type sound-type))
+  (with-foreign-slots ((sample-count stream) pointer (:struct %sound))
+                      (list sample-count stream)))
+;;
+;;// Music stream type (audio file streaming from memory)
+;;// NOTE: Anything longer than ~10 seconds should be streamed
+;;typedef struct Music {
+;;    int ctxType;                    // Type of music context (audio filetype)
+;;    void *ctxData;                  // Audio context data, depends on type
+;;
+;;    unsigned int sampleCount;       // Total number of samples
+;;    unsigned int loopCount;         // Loops count (times music will play), 0 means infinite loop
+;;
+;;    AudioStream stream;             // Audio stream
+;;} Music;
+(defcstruct (%music :class music-type)
+ "Music stream type (audio file streaming from memory)"
+ (ctx-type :int)
+ (ctx-data :pointer)
+ (sample-count :unsigned-int)
+ (loop-count :unsigned-int)
+ (stream (:struct %audio-stream)))
+(defmethod translate-into-foreign-memory (object (type music-type) pointer)
+ (with-foreign-slots ((ctx-type ctx-data sample-count loop-count stream) pointer (:struct %music))
+                      (setf ctx-type (nth 0 object))
+                      (setf ctx-data (nth 1 object))
+                      (setf sample-count (nth 2 object))
+                      (setf loop-count (nth 3 object))
+                      (setf stream (nth 4 object))))
+
+(defmethod translate-from-foreign (pointer (type music-type))
+  (with-foreign-slots ((ctx-type ctx-data sample-count loop-count stream) pointer (:struct %music))
+                      (list ctx-type ctx-data sample-count loop-count stream)))
 
 ;;// Head-Mounted-Display device parameters
 ;;typedef struct VrDeviceInfo {
@@ -985,12 +998,13 @@
 ;;// System config flags
 ;;// NOTE: Used for bit masks
 ;;typedef enum {
-;;    FLAG_SHOW_LOGO          = 1,    // Set to show raylib logo at startup
+;;    FLAG_RESERVED           = 1,    // Reserved
 ;;    FLAG_FULLSCREEN_MODE    = 2,    // Set to run program in fullscreen
 ;;    FLAG_WINDOW_RESIZABLE   = 4,    // Set to allow resizable window
 ;;    FLAG_WINDOW_UNDECORATED = 8,    // Set to disable window decoration (frame and buttons)
 ;;    FLAG_WINDOW_TRANSPARENT = 16,   // Set to allow transparent window
 ;;    FLAG_WINDOW_HIDDEN      = 128,  // Set to create the window initially hidden
+;;    FLAG_WINDOW_ALWAYS_RUN  = 256,  // Set to allow windows running while minimized
 ;;    FLAG_MSAA_4X_HINT       = 32,   // Set to try enabling MSAA 4X
 ;;    FLAG_VSYNC_HINT         = 64    // Set to try enabling V-Sync on GPU
 ;;} ConfigFlag;
@@ -1149,14 +1163,16 @@
 ;;    // This is here just for error checking
 ;;    GAMEPAD_BUTTON_UNKNOWN = 0,
 ;;
-;;    // This is normally [A,B,X,Y]/[Circle,Triangle,Square,Cross]
-;;    // No support for 6 button controllers though..
+;;    // This is normally a DPAD
 ;;    GAMEPAD_BUTTON_LEFT_FACE_UP,
 ;;    GAMEPAD_BUTTON_LEFT_FACE_RIGHT,
 ;;    GAMEPAD_BUTTON_LEFT_FACE_DOWN,
 ;;    GAMEPAD_BUTTON_LEFT_FACE_LEFT,
-;;  
-;;    // This is normally a DPAD
+;;
+;;    // This normally corresponds with PlayStation and Xbox controllers
+;;    // XBOX: [Y,X,A,B]
+;;    // PS3: [Triangle,Square,Cross,Circle]
+;;    // No support for 6 button controllers though..
 ;;    GAMEPAD_BUTTON_RIGHT_FACE_UP,
 ;;    GAMEPAD_BUTTON_RIGHT_FACE_RIGHT,
 ;;    GAMEPAD_BUTTON_RIGHT_FACE_DOWN,
@@ -1413,7 +1429,11 @@
 ;;RLAPI bool IsWindowHidden(void);                                  // Check if window is currently hidden
 (defcfun "IsWindowHidden" :boolean
  "Check if window is currently hidden")
-
+ 
+;;RLAPI bool IsWindowFullscreen(void);                              // Check if window is currently fullscreen
+(defcfun "IsWindowFullscreen" :boolean
+ "Check if window is currently fullscreen")
+ 
 ;;RLAPI void ToggleFullscreen(void);                                // Toggle fullscreen mode (only PLATFORM_DESKTOP)
 (defcfun "ToggleFullscreen" :void
  "Toggle fullscreen mode (only PLATFORM_DESKTOP)")
@@ -1494,6 +1514,10 @@
 (defcfun "GetMonitorPhysicalHeight" :int
  "Get primary monitor physical height in millimetres"
  (monitor :int))
+ 
+;;RLAPI Vector2 GetWindowPosition(void);                            // Get window position XY on monitor
+(defcfun "GetWindowPosition" (:struct %vector2)
+ "Get window position XY on monitor")
 
 ;;RLAPI const char *GetMonitorName(int monitor);                    // Get the human-readable, UTF-8 encoded name of the primary monitor
 (defcfun "GetMonitorName" :string
@@ -1570,6 +1594,18 @@
 ;;RLAPI void EndTextureMode(void);                                  // Ends drawing to render texture
 (defcfun "EndTextureMode" :void
  "Ends drawing to render texture")
+ 
+;;RLAPI void BeginScissorMode(int x, int y, int width, int height); // Begin scissor mode (define screen area for following drawing)
+(defcfun "BeginScissorMode" :void
+ "Begin scissor mode (define screen area for following drawing)"
+ (x :int)
+ (y :int)
+ (width :int)
+ (height :int))
+
+;;RLAPI void EndScissorMode(void);                                  // End scissor mode
+(defcfun "EndScissorMode" :void
+ "End scissor mode")
 
 ;;// Screen-space-related functions
 ;;RLAPI Ray GetMouseRay(Vector2 mousePosition, Camera camera);      // Returns a ray trace from mouse position
@@ -1577,17 +1613,26 @@
  "Returns a ray trace from mouse position"
  (mouse-position (:struct %vector2))
  (camera (:struct %camera3d)))
+ 
+;;RLAPI Matrix GetCameraMatrix(Camera camera);                      // Returns camera transform matrix (view matrix)
+(defcfun "GetCameraMatrix" (:struct %matrix)
+ "Returns camera transform matrix (view matrix)"
+ (camera (:struct %camera3d)))
+
+;;RLAPI Matrix GetCameraMatrix2D(Camera2D camera);                  // Returns camera 2d transform matrix
+(defcfun "GetCameraMatrix2D" (:struct %matrix)
+ "Returns camera 2d transform matrix"
+ (camera (:struct %camera2d)))
 
 ;;RLAPI Vector2 GetWorldToScreen(Vector3 position, Camera camera);  // Returns the screen space position for a 3d world space position
 (defcfun "GetWorldToScreen" (:struct %vector2)
  "Returns the screen space position for a 3d world space position"
  (position (:struct %vector3))
  (camera (:struct %camera3d)))
-
-;;RLAPI Matrix GetCameraMatrix(Camera camera);                      // Returns camera transform matrix (view matrix)
-(defcfun "GetCameraMatrix" (:struct %matrix)
- "Returns camera transform matrix (view matrix)"
- (camera (:struct %camera3d)))
+ 
+;;RLAPI Vector2 GetWorldToScreenEx(Vector3 position, Camera camera, int width, int height); // Returns size position for a 3d world space position
+;;RLAPI Vector2 GetWorldToScreen2D(Vector2 position, Camera2D camera); // Returns the screen space position for a 2d camera world space position
+;;RLAPI Vector2 GetScreenToWorld2D(Vector2 position, Camera2D camera); // Returns the world space position for a 2d camera screen space position
 ;;
 ;;// Timing-related functions
 ;;RLAPI void SetTargetFPS(int fps);                                 // Set target FPS (maximum)
@@ -1617,6 +1662,11 @@
 (defcfun "ColorNormalize" (:struct %vector4)
  "Returns color normalized as float [0..1]"
  (color (:struct %color)))
+ 
+;;RLAPI Color ColorFromNormalized(Vector4 normalized);              // Returns color from normalized values [0..1]
+(defcfun "ColorFromNormalized" (:struct %color)
+ "Returns color from normalized values [0..1]"
+ (normalized (:struct %vector4)))
 
 ;;RLAPI Vector3 ColorToHSV(Color color);                            // Returns HSV values for a Color
 (defcfun "ColorToHSV" (:struct %vector3)
@@ -1640,10 +1690,10 @@
  (alpha :float))
 
 ;;// Misc. functions
-;;RLAPI void SetConfigFlags(unsigned char flags);                   // Setup window configuration flags (view FLAGS)
+;;RLAPI void SetConfigFlags(unsigned int flags);                    // Setup window configuration flags (view FLAGS)
 (defcfun "SetConfigFlags" :void
  "Setup window configuration flags (view FLAGS)"
- (flags :unsigned-char))
+ (flags :unsigned-int))
 
 ;;RLAPI void SetTraceLogLevel(int logType);                         // Set the current threshold (minimum) log level
 (defcfun "SetTraceLogLevel" :void
@@ -1675,6 +1725,30 @@
  (max :int))
 
 ;;// Files management functions
+;;RLAPI unsigned char *LoadFileData(const char *fileName, unsigned int *bytesRead);     // Load file data as byte array (read)
+(defcfun "LoadFileData" (:pointer :unsigned-char)
+ "Load file data as byte array (read)"
+ (file-name :string)
+ (bytes-read (:pointer :unsigned-int)))
+
+;;RLAPI void SaveFileData(const char *fileName, void *data, unsigned int bytesToWrite); // Save data to file from byte array (write)
+(defcfun "SaveFileData" :void
+ "Save data to file from byte array (write)"
+ (file-name :string)
+ (data :pointer)
+ (bytes-to-write :unsigned-int))
+
+;;RLAPI char *LoadFileText(const char *fileName);                   // Load text data from file (read), returns a '\0' terminated string
+(defcfun "LoadFileText" (:pointer :char)
+ "Load text data from file (read), returns a '\0' terminated string"
+ (file-name :string))
+
+;;RLAPI void SaveFileText(const char *fileName, char *text);        // Save text data to file (write), string must be '\0' terminated
+(defcfun "SaveFileText" :void
+ "Save text data to file (write), string must be '\0' terminated"
+ (file-name :string)
+ (text (:pointer :char)))
+
 ;;RLAPI bool FileExists(const char *fileName);                      // Check if file exists
 (defcfun "FileExists" :boolean
  "Check if file exists"
@@ -1685,6 +1759,11 @@
  "Check file extension"
  (file-name :string)
  (ext :string))
+ 
+;;RLAPI bool DirectoryExists(const char *dirPath);                  // Check if a directory path exists
+(defcfun "DirectoryExists" :boolean
+ "Check if a directory path exists"
+ (dir-path :string))
 
 ;;RLAPI const char *GetExtension(const char *fileName);             // Get pointer to extension for a filename string
 (defcfun "GetExtension" :string
@@ -1700,11 +1779,15 @@
 (defcfun "GetFileNameWithoutExt" :string
  "Get filename string without extension (memory should be freed)"
  (file-name :string))
-
-;;RLAPI const char *GetDirectoryPath(const char *fileName);         // Get full path for a given fileName (uses static string)
+;;RLAPI const char *GetDirectoryPath(const char *filePath);         // Get full path for a given fileName with path (uses static string)
 (defcfun "GetDirectoryPath" :string
  "Get full path for a given fileName (uses static string)"
- (file-name :string))
+ (file-path :string))
+ 
+;;RLAPI const char *GetPrevDirectoryPath(const char *dirPath);      // Get previous directory path for a given path (uses static string)
+(defcfun "GetPrevDirectoryPath" :string
+ "Get previous directory path for a given path (uses static string)"
+ (dir-path :string))
 
 ;;RLAPI const char *GetWorkingDirectory(void);                      // Get current working directory (uses static string)
 (defcfun "GetWorkingDirectory" :string
@@ -1743,18 +1826,32 @@
  "Get file modification time (last write time)"
  (file-name :string))
 
+;;RLAPI unsigned char *CompressData(unsigned char *data, int dataLength, int *compDataLength);        // Compress data (DEFLATE algorythm)
+(defcfun "CompressData" (:pointer :unsigned-char)
+ "Compress data (DEFLATE algorythm)"
+ (data (:pointer :unsigned-char))
+ (data-length :int)
+ (comp-data-length (:pointer :int)))
+
+;;RLAPI unsigned char *DecompressData(unsigned char *compData, int compDataLength, int *dataLength);  // Decompress data (DEFLATE algorythm)
+(defcfun "DecompressData" (:pointer :unsigned-char)
+ "Decompress data (DEFLATE algorythm)"
+ (comp-data (:pointer :unsigned-char))
+ (comp-data-length :int)
+ (data-length (:pointer :int)))
+
 ;;// Persistent storage management
-;;RLAPI void StorageSaveValue(int position, int value);             // Save integer value to storage file (to defined position)
-(defcfun "StorageSaveValue" :void
+;;RLAPI void SaveStorageValue(unsigned int position, int value);    // Save integer value to storage file (to defined position)
+(defcfun "SaveStorageValue" :void
  "Save integer value to storage file (to defined position)"
- (position :int)
+ (position :unsigned-int)
  (value :int))
-
-;;RLAPI int StorageLoadValue(int position);                         // Load integer value from storage file (from defined position)
-(defcfun "StorageLoadValue" :int
+ 
+;;RLAPI int LoadStorageValue(unsigned int position);                // Load integer value from storage file (from defined position)
+(defcfun "LoadStorageValue" :int
  "Load integer value from storage file (from defined position)"
- (position :int))
-
+ (position :unsigned-int))
+ 
 ;;RLAPI void OpenURL(const char *url);                              // Open URL with default system browser (if available)
 (defcfun "OpenURL" :void
  "Open URL with default system browser (if available)"
@@ -1784,16 +1881,16 @@
 (defcfun "IsKeyUp" :boolean
  "Detect if a key is NOT being pressed"
  (key :int))
-
-;;RLAPI int GetKeyPressed(void);                                // Get latest key pressed
-(defcfun "GetKeyPressed" :int
- "Get latest key pressed")
-
+ 
 ;;RLAPI void SetExitKey(int key);                               // Set a custom key to exit program (default is ESC)
 (defcfun "SetExitKey" :void
  "Set a custom key to exit program (default is ESC)"
  (key :int))
 
+;;RLAPI int GetKeyPressed(void);                                // Get key pressed, call it multiple times for chars queued
+(defcfun "GetKeyPressed" :int
+ "Get key pressed, call it multiple times for chars queued")
+;;
 ;;// Input-related functions: gamepads
 ;;RLAPI bool IsGamepadAvailable(int gamepad);                   // Detect if a gamepad is available
 (defcfun "IsGamepadAvailable" :boolean
@@ -2103,6 +2200,24 @@
   (center-y :int)
   (radius :float)
   (color (:struct %color)))
+  
+;;RLAPI void DrawEllipse(int centerX, int centerY, float radiusH, float radiusV, Color color);             // Draw ellipse
+(defcfun "DrawEllipse" :void
+ "Draw ellipse"
+ (center-x :int)
+ (center-y :int)
+ (radius-h :float)
+ (radius-v :float)
+ (color (:struct %color)))
+
+;;RLAPI void DrawEllipseLines(int centerX, int centerY, float radiusH, float radiusV, Color color);        // Draw ellipse outline
+(defcfun "DrawEllipseLines" :void
+ "Draw ellipse outline"
+ (center-x :int)
+ (center-y :int)
+ (radius-h :float)
+ (radius-v :float)
+ (color (:struct %color)))
 
 ;;RLAPI void DrawRing(Vector2 center, float innerRadius, float outerRadius, int startAngle, int endAngle, int segments, Color color); // Draw ring
 (defcfun "DrawRing" :void
@@ -2234,11 +2349,18 @@
  (v3 (:struct %vector2))
  (color (:struct %color)))
 
-;;RLAPI void DrawTriangleFan(Vector2 *points, int numPoints, Color color);                                 // Draw a triangle fan defined by points
+;;RLAPI void DrawTriangleFan(Vector2 *points, int numPoints, Color color);                                 // Draw a triangle fan defined by points (first vertex is the center)
 (defcfun "DrawTriangleFan" :void
  "Draw a triangle fan defined by points"
  (points (:pointer (:struct %vector2)))
  (num-points :int)
+ (color (:struct %color)))
+ 
+;;RLAPI void DrawTriangleStrip(Vector2 *points, int pointsCount, Color color);                             // Draw a triangle strip defined by points
+(defcfun "DrawTriangleStrip" :void
+ "Draw a triangle strip defined by points"
+ (points (:pointer (:struct %vector2)))
+ (points-count :int)
  (color (:struct %color)))
 
 ;;RLAPI void DrawPoly(Vector2 center, int sides, float radius, float rotation, Color color);               // Draw a regular polygon (Vector version)
@@ -2249,12 +2371,15 @@
  (radius :float)
  (rotation :float)
  (color (:struct %color)))
-
-;;RLAPI void SetShapesTexture(Texture2D texture, Rectangle source);                                        // Define default texture used to draw shapes
-(defcfun "SetShapesTexture" :void
- "Define default texture used to draw shapes"
- (texture (:struct %texture))
- (source (:struct %rectangle)))
+ 
+;;RLAPI void DrawPolyLines(Vector2 center, int sides, float radius, float rotation, Color color);          // Draw a polygon outline of n sides
+(defcfun "DrawPolyLines" :void
+ "Draw a polygon outline of n sides"
+ (center (:struct %vector2))
+ (sides :int)
+ (radius :float)
+ (rotation :float)
+ (color (:struct %color)))
 
 ;;// Basic shapes collision detection functions
 ;;RLAPI bool CheckCollisionRecs(Rectangle rec1, Rectangle rec2);                                           // Check collision between two rectangles
@@ -2302,7 +2427,8 @@
 ;;// Texture Loading and Drawing Functions (Module: textures)
 ;;//------------------------------------------------------------------------------------
 ;;
-;;// Image/Texture2D data loading/unloading/saving functions
+;;// Image loading functions
+;;// NOTE: This functions do not require GPU access
 ;;RLAPI Image LoadImage(const char *fileName);                                                             // Load image from file into CPU memory (RAM)
 (defcfun "LoadImage" (:struct %image)
  (file-name :string))
@@ -2329,6 +2455,11 @@
  (height :int)
  (format :int)
  (header-size :int))
+ 
+;;RLAPI void UnloadImage(Image image);                                                                     // Unload image from CPU memory (RAM)
+(defcfun "UnloadImage" :void
+ "Unload image from CPU memory (RAM)"
+ (image (:struct %image)))
 
 ;;RLAPI void ExportImage(Image image, const char *fileName);                                               // Export image data to file
 (defcfun "ExportImage" :void
@@ -2341,39 +2472,7 @@
  "Export image as code file defining an array of bytes"
  (image (:struct %image))
  (filename :string))
-
-;;RLAPI Texture2D LoadTexture(const char *fileName);                                                       // Load texture from file into GPU memory (VRAM)
-(defcfun "LoadTexture" (:struct %texture)
- (file-name :string))
-
-;;RLAPI Texture2D LoadTextureFromImage(Image image);                                                       // Load texture from image data
-(defcfun "LoadTextureFromImage" (:struct %texture)
- "Load texture from image data"
- (image (:struct %image)))
-
-;;RLAPI TextureCubemap LoadTextureCubemap(Image image, int layoutType);                                    // Load cubemap from image, multiple image cubemap layouts supported
-(defcfun "LoadTextureCubemap" texture-cubemap
- "Load cubemap from image, multiple image cubemap layouts supported"
- (image (:struct %image))
- (layout-type :int))
-
-;;RLAPI RenderTexture2D LoadRenderTexture(int width, int height);                                          // Load texture for rendering (framebuffer)
-(defcfun "LoadRenderTexture" (:struct %render-texture)
- (width :int)
- (height :int))
-
-;;RLAPI void UnloadImage(Image image);                                                                     // Unload image from CPU memory (RAM)
-(defcfun "UnloadImage" :void
- (image (:struct %image)))
-
-;;RLAPI void UnloadTexture(Texture2D texture);                                                             // Unload texture from GPU memory (VRAM)
-(defcfun "UnloadTexture" :void
- (texture (:struct %texture)))
-
-;;RLAPI void UnloadRenderTexture(RenderTexture2D target);                                                  // Unload render texture from GPU memory (VRAM)
-(defcfun "UnloadRenderTexture" :void
- (target (:struct %render-texture)))
-
+ 
 ;;RLAPI Color *GetImageData(Image image);                                                                  // Get pixel data from image as a Color struct array
 (defcfun "GetImageData" :pointer
  "Get pixel data from image as a Color struct array"
@@ -2383,34 +2482,69 @@
 (defcfun "GetImageDataNormalized" :pointer
  "Get pixel data from image as Vector4 array (float normalized)"
  (image (:struct %image)))
-
-;;RLAPI int GetPixelDataSize(int width, int height, int format);                                           // Get pixel data size in bytes (image or texture)
-(defcfun "GetPixelDataSize" :int
- "Get pixel data size in bytes (image or texture)"
+ 
+;;// Image generation functions
+;;RLAPI Image GenImageColor(int width, int height, Color color);                                           // Generate image: plain color
+(defcfun "GenImageColor" (:struct %image)
+ "Generate image: plain color"
  (width :int)
  (height :int)
- (format :int))
+ (color (:struct %color)))
 
-;;RLAPI Image GetTextureData(Texture2D texture);                                                           // Get pixel data from GPU texture and return an Image
-(defcfun "GetTextureData" (:struct %image)
- "Get pixel data from GPU texture and return an Image"
- (texture (:struct %texture)))
+;;RLAPI Image GenImageGradientV(int width, int height, Color top, Color bottom);                           // Generate image: vertical gradient
+(defcfun "GenImageGradientV" (:struct %image)
+ "Generate image: vertical gradient"
+ (width :int)
+ (height :int)
+ (top (:struct %color))
+ (bottom (:struct %color)))
 
-;;RLAPI Image GetScreenData(void);                                                                         // Get pixel data from screen buffer and return an Image (screenshot)
-(defcfun "GetScreenData" (:struct %image)
- "Get pixel data from screen buffer and return an Image (screenshot)")
+;;RLAPI Image GenImageGradientH(int width, int height, Color left, Color right);                           // Generate image: horizontal gradient
+(defcfun "GenImageGradientH" (:struct %image)
+ "Generate image: horizontal gradient"
+ (width :int)
+ (height :int)
+ (left (:struct %color))
+ (right (:struct %color)))
 
-;;RLAPI void UpdateTexture(Texture2D texture, const void *pixels);                                         // Update GPU texture with new data
-(defcfun "UpdateTexture" :void
- "Update GPU texture with new data"
- (texture (:struct %texture))
- (pixels :pointer))
+;;RLAPI Image GenImageGradientRadial(int width, int height, float density, Color inner, Color outer);      // Generate image: radial gradient
+;;RLAPI Image GenImageChecked(int width, int height, int checksX, int checksY, Color col1, Color col2);    // Generate image: checked
+;;RLAPI Image GenImageWhiteNoise(int width, int height, float factor);                                     // Generate image: white noise
+;;RLAPI Image GenImagePerlinNoise(int width, int height, int offsetX, int offsetY, float scale);           // Generate image: perlin noise
+;;RLAPI Image GenImageCellular(int width, int height, int tileSize);                                       // Generate image: cellular algorithm. Bigger tileSize means bigger cells
+(defcfun "GenImageCellular" (:struct %image)
+ "Generate image: cellular algorithm. Bigger tileSize means bigger cells"
+ (width :int)
+ (height :int)
+ (tile-size :int))
 
 ;;// Image manipulation functions
 ;;RLAPI Image ImageCopy(Image image);                                                                      // Create an image duplicate (useful for transformations)
 (defcfun "ImageCopy" (:struct %image)
  "Create an image duplicate (useful for transformations)"
  (image (:struct %image)))
+ 
+;;RLAPI Image ImageFromImage(Image image, Rectangle rec);                                                  // Create an image from another image piece
+(defcfun "ImageFromImage" (:struct %image)
+ "Create an image from another image piece"
+ (image (:struct %image))
+ (rec (:struct %rectangle)))
+
+;;RLAPI Image ImageText(const char *text, int fontSize, Color color);                                      // Create an image from text (default font)
+(defcfun "ImageText" (:struct %image)
+ "Create an image from text (default font)"
+ (text :string)
+ (font-size :int)
+ (color (:struct %color)))
+
+;;RLAPI Image ImageTextEx(Font font, const char *text, float fontSize, float spacing, Color tint);         // Create an image from text (custom sprite font)
+(defcfun "ImageTextEx" (:struct %image)
+ "Create an image from text (custom sprite font)"
+ (font (:struct %font))
+ (text :string)
+ (font-size :float)
+ (spacing :float)
+ (tint (:struct %color)))
 
 ;;RLAPI void ImageToPOT(Image *image, Color fillColor);                                                    // Convert image to POT (power-of-two)
 (defcfun "ImageToPOT" :void
@@ -2488,64 +2622,7 @@
  (g-bpp :int)
  (b-bpp :int)
  (a-bpp :int))
-
-;;RLAPI Image ImageText(const char *text, int fontSize, Color color);                                      // Create an image from text (default font)
-(defcfun "ImageText" (:struct %image)
- "Create an image from text (default font)"
- (text :string)
- (font-size :int)
- (color (:struct %color)))
-
-;;RLAPI Image ImageTextEx(Font font, const char *text, float fontSize, float spacing, Color tint);         // Create an image from text (custom sprite font)
-(defcfun "ImageTextEx" (:struct %image)
- (font (:struct %font))
- (text :string)
- (font-size :float)
- (spacing :float)
- (tint (:struct %color)))
  
-;;RLAPI void ImageDraw(Image *dst, Image src, Rectangle srcRec, Rectangle dstRec);                         // Draw a source image within a destination image
-(defcfun "ImageDraw" :void
- "Draw a source image within a destination image"
- (dst :pointer)
- (src (:struct %image))
- (src-rec (:struct %rectangle))
- (dst-rec (:struct %rectangle)))
-
-;;RLAPI void ImageDrawRectangle(Image *dst, Rectangle rec, Color color);                                   // Draw rectangle within an image
-(defcfun "ImageDrawRectangle" :void
- "Draw rectangle within an image"
- (dst :pointer)
- (rec (:struct %rectangle))
- (color (:struct %color)))
-
-;;RLAPI void ImageDrawRectangleLines(Image *dst, Rectangle rec, int thick, Color color);                   // Draw rectangle lines within an image
-(defcfun "ImageDrawRectangleLines" :void
- "Draw rectangle lines within an image"
- (dst :pointer)
- (rec (:struct %rectangle))
- (thick :int)
- (color (:struct %color)))
-
-;;RLAPI void ImageDrawText(Image *dst, Vector2 position, const char *text, int fontSize, Color color);     // Draw text (default font) within an image (destination)
-(defcfun "ImageDrawText" :void
- (dst (:pointer (:struct %image)))
- (position (:struct %vector2))
- (text :string)
- (font-size :int)
- (color (:struct %color)))
-
-;;RLAPI void ImageDrawTextEx(Image *dst, Vector2 position, Font font, const char *text, float fontSize, float spacing, Color color); // Draw text (custom sprite font) within an image (destination)
-(defcfun "ImageDrawTextEx" :void
- "Draw text (custom sprite font) within an image (destination)"
- (dst :pointer)
- (position (:struct %vector2))
- (font (:struct %font))
- (text :string)
- (font-size :float)
- (spacing :float)
- (color (:struct %color)))
-
 ;;RLAPI void ImageFlipVertical(Image *image);                                                              // Flip image vertically
 (defcfun "ImageFlipVertical" :void
  (image (:pointer (:struct %image))))
@@ -2593,75 +2670,52 @@
  (image :pointer)
  (color (:struct %color))
  (replace (:struct %color)))
+ 
+;;RLAPI Color *ImageExtractPalette(Image image, int maxPaletteSize, int *extractCount);                    // Extract color palette from image to maximum size (memory should be freed)
+(defcfun "ImageExtractPalette" (:pointer (:struct %color))
+ "Extract color palette from image to maximum size (memory should be freed)"
+ (image (:struct %image))
+ (max-palette-size :int)
+ (extract-count (:pointer :int)))
 
+;;RLAPI Rectangle GetImageAlphaBorder(Image image, float threshold);                                       // Get image alpha border rectangle
+(defcfun "GetImageAlphaBorder" (:struct %rectangle)
+ "Get image alpha border rectangle"
+ (image (:struct %image))
+ (threshold :float))
 
-;;// Image generation functions
-;;RLAPI Image GenImageColor(int width, int height, Color color);                                           // Generate image: plain color
-(defcfun "GenImageColor" (:struct %image)
- "Generate image: plain color"
- (width :int)
- (height :int)
- (color (:struct %color)))
+;;// Image drawing functions
+;;// NOTE: Image software-rendering functions (CPU)
+;;RLAPI void ImageClearBackground(Image *dst, Color color);                                                // Clear image background with given color
+;;RLAPI void ImageDrawPixel(Image *dst, int posX, int posY, Color color);                                  // Draw pixel within an image
+;;RLAPI void ImageDrawPixelV(Image *dst, Vector2 position, Color color);                                   // Draw pixel within an image (Vector version)
+;;RLAPI void ImageDrawLine(Image *dst, int startPosX, int startPosY, int endPosX, int endPosY, Color color); // Draw line within an image
+;;RLAPI void ImageDrawLineV(Image *dst, Vector2 start, Vector2 end, Color color);                          // Draw line within an image (Vector version)
+;;RLAPI void ImageDrawCircle(Image *dst, int centerX, int centerY, int radius, Color color);               // Draw circle within an image
+;;RLAPI void ImageDrawCircleV(Image *dst, Vector2 center, int radius, Color color);                        // Draw circle within an image (Vector version)
+;;RLAPI void ImageDrawRectangle(Image *dst, int posX, int posY, int width, int height, Color color);       // Draw rectangle within an image
+;;RLAPI void ImageDrawRectangleV(Image *dst, Vector2 position, Vector2 size, Color color);                 // Draw rectangle within an image (Vector version)
+;;RLAPI void ImageDrawRectangleRec(Image *dst, Rectangle rec, Color color);                                // Draw rectangle within an image 
+;;RLAPI void ImageDrawRectangleLines(Image *dst, Rectangle rec, int thick, Color color);                   // Draw rectangle lines within an image
+;;RLAPI void ImageDraw(Image *dst, Image src, Rectangle srcRec, Rectangle dstRec, Color tint);             // Draw a source image within a destination image (tint applied to source)
+;;RLAPI void ImageDrawText(Image *dst, Vector2 position, const char *text, int fontSize, Color color);     // Draw text (default font) within an image (destination)
+;;RLAPI void ImageDrawTextEx(Image *dst, Vector2 position, Font font, const char *text, float fontSize, float spacing, Color color); // Draw text (custom sprite font) within an image (destination)
+;;
+;;// Texture loading functions
+;;// NOTE: These functions require GPU access
+;;RLAPI Texture2D LoadTexture(const char *fileName);                                                       // Load texture from file into GPU memory (VRAM)
+;;RLAPI Texture2D LoadTextureFromImage(Image image);                                                       // Load texture from image data
+;;RLAPI TextureCubemap LoadTextureCubemap(Image image, int layoutType);                                    // Load cubemap from image, multiple image cubemap layouts supported
+;;RLAPI RenderTexture2D LoadRenderTexture(int width, int height);                                          // Load texture for rendering (framebuffer)
+;;RLAPI void UnloadTexture(Texture2D texture);                                                             // Unload texture from GPU memory (VRAM)
+;;RLAPI void UnloadRenderTexture(RenderTexture2D target);                                                  // Unload render texture from GPU memory (VRAM)
+;;RLAPI void UpdateTexture(Texture2D texture, const void *pixels);                                         // Update GPU texture with new data
+;;RLAPI Image GetTextureData(Texture2D texture);                                                           // Get pixel data from GPU texture and return an Image
+;;RLAPI Image GetScreenData(void);                                                                         // Get pixel data from screen buffer and return an Image (screenshot)
+(defcfun "GetScreenData" (:struct %image)
+ "Get pixel data from screen buffer and return an Image (screenshot)")
 
-;;RLAPI Image GenImageGradientV(int width, int height, Color top, Color bottom);                           // Generate image: vertical gradient
-(defcfun "GenImageGradientV" (:struct %image)
- "Generate image: vertical gradient"
- (width :int)
- (height :int)
- (top (:struct %color))
- (bottom (:struct %color)))
-
-;;RLAPI Image GenImageGradientH(int width, int height, Color left, Color right);                           // Generate image: horizontal gradient
-(defcfun "GenImageGradientH" (:struct %image)
- "Generate image: horizontal gradient"
- (width :int)
- (height :int)
- (left (:struct %color))
- (right (:struct %color)))
-
-;;RLAPI Image GenImageGradientRadial(int width, int height, float density, Color inner, Color outer);      // Generate image: radial gradient
-(defcfun "GenImageGradientRadial" (:struct %image)
- "Generate image: radial gradient"
- (width :int)
- (height :int)
- (density :float)
- (inner (:struct %color))
- (outer (:struct %color)))
-
-;;RLAPI Image GenImageChecked(int width, int height, int checksX, int checksY, Color col1, Color col2);    // Generate image: checked
-(defcfun "GenImageChecked" (:struct %image)
- "Generate image: checked"
- (width :int)
- (height :int)
- (checks-x :int)
- (checks-y :int)
- (col1 (:struct %color))
- (col2 (:struct %color)))
-
-;;RLAPI Image GenImageWhiteNoise(int width, int height, float factor);                                     // Generate image: white noise
-(defcfun "GenImageWhiteNoise" (:struct %image)
- "Generate image: white noise"
- (width :int)
- (height :int)
- (factor :float))
-
-;;RLAPI Image GenImagePerlinNoise(int width, int height, int offsetX, int offsetY, float scale);           // Generate image: perlin noise
-(defcfun "GenImagePerlinNoise" (:struct %image)
- "Generate image: perlin noise"
- (width :int)
- (height :int)
- (offset-x :int)
- (offset-y :int)
- (scale :float))
-
-;;RLAPI Image GenImageCellular(int width, int height, int tileSize);                                       // Generate image: cellular algorithm. Bigger tileSize means bigger cells
-(defcfun "GenImageCellular" (:struct %image)
- "Generate image: cellular algorithm. Bigger tileSize means bigger cells"
- (width :int)
- (height :int)
- (tile-size :int))
-
-;;// Texture2D configuration functions
+;;// Texture configuration functions
 ;;RLAPI void GenTextureMipmaps(Texture2D *texture);                                                        // Generate GPU mipmaps for a texture
 (defcfun "GenTextureMipmaps" :void
  (texture (:pointer (:struct %texture))))
@@ -2676,7 +2730,7 @@
  (texture (:struct %texture))
  (wrap-mode :int))
 
-;;// Texture2D drawing functions
+;;// Texture drawing functions
 ;;RLAPI void DrawTexture(Texture2D texture, int posX, int posY, Color tint);                               // Draw a Texture2D
 (defcfun "DrawTexture" :void
  (texture (:struct %texture))
@@ -2735,6 +2789,9 @@
  (rotation :float)
  (tint (:struct %color)))
 
+;;// Image/Texture misc functions
+;;RLAPI int GetPixelDataSize(int width, int height, int format);                                           // Get pixel data size in bytes (image or texture)
+;;
 ;;//------------------------------------------------------------------------------------
 ;;// Font Loading and Text Drawing Functions (Module: text)
 ;;//------------------------------------------------------------------------------------
@@ -2771,21 +2828,13 @@
  (font-chars :int)
  (chars-count :int)
  (type :int))
-
-;;RLAPI Image GenImageFontAtlas(CharInfo *chars, int charsCount, int fontSize, int padding, int packMethod);  // Generate image font atlas using chars info
-(defcfun "GenImageFontAtlas" (:struct %image)
- "Generate image font atlas using chars info"
- (chars (:pointer (:struct %char-info)))
- (chars-count :int)
- (font-size :int)
- (padding :int)
- (pack-method :int))
-
+ 
+;;RLAPI Image GenImageFontAtlas(const CharInfo *chars, Rectangle **recs, int charsCount, int fontSize, int padding, int packMethod);  // Generate image font atlas using chars info
 ;;RLAPI void UnloadFont(Font font);                                                           // Unload Font from GPU memory (VRAM)
 (defcfun "UnloadFont" :void
  "Unload Font from GPU memory (VRAM)"
  (font (:struct %font)))
-;;
+
 ;;// Text drawing functions
 ;;RLAPI void DrawFPS(int posX, int posY);                                                     // Shows current FPS
 (defcfun "DrawFPS" :void
@@ -2805,29 +2854,95 @@
 ;;RLAPI void DrawTextEx(Font font, const char *text, Vector2 position, float fontSize, float spacing, Color tint);                // Draw text using font and additional parameters
 ;;RLAPI void DrawTextRec(Font font, const char *text, Rectangle rec, float fontSize, float spacing, bool wordWrap, Color tint);   // Draw text using font inside rectangle limits
 ;;RLAPI void DrawTextRecEx(Font font, const char *text, Rectangle rec, float fontSize, float spacing, bool wordWrap, Color tint,
-;;                         int selectStart, int selectLength, Color selectText, Color selectBack);    // Draw text using font inside rectangle limits with support for text selection
+;;                         int selectStart, int selectLength, Color selectTint, Color selectBackTint); // Draw text using font inside rectangle limits with support for text selection
+;;RLAPI void DrawTextCodepoint(Font font, int codepoint, Vector2 position, float scale, Color tint);   // Draw one character (codepoint)
 ;;
 ;;// Text misc. functions
 ;;RLAPI int MeasureText(const char *text, int fontSize);                                      // Measure string width for default font
 ;;RLAPI Vector2 MeasureTextEx(Font font, const char *text, float fontSize, float spacing);    // Measure string size for Font
-;;RLAPI int GetGlyphIndex(Font font, int character);                                          // Get index position for a unicode character on font
-;;RLAPI int GetNextCodepoint(const char *text, int *count);                                   // Returns next codepoint in a UTF8 encoded string
-;;                                                                                            // NOTE: 0x3f(`?`) is returned on failure, `count` will hold the total number of bytes processed
-;;
-;;// Text strings management functions
+;;RLAPI int GetGlyphIndex(Font font, int codepoint);                                          // Get index position for a unicode character on font
+(defcfun "GetGlyphIndex" :int
+ "Get index position for a unicode character on font"
+ (font (:struct %font))
+ (codepoint :int))
+
+;;// Text strings management functions (no utf8 strings, only byte chars)
 ;;// NOTE: Some strings allocate memory internally for returned strings, just be careful!
+;;RLAPI int TextCopy(char *dst, const char *src);                                             // Copy one string to another, returns bytes copied
+(defcfun "TextCopy" :int
+ "Copy one string to another, returns bytes copied"
+ (dst (:pointer :char))
+ (src :string))
+
 ;;RLAPI bool TextIsEqual(const char *text1, const char *text2);                               // Check if two text string are equal
+(defcfun "TextIsEqual" :boolean
+ "Check if two text string are equal"
+ (text1 :string)
+ (text2 :string))
+
 ;;RLAPI unsigned int TextLength(const char *text);                                            // Get text length, checks for '\0' ending
-;;RLAPI unsigned int TextCountCodepoints(const char *text);                                   // Get total number of characters (codepoints) in a UTF8 encoded string
+(defcfun "TextLength" :unsigned-int
+ "Get text length, checks for '\0' ending"
+ (text :string))
+
 ;;RLAPI const char *TextFormat(const char *text, ...);                                        // Text formatting with variables (sprintf style)
+(defcfun "TextFormat" :string
+ "Text formatting with variables (sprintf style)"
+ (text :string)
+ &rest)
+
 ;;RLAPI const char *TextSubtext(const char *text, int position, int length);                  // Get a piece of a text string
-;;RLAPI const char *TextReplace(char *text, const char *replace, const char *by);             // Replace text string (memory should be freed!)
-;;RLAPI const char *TextInsert(const char *text, const char *insert, int position);           // Insert text in a position (memory should be freed!)
+(defcfun "TextSubtext" :string
+ "Get a piece of a text string"
+ (text :string)
+ (position :int)
+ (length :int))
+
+;;RLAPI char *TextReplace(char *text, const char *replace, const char *by);                   // Replace text string (memory must be freed!)
+(defcfun "TextReplace" (:pointer :char)
+ "Replace text string (memory must be freed!)"
+ (text (:pointer :char))
+ (replace :string)
+ (by :string))
+
+;;RLAPI char *TextInsert(const char *text, const char *insert, int position);                 // Insert text in a position (memory must be freed!)
+(defcfun "TextInsert" (:pointer :char)
+ "Insert text in a position (memory must be freed!)"
+ (text :string)
+ (insert :string)
+ (position :int))
+
 ;;RLAPI const char *TextJoin(const char **textList, int count, const char *delimiter);        // Join text strings with delimiter
+(defcfun "TextJoin" :string
+ "Join text strings with delimiter"
+ (text-list (:pointer :string))
+ (delimiter :string))
+
 ;;RLAPI const char **TextSplit(const char *text, char delimiter, int *count);                 // Split text into multiple strings
+(defcfun "TextSplit" (:pointer :string)
+ "Split text into multiple strings"
+ (text :string)
+ (delimiter :char)
+ (count (:pointer :int)))
+
 ;;RLAPI void TextAppend(char *text, const char *append, int *position);                       // Append text at specific position and move cursor!
+(defcfun "TextAppend" :void
+ "Append text at specific position and move cursor!"
+ (text (:pointer :char))
+ (append :string)
+ (position (:pointer :int)))
+
 ;;RLAPI int TextFindIndex(const char *text, const char *find);                                // Find first text occurrence within a string
+(defcfun "TextFindIndex" :int
+ "Find first text occurrence within a string"
+ (text :string)
+ (find :string))
+
 ;;RLAPI const char *TextToUpper(const char *text);                      // Get upper case version of provided string
+(defcfun "TextToUpper" :string
+ "Get upper case version of provided string"
+ (text :string))
+
 ;;RLAPI const char *TextToLower(const char *text);                      // Get lower case version of provided string
 (defcfun "TextToLower" :string
  "Get lower case version of provided string"
@@ -2842,7 +2957,19 @@
 (defcfun "TextToInteger" :int
  "Get integer value from text (negative values not supported)"
  (text :string))
+ 
+;;RLAPI char *TextToUtf8(int *codepoints, int length);                  // Encode text codepoint into utf8 text (memory must be freed!)
+(defcfun "TextToUtf8" (:pointer :char)
+ "Encode text codepoint into utf8 text (memory must be freed!)"
+ (codepoints (:pointer :int))
+ (length :int))
 
+;;// UTF8 text strings management functions
+;;RLAPI int *GetCodepoints(const char *text, int *count);               // Get all codepoints in a string, codepoints count returned by parameters
+;;RLAPI int GetCodepointsCount(const char *text);                       // Get total number of characters (codepoints) in a UTF8 encoded string
+;;RLAPI int GetNextCodepoint(const char *text, int *bytesProcessed);    // Returns next codepoint in a UTF8 encoded string; 0x3f('?') is returned on failure
+;;RLAPI const char *CodepointToUtf8(int codepoint, int *byteLength);    // Encode codepoint into utf8 text (char array length returned as parameter)
+;;
 ;;//------------------------------------------------------------------------------------
 ;;// Basic 3d Shapes Drawing Functions (Module: models)
 ;;//------------------------------------------------------------------------------------
@@ -2852,6 +2979,12 @@
 (defcfun "DrawLine3D" :void
  (start-pos (:struct %vector3))
  (end-pos (:struct %vector3))
+ (color (:struct %color)))
+ 
+;;RLAPI void DrawPoint3D(Vector3 position, Color color);                                                   // Draw a point in 3D space, actually a small line
+(defcfun "DrawPoint3D" :void
+ "Draw a point in 3D space, actually a small line"
+ (position (:struct %vector3))
  (color (:struct %color)))
 
 ;;RLAPI void DrawCircle3D(Vector3 center, float radius, Vector3 rotationAxis, float rotationAngle, Color color); // Draw a circle in 3D world space
@@ -2903,12 +3036,14 @@
 
 ;;RLAPI void DrawSphere(Vector3 centerPos, float radius, Color color);                                     // Draw sphere
 (defcfun "DrawSphere" :void
+ "Draw sphere"
  (center-pos (:struct %vector3))
  (radius :float)
  (color (:struct %color)))
 
 ;;RLAPI void DrawSphereEx(Vector3 centerPos, float radius, int rings, int slices, Color color);            // Draw sphere with extended parameters
 (defcfun "DrawSphereEx" :void
+ "Draw sphere with extended parameters"
  (center-pos (:struct %vector3))
  (radius :float)
  (rings :int)
@@ -2969,7 +3104,15 @@
 ;;
 ;;// Model loading/unloading functions
 ;;RLAPI Model LoadModel(const char *fileName);                                                            // Load model from files (meshes and materials)
+(defcfun "LoadModel" (:struct %model)
+ "Load model from files (meshes and materials)"
+ (file-name :string))
+
 ;;RLAPI Model LoadModelFromMesh(Mesh mesh);                                                               // Load model from generated mesh (default material)
+(defcfun "LoadModelFromMesh" (:struct %model)
+ "Load model from generated mesh (default material)"
+ (mesh (:struct %mesh)))
+
 ;;RLAPI void UnloadModel(Model model);                                                                    // Unload model from memory (RAM and/or VRAM)
 (defcfun "UnloadModel" :void
  (model (:struct %model)))
@@ -2987,8 +3130,11 @@
  (mesh (:struct %mesh))
  (file-name :string))
 
-;;RLAPI void UnloadMesh(Mesh *mesh);                                                                      // Unload mesh from memory (RAM and/or VRAM)
-;;
+;;RLAPI void UnloadMesh(Mesh mesh);                                                                       // Unload mesh from memory (RAM and/or VRAM)
+(defcfun "UnloadMesh" :void
+ "Unload mesh from memory (RAM and/or VRAM)"
+ (mesh (:struct %mesh)))
+
 ;;// Material loading/unloading functions
 ;;RLAPI Material *LoadMaterials(const char *fileName, int *materialCount);                                // Load materials from model file
 ;;RLAPI Material LoadMaterialDefault(void);                                                               // Load default material (Supports: DIFFUSE, SPECULAR, NORMAL maps)
@@ -3004,6 +3150,11 @@
 ;;
 ;;// Mesh generation functions
 ;;RLAPI Mesh GenMeshPoly(int sides, float radius);                                                        // Generate polygonal mesh
+(defcfun "GenMeshPoly" (:struct %mesh)
+ "Generate polygonal mesh"
+ (sides :int)
+ (radius :float))
+
 ;;RLAPI Mesh GenMeshPlane(float width, float length, int resX, int resZ);                                 // Generate plane mesh (with subdivisions)
 (defcfun "GenMeshPlane" (:struct %mesh)
  "Generate plane mesh (with subdivisions)"
@@ -3152,24 +3303,23 @@
   (box1 (:struct %bounding-box))
   (box2 (:struct %bounding-box)))
 
-;;RLAPI bool CheckCollisionBoxSphere(BoundingBox box, Vector3 centerSphere, float radiusSphere);          // Detect collision between box and sphere
+;;RLAPI bool CheckCollisionBoxSphere(BoundingBox box, Vector3 center, float radius);                      // Detect collision between box and sphere
 (defcfun "CheckCollisionBoxSphere" :bool
   (box (:struct %bounding-box))
-  (center-sphere (:struct %vector3))
-  (sphere-radius :float))
-
-;;RLAPI bool CheckCollisionRaySphere(Ray ray, Vector3 spherePosition, float sphereRadius);                // Detect collision between ray and sphere
+  (center (:struct %vector3))
+  (radius :float))
+;;RLAPI bool CheckCollisionRaySphere(Ray ray, Vector3 center, float radius);                              // Detect collision between ray and sphere
 (defcfun "CheckCollisionRaySphere" :bool
  "Detect collision between ray and sphere"
   (ray (:struct %ray))
-  (sphere-position (:struct %vector3))
-  (sphere-radius :float))
+  (center (:struct %vector3))
+  (radius :float))
 
-;;RLAPI bool CheckCollisionRaySphereEx(Ray ray, Vector3 spherePosition, float sphereRadius, Vector3 *collisionPoint); // Detect collision between ray and sphere, returns collision point
+;;RLAPI bool CheckCollisionRaySphereEx(Ray ray, Vector3 center, float radius, Vector3 *collisionPoint);   // Detect collision between ray and sphere, returns collision point
 (defcfun "CheckCollisionRaySphereEx" :bool
   (ray (:struct %ray))
-  (sphere-position (:struct %vector3))
-  (sphere-radius :float)
+  (center (:struct %vector3))
+  (radius :float)
   (collision-point (:pointer (:struct %vector3))))
 
 ;;RLAPI bool CheckCollisionRayBox(Ray ray, BoundingBox box);                                              // Detect collision between ray and box
@@ -3177,11 +3327,11 @@
   (ray (:struct %ray))
   (box (:struct %bounding-box)))
 
-;;RLAPI RayHitInfo GetCollisionRayModel(Ray ray, Model *model);                                           // Get collision info between ray and model
+;;RLAPI RayHitInfo GetCollisionRayModel(Ray ray, Model model);                                            // Get collision info between ray and model
 (defcfun "GetCollisionRayModel" (:struct %ray-hit-info)
  "Get collision info between ray and model"
  (ray (:struct %ray))
- (model :pointer))
+ (model (:struct %model)))
 
 ;;RLAPI RayHitInfo GetCollisionRayTriangle(Ray ray, Vector3 p1, Vector3 p2, Vector3 p3);                  // Get collision info between ray and triangle
 (defcfun "GetCollisionRayTriangle" (:struct %ray-hit-info)
@@ -3203,17 +3353,12 @@
 ;;//------------------------------------------------------------------------------------
 ;;
 ;;// Shader loading/unloading functions
-;;RLAPI char *LoadText(const char *fileName);                               // Load chars array from text file
-(defcfun "LoadText" :pointer
- "Load chars array from text file"
- (file-name :string))
-
 ;;RLAPI Shader LoadShader(const char *vsFileName, const char *fsFileName);  // Load shader from files and bind default locations
 (defcfun "LoadShader" (:struct %shader)
   (vs-file-name :string)
   (fs-file-name :string))
 
-;;RLAPI Shader LoadShaderCode(char *vsCode, char *fsCode);                  // Load shader from code strings and bind default locations
+;;RLAPI Shader LoadShaderCode(const char *vsCode, const char *fsCode);      // Load shader from code strings and bind default locations
 (defcfun "LoadShaderCode" (:struct %shader)
  "Load shader from code strings and bind default locations"
  (vs-code :pointer)
@@ -3228,6 +3373,20 @@
 
 ;;RLAPI Texture2D GetTextureDefault(void);                                  // Get default texture
 (defcfun "GetTextureDefault" (:struct %texture))
+
+;;RLAPI Texture2D GetShapesTexture(void);                                   // Get texture to draw shapes
+(defcfun "GetShapesTexture" (:struct %texture)
+ "Get texture to draw shapes")
+
+;;RLAPI Rectangle GetShapesTextureRec(void);                                // Get texture rectangle to draw shapes
+(defcfun "GetShapesTextureRec" (:struct %rectangle)
+ "Get texture rectangle to draw shapes")
+
+;;RLAPI void SetShapesTexture(Texture2D texture, Rectangle source);         // Define default texture used to draw shapes
+(defcfun "SetShapesTexture" :void
+ "Define default texture used to draw shapes"
+ (texture (:struct %texture))
+ (source (:struct %rectangle)))
 
 ;;// Shader configuration functions
 ;;RLAPI int GetShaderLocation(Shader shader, const char *uniformName);      // Get shader uniform location
@@ -3245,8 +3404,28 @@
  (uniform-type :int))
 
 ;;RLAPI void SetShaderValueV(Shader shader, int uniformLoc, const void *value, int uniformType, int count);   // Set shader uniform value vector
+(defcfun "SetShaderValueV" :void
+ "Set shader uniform value vector"
+ (shader (:struct %shader))
+ (uniform-loc :int)
+ (value :pointer)
+ (uniform-type :int)
+ (count :int))
+
 ;;RLAPI void SetShaderValueMatrix(Shader shader, int uniformLoc, Matrix mat);         // Set shader uniform value (matrix 4x4)
+(defcfun "SetShaderValueMatrix" :void
+ "Set shader uniform value (matrix 4x4)"
+ (shader (:struct %shader))
+ (uniform-loc :int)
+ (mat (:struct %matrix)))
+
 ;;RLAPI void SetShaderValueTexture(Shader shader, int uniformLoc, Texture2D texture); // Set shader uniform value for texture
+(defcfun "SetShaderValueTexture" :void
+ "Set shader uniform value for texture"
+ (shader (:struct %shader))
+ (uniform-loc :int)
+ (texture (:struct %texture)))
+
 ;;RLAPI void SetMatrixProjection(Matrix proj);                              // Set a custom projection matrix (replaces internal projection matrix)
 (defcfun "SetMatrixProjection" :void
   (proj (:struct %matrix)))
@@ -3255,19 +3434,23 @@
 (defcfun "SetMatrixModelview" :void
   (view (:struct %matrix)))
 
-;;RLAPI Matrix GetMatrixModelview();                                        // Get internal modelview matrix
+;;RLAPI Matrix GetMatrixModelview(void);                                    // Get internal modelview matrix
 (defcfun "GetMatrixModelview" (:struct %matrix)
  "Get internal modelview matrix")
+ 
+;;RLAPI Matrix GetMatrixProjection(void);                                   // Get internal projection matrix
+(defcfun "GetMatrixProjection" (:struct %matrix)
+ "Get internal projection matrix")
 
 ;;// Texture maps generation (PBR)
 ;;// NOTE: Required shaders should be provided
-;;RLAPI Texture2D GenTextureCubemap(Shader shader, Texture2D skyHDR, int size);       // Generate cubemap texture from HDR texture
+;;RLAPI Texture2D GenTextureCubemap(Shader shader, Texture2D map, int size);          // Generate cubemap texture from 2D texture
 (defcfun "GenTextureCubemap" (:struct %texture)
  "Generate cubemap texture from HDR texture"
  (shader (:struct %shader))
- (sky-hdr (:struct %texture))
+ (map (:struct %texture))
  (size :int))
-
+ 
 ;;RLAPI Texture2D GenTextureIrradiance(Shader shader, Texture2D cubemap, int size);   // Generate irradiance texture using cubemap data
 (defcfun "GenTextureIrradiance" (:struct %texture)
  "Generate irradiance texture using cubemap data"
@@ -3306,18 +3489,6 @@
 ;;RLAPI void EndBlendMode(void);                                            // End blending mode (reset to default: alpha blending)
 (defcfun "EndBlendMode" :void
  "End blending mode (reset to default: alpha blending)")
-
-;;RLAPI void BeginScissorMode(int x, int y, int width, int height);         // Begin scissor mode (define screen area for following drawing)
-(defcfun "BeginScissorMode" :void
- "Begin scissor mode (define screen area for following drawing)"
- (x :int)
- (y :int)
- (width :int)
- (height :int))
-
-;;RLAPI void EndScissorMode(void);                                          // End scissor mode
-(defcfun "EndScissorMode" :void
- "End scissor mode")
 
 ;;// VR control functions
 ;;RLAPI void InitVrSimulator(void);                       // Init VR simulator for selected device parameters
@@ -3383,15 +3554,6 @@
  "Load wave data from file"
   (file-name :string))
 
-;;RLAPI Wave LoadWaveEx(void *data, int sampleCount, int sampleRate, int sampleSize, int channels); // Load wave data from raw array data
-(defcfun "LoadWaveEx" (:struct %wave)
- "Load wave data from raw array data"
-  (data :pointer)
-  (sample-count :int)
-  (sample-rate :int)
-  (sample-size :int)
-  (channels :int))
-
 ;;RLAPI Sound LoadSound(const char *fileName);                          // Load sound from file
 (defcfun "LoadSound" (:struct %sound)
  "Load sound from file"
@@ -3437,6 +3599,7 @@
  "Play a sound"
   (sound (:struct %sound)))
 
+;;RLAPI void StopSound(Sound sound);                                    // Stop playing a sound
 ;;RLAPI void PauseSound(Sound sound);                                   // Pause a sound
 (defcfun "PauseSound" :void
  "Pause a sound"
@@ -3447,10 +3610,18 @@
  "Resume a paused sound"
   (sound (:struct %sound)))
 
-;;RLAPI void StopSound(Sound sound);                                    // Stop playing a sound
-(defcfun "StopSound" :void
- "Stop playing a sound"
-  (sound (:struct %sound)))
+;;RLAPI void PlaySoundMulti(Sound sound);                               // Play a sound (using multichannel buffer pool)
+(defcfun "PlaySoundMulti" :void
+ "Play a sound (using multichannel buffer pool)"
+ (sound (:struct %sound)))
+
+;;RLAPI void StopSoundMulti(void);                                      // Stop any sound playing (using multichannel buffer pool)
+(defcfun "StopSoundMulti" :void
+ "Stop any sound playing (using multichannel buffer pool)")
+
+;;RLAPI int GetSoundsPlaying(void);                                     // Get number of sounds playing in the multichannel
+(defcfun "GetSoundsPlaying" :int
+ "Get number of sounds playing in the multichannel")
 
 ;;RLAPI bool IsSoundPlaying(Sound sound);                               // Check if a sound is currently playing
 (defcfun "IsSoundPlaying" :bool
@@ -3496,73 +3667,72 @@
 
 ;;// Music management functions
 ;;RLAPI Music LoadMusicStream(const char *fileName);                    // Load music stream from file
-(defcfun "LoadMusicStream" music
+(defcfun "LoadMusicStream" (:struct %music)
  "Load music stream from file"
  (file-name :string))
 
 ;;RLAPI void UnloadMusicStream(Music music);                            // Unload music stream
 (defcfun "UnloadMusicStream" :void
  "Unload music stream"
- (music music))
+ (music (:struct %music)))
 
 ;;RLAPI void PlayMusicStream(Music music);                              // Start music playing
 (defcfun "PlayMusicStream" :void
  "Start music playing"
- (music music))
+ (music (:struct %music)))
 
 ;;RLAPI void UpdateMusicStream(Music music);                            // Updates buffers for music streaming
 (defcfun "UpdateMusicStream" :void
  "Updates buffers for music streaming"
- (music music))
+ (music (:struct %music)))
 
 ;;RLAPI void StopMusicStream(Music music);                              // Stop music playing
 (defcfun "StopMusicStream" :void
  "Stop music playing"
- (music music))
+ (music (:struct %music)))
 
 ;;RLAPI void PauseMusicStream(Music music);                             // Pause music playing
 (defcfun "PauseMusicStream" :void
  "Pause music playing"
- (music music))
+ (music (:struct %music)))
 
 ;;RLAPI void ResumeMusicStream(Music music);                            // Resume playing paused music
 (defcfun "ResumeMusicStream" :void
  "Resume playing paused music"
- (music music))
+ (music (:struct %music)))
 
 ;;RLAPI bool IsMusicPlaying(Music music);                               // Check if music is playing
-(defcfun "IsMusicPlaying" :boolean
+(defcfun "IsMusicPlaying" :bool
  "Check if music is playing"
- (music music))
+ (music (:struct %music)))
 
 ;;RLAPI void SetMusicVolume(Music music, float volume);                 // Set volume for music (1.0 is max level)
 (defcfun "SetMusicVolume" :void
  "Set volume for music (1.0 is max level)"
- (music music)
+ (music (:struct %music))
  (volume :float))
 
 ;;RLAPI void SetMusicPitch(Music music, float pitch);                   // Set pitch for a music (1.0 is base level)
 (defcfun "SetMusicPitch" :void
  "Set pitch for a music (1.0 is base level)"
- (music music)
+ (music (:struct %music))
  (pitch :float))
 
 ;;RLAPI void SetMusicLoopCount(Music music, int count);                 // Set music loop count (loop repeats)
 (defcfun "SetMusicLoopCount" :void
  "Set music loop count (loop repeats)"
- (music music)
+ (music (:struct %music))
  (count :int))
 
 ;;RLAPI float GetMusicTimeLength(Music music);                          // Get music time length (in seconds)
 (defcfun "GetMusicTimeLength" :float
  "Get music time length (in seconds)"
- (music music))
+ (music (:struct %music)))
 
 ;;RLAPI float GetMusicTimePlayed(Music music);                          // Get current music time played (in seconds)
 (defcfun "GetMusicTimePlayed" :float
  "Get current music time played (in seconds)"
- (music music))
-
+ (music (:struct %music)))
 
 ;;// AudioStream management functions
 ;;RLAPI AudioStream InitAudioStream(unsigned int sampleRate, unsigned int sampleSize, unsigned int channels); // Init audio stream (to stream raw audio pcm data)
@@ -3584,8 +3754,8 @@
  "Close audio stream and free memory"
  (stream (:struct %audio-stream)))
 
-;;RLAPI bool IsAudioBufferProcessed(AudioStream stream);                // Check if any audio stream buffers requires refill
-(defcfun "IsAudioBufferProcessed" :bool
+;;RLAPI bool IsAudioStreamProcessed(AudioStream stream);                // Check if any audio stream buffers requires refill
+(defcfun "IsAudioStreamProcessed" :bool
  "Check if any audio stream buffers requires refill"
  (stream (:struct %audio-stream)))
 
@@ -3626,7 +3796,11 @@
  (stream (:struct %audio-stream))
  (pitch :float))
 
-;;
+;;RLAPI void SetAudioStreamBufferSizeDefault(int size);                 // Default size for new audio streams
+(defcfun "SetAudioStreamBufferSizeDefault" :void
+ "Default size for new audio streams"
+ (size :int))
+
 ;;//------------------------------------------------------------------------------------
 ;;// Network (Module: network)
 ;;//------------------------------------------------------------------------------------
