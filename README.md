@@ -28,8 +28,7 @@ clone to ~/.local/share/common-lisp/source/cl-raylib is ok if you has no quickli
 4. run basic example
 
 enter sbcl repl (or ccl etc) :blush:
-```lisp
-(require :cl-raylib)
-(load "~/.quicklisp/local-projects/cl-raylib/examples/basic.lisp")
+```bash
+sbcl --load ~/.quicklisp/local-projects/cl-raylib/examples/basic.lisp --quit
 ```
 Press `ESC` to close the basic window
