@@ -1,7 +1,7 @@
 # cl-raylib
-Common Lisp binding for raylib
+Common Lisp binding of [raylib](https://www.raylib.com/)
 
-# run example
+## run example
 1. install raylib
 cl-raylib require raylib dynamic library
 run `brew install raylib` to install the library if run example on macOS
@@ -15,14 +15,16 @@ quicklisp can setup cffi, or cffi in system package manager is also ok
 cl-raylib is not on quicklisp now, so you should fetch it manually
 
 ```bash
-git clone  https://github.com/longlene/cl-raylib.git ~/.quicklisp/local-projects/cl-raylib
+git clone https://github.com/longlene/cl-raylib.git ~/.quicklisp/local-projects/cl-raylib
 ```
 my quicklisp install path is ~/.quicklisp
 
 clone to ~/.local/share/common-lisp/source/cl-raylib is ok if you has no quicklisp
 
 4. run basic example
-enter sbcl repl(or ccl etc)
+enter sbcl repl (or ccl etc) :blush:
 ```lisp
 (require :cl-raylib)
 (load "~/.quicklisp/local-projects/cl-raylib/examples/basic.lisp")
+```
+Press `ESC` to close the basic window
