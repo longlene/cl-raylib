@@ -3,6 +3,10 @@
 #+sbcl
 (declaim (sb-ext:muffle-conditions sb-kernel:character-decoding-error-in-comment))
 
+#+sbcl
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (sb-int:set-floating-point-modes :traps nil))
+
 (defpackage #:cl-raylib-asd
   (:use :cl :asdf))
 
