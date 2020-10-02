@@ -232,9 +232,7 @@
  (z :float))
 
 (defstruct vector3
- x
- y
- z)
+ x y z)
 
 (defmethod translate-into-foreign-memory (object (type vector3-type) pointer)
   (with-foreign-slots ((x y z) pointer (:struct %vector3))
@@ -354,10 +352,7 @@
   (height :float))
 
 (defstruct rectangle
- x
- y
- width
- height)
+ x y width height)
 
 (defmethod translate-into-foreign-memory (object (type rectangle-type) pointer)
   (with-foreign-slots ((x y width height) pointer (:struct %rectangle))
@@ -388,11 +383,7 @@
   (ft :int))
 
 (defstruct image
- data
- width
- height
- maps
- ft)
+ data width height maps ft)
 
 (defmethod translate-into-foreign-memory (object (type image-type) pointer)
   (with-foreign-slots ((data width height maps ft) pointer (:struct %image))
@@ -464,10 +455,7 @@
  (depth-texture :boolean))
 
 (defstruct render-texture
- id
- texture
- depth
- depth-texture)
+ id texture depth depth-texture)
 
 (defmethod translate-into-foreign-memory (object (type render-texture-type) pointer)
   (with-foreign-slots ((id  depth-texture) pointer (:struct %render-texture))
