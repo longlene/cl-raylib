@@ -5,14 +5,14 @@
 
 (in-package :raylib-user)
 
-(defun basic ()
-  (with-window (480 320 "basic")
-               (set-target-fps 60)
+(defun main ()
+  (with-window (800 450 "raylib [core] example - basic window")
+               (set-target-fps 60) ; Set our game to run at 60 FPS
                (loop
-                 (if (window-should-close) (return))
+                 (if (window-should-close) (return)) ; dectect window close button or ESC key
                  (with-drawing
-                  (clear-background +raywhite+)
+                   (clear-background +raywhite+)
                    (draw-fps 20 20)
                    (draw-text "cl-raylib" 320 200 20 +red+)))))
 
-(basic)
+(main)

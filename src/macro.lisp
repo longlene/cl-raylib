@@ -10,15 +10,15 @@
          (unwind-protect (progn ,@body)
           (end-drawing))))
 
-(defmacro with-2d-mode ((camera) &body body)
- `(progn (begin-2d-mode ,camera)
+(defmacro with-mode-2d ((camera) &body body)
+ `(progn (begin-mode-2d ,camera)
          (unwind-protect (progn ,@body)
-          (end-2d-mode))))
+          (end-mode-2d))))
 
-(defmacro with-3d-mode ((camera) &body body)
- `(progn (begin-3d-mode ,camera)
+(defmacro with-mode-3d ((camera) &body body)
+ `(progn (begin-mode-3d ,camera)
          (unwind-protect (progn ,@body)
-          (end-3d-mode))))
+          (end-mode-3d))))
 
 (defmacro with-texture-mode ((target) &body body)
  `(progn (begin-texture-mode ,target)

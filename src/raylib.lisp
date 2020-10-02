@@ -179,7 +179,7 @@
 (define-constant +magenta+     '(255 0 255 255) :test #'equal) 
 ;;#define RAYWHITE   CLITERAL(Color){ 245, 245, 245, 255 }   // My own White (raylib logo)
 (define-constant +raywhite+    '(245 245 245 255) :test #'equal)
-;;
+
 ;;// Temporal hack to avoid breaking old codebases using
 ;;// deprecated raylib implementation of these functions
 ;;#define FormatText  TextFormat
@@ -208,8 +208,7 @@
  (y :float))
 
 (defstruct vector2
- x
- y)
+ x y)
 
 (defmethod translate-into-foreign-memory (object (type vector2-type) pointer)
   (with-foreign-slots ((x y) pointer (:struct %vector2))
@@ -232,15 +231,20 @@
  (y :float)
  (z :float))
 
+(defstruct vector3
+ x
+ y
+ z)
+
 (defmethod translate-into-foreign-memory (object (type vector3-type) pointer)
   (with-foreign-slots ((x y z) pointer (:struct %vector3))
-                      (setf x (nth 0 object))
-                      (setf y (nth 1 object))
-                      (setf z (nth 2 object))))
+                      (setf x (vector3-x object))
+                      (setf y (vector3-y object))
+                      (setf z (vector3-z object))))
 
 (defmethod translate-from-foreign (pointer (type vector3-type))
   (with-foreign-slots ((x y z) pointer (:struct %vector3))
-                      (list x y z)))
+                      (make-vector3 :x x :y y :z z)))
 
 ;;// Vector4 type
 ;;typedef struct Vector4 {
@@ -256,16 +260,19 @@
  (z :float)
  (w :float))
 
+(defstruct vector4
+ x y z w)
+
 (defmethod translate-into-foreign-memory (object (type vector4-type) pointer)
   (with-foreign-slots ((x y z w) pointer (:struct %vector4))
-                      (setf x (nth 0 object))
-                      (setf y (nth 1 object))
-                      (setf z (nth 2 object))
-		      (setf w (nth 3 object))))
+                      (setf x (vector4-x object))
+                      (setf y (vector4-y object))
+                      (setf z (vector4-z object))
+		      (setf w (vector4-w object))))
 
 (defmethod translate-from-foreign (pointer (type vector4-type))
   (with-foreign-slots ((x y z w) pointer (:struct %vector4))
-                      (list x y z w)))
+                      (make-vector4 :x x :y y :z z :w w)))
 ;;
 ;;// Quaternion type, same as Vector4
 ;;typedef Vector4 Quaternion;
@@ -346,16 +353,22 @@
   (width :float)
   (height :float))
 
+(defstruct rectangle
+ x
+ y
+ width
+ height)
+
 (defmethod translate-into-foreign-memory (object (type rectangle-type) pointer)
   (with-foreign-slots ((x y width height) pointer (:struct %rectangle))
-                      (setf x (nth 0 object))
-                      (setf y (nth 1 object))
-                      (setf width (nth 2 object))
-                      (setf height (nth 3 object))))
+                      (setf x (rectangle-x object))
+                      (setf y (rectangle-y object))
+                      (setf width (rectangle-width object))
+                      (setf height (rectangle-height object))))
 
 (defmethod translate-from-foreign (pointer (type rectangle-type))
   (with-foreign-slots ((x y width height) pointer (:struct %rectangle))
-                      (list x y width height)))
+                      (make-rectangle :x x :y y :width width :height height)))
 
 ;;// Image type, bpp always RGBA (32bit)
 ;;// NOTE: Data stored in CPU memory (RAM)
@@ -371,20 +384,27 @@
   (data :pointer)
   (width :int)
   (height :int)
-  (mipmaps :int)
-  (format :int))
+  (maps :int)
+  (ft :int))
+
+(defstruct image
+ data
+ width
+ height
+ maps
+ ft)
 
 (defmethod translate-into-foreign-memory (object (type image-type) pointer)
-  (with-foreign-slots ((data width height mipmaps format) pointer (:struct %image))
-                      (setf data (nth 0 object))
-                      (setf width (nth 1 object))
-                      (setf height (nth 2 object))
-                      (setf mipmaps (nth 3 object))
-                      (setf format (nth 4 object))))
+  (with-foreign-slots ((data width height maps ft) pointer (:struct %image))
+                      (setf data (image-data object))
+                      (setf width (image-width object))
+                      (setf height (image-height object))
+                      (setf maps (image-maps object))
+                      (setf ft (image-ft object))))
 
 (defmethod translate-from-foreign (pointer (type image-type))
-  (with-foreign-slots ((data width height mipmaps format) pointer (:struct %image))
-  (list data width height mipmaps format)))
+  (with-foreign-slots ((data width height maps ft) pointer (:struct %image))
+  (make-image :data data :width width :height height :maps maps :ft ft)))
 
 ;;// Texture2D type
 ;;// NOTE: Data stored in GPU memory
@@ -407,17 +427,20 @@
   (mipmaps :int)
   (format :int))
 
+(defstruct texture
+ id width height mipmaps format)
+
 (defmethod translate-into-foreign-memory (object (type texture-type) pointer)
   (with-foreign-slots ((id width height mipmaps format) pointer (:struct %texture))
-                      (setf id (nth 0 object))
-                      (setf width (nth 1 object))
-                      (setf height (nth 2 object))
-                      (setf mipmaps (nth 3 object))
-                      (setf format (nth 4 object))))
+                      (setf id (texture-id object))
+                      (setf width (texture-width object))
+                      (setf height (texture-height object))
+                      (setf mipmaps (texture-mipmaps object))
+                      (setf format (texture-format object))))
 
 (defmethod translate-from-foreign (pointer (type texture-type))
   (with-foreign-slots ((id width height mipmaps format) pointer (:struct %texture))
-                      (list id width height mipmaps format)))
+                      (make-texture :id id :width width :height height :mipmaps mipmaps :format format)))
 
 ;;// TextureCubemap type, actually, same as Texture2D
 ;;typedef Texture2D TextureCubemap;
@@ -440,16 +463,35 @@
  (depth (:struct %texture))
  (depth-texture :boolean))
 
+(defstruct render-texture
+ id
+ texture
+ depth
+ depth-texture)
+
 (defmethod translate-into-foreign-memory (object (type render-texture-type) pointer)
-  (with-foreign-slots ((id texture depth depth-texture) pointer (:struct %render-texture))
-                      (setf id (nth 0 object))
-                      (setf texture (nth 1 object))
-                      (setf depth (nth 2 object))
-                      (setf depth-texture (nth 3 object))))
+  (with-foreign-slots ((id  depth-texture) pointer (:struct %render-texture))
+                      (convert-into-foreign-memory (reander-texture-texture object) '(:struct %texture) (foreign-slot-pointer pointer '(:struct %render-texture) 'texture))
+                      (convert-into-foreign-memory (reander-texture-depth object) '(:struct %texture) (foreign-slot-pointer pointer '(:struct %render-texture) 'depth))
+                      (setf id (render-texture-id object))
+                      (setf depth-texture (render-texture-depth-texture object))))
 
 (defmethod translate-from-foreign (pointer (type render-texture-type))
   (with-foreign-slots ((id texture depth depth-texture) pointer (:struct %render-texture))
-                      (list id texture depth depth-texture)))
+                      (let* ((tid (foreign-slot-value texture '(:struct %texture) 'id))
+                             (twidth (foreign-slot-value texture '(:struct %texture) 'width))
+                             (theight (foreign-slot-value texture '(:struct %texture) 'height))
+                             (tmipmaps (foreign-slot-value texture '(:struct %texture) 'mipmaps))
+                             (tformat (foreign-slot-value texture '(:struct %texture) 'format))
+                             (did (foreign-slot-value depth '(:struct %texture) 'id))
+                             (dwidth (foreign-slot-value depth '(:struct %texture) 'width))
+                             (dheight (foreign-slot-value depth '(:struct %texture) 'height))
+                             (dmipmaps (foreign-slot-value depth '(:struct %texture) 'mipmaps))
+                             (dformat (foreign-slot-value depth '(:struct %texture) 'format)))
+                        (make-render-texture :id id
+                                             :texture (make-texture :id tid :width twidth :height theight :mipmaps tmipmaps :format tformat)
+                                             :depth (make-texture :id did :width dwidth :height dheight :mipmaps dmipmaps :format dformat)
+                                             :depth-texture depth-texture))))
 ;;
 ;;// N-Patch layout info
 ;;typedef struct NPatchInfo {
@@ -469,18 +511,25 @@
  (bottom :int)
  (type :int))
 
+(defstruct patch-info
+ rec left top right bottom type)
+
 (defmethod translate-into-foreign-memory (object (type patch-info-type) pointer)
-  (with-foreign-slots ((source-rec left top right bottom type) pointer (:struct %patch-info))
-                      (setf source-rec (nth 0 object))
-                      (setf left (nth 1 object))
-                      (setf top (nth 2 object))
-                      (setf right (nth 3 object))
-                      (setf bottom (nth 4 object))
-                      (setf type (nth 5 object))))
+  (with-foreign-slots ((left top right bottom type) pointer (:struct %patch-info))
+                      (convert-into-foreign-memory (patch-info-rec object) '(:struct %rectangle) (foreign-slot-pointer pointer '(:struct %patch-info) 'source-rec))
+                      (setf left (patch-info-left object))
+                      (setf top (patch-info-top object))
+                      (setf right (patch-info-right object))
+                      (setf bottom (patch-info-bottom object))
+                      (setf type (patch-info-type object))))
 
 (defmethod translate-from-foreign (pointer (type patch-info-type))
   (with-foreign-slots ((source-rec left top right bottom type) pointer (:struct %patch-info))
-                      (list source-rec left top right bottom type)))
+   (let ((rx (foreign-slot-value source-rec '(:struct %rectangle) 'x))
+         (ry (foreign-slot-value source-rec '(:struct %rectangle) 'y))
+         (rwidth (foreign-slot-value source-rec '(:struct %rectangle) 'width))
+         (rheight (foreign-slot-value source-rec '(:struct %rectangle) 'height)))
+     (make-patch-info :rec (make-rectangle :x rx :y ry :width rwidth :height :rheight) :left left :top top :right right :bottom bottom :type type))))
 
 ;;// Font character info
 ;;typedef struct CharInfo {
@@ -498,17 +547,29 @@
  (advance-x :int)
  (image (:struct %image)))
 
+(defstruct char-info
+ value offset-x offset-y advance-x image)
+
 (defmethod translate-into-foreign-memory (object (type char-info-type) pointer)
-  (with-foreign-slots ((value offset-x offset-y advance-x image) pointer (:struct %char-info))
-                      (setf value (nth 0 object))
-                      (setf offset-x (nth 1 object))
-                      (setf offset-y (nth 2 object))
-                      (setf advance-x (nth 3 object))
-                      (setf image (nth 4 object))))
+  (with-foreign-slots ((value offset-x offset-y advance-x) pointer (:struct %char-info))
+                      (convert-into-foreign-memory (char-info-image object) '(:struct %image) (foreign-slot-pointer pointer '(:struct %char-info) 'image))
+                      (setf value (char-info-value object))
+                      (setf offset-x (char-info-offset-x object))
+                      (setf offset-y (char-info-offset-y object))
+                      (setf advance-x (char-info-advance-x object))))
 
 (defmethod translate-from-foreign (pointer (type char-info-type))
   (with-foreign-slots ((value offset-x offset-y advance-x image) pointer (:struct %char-info))
-                      (list value offset-x offset-y advance-x image)))
+   (let ((image-data (foreign-slot-value image '(:struct %image) 'data))
+         (image-width (foreign-slot-value image '(:struct %image) 'width))
+         (image-height (foreign-slot-value image '(:struct %image) 'height))
+         (image-maps (foreign-slot-value image '(:struct %image) 'maps))
+         (image-ft (foreign-slot-value image '(:struct %image) 'ft)))
+     (make-char-info :value value
+                     :offset-x offset-x
+                     :offset-y offset-y
+                     :advance-x advance-x
+                     :image (make-image :data image-data :width image-width :height image-height :maps image-maps :ft image-ft)))))
  
 ;;
 ;;// Font type, includes texture and charSet array data
@@ -529,18 +590,29 @@
  (recs :pointer)
  (chars (:pointer (:struct %char-info))))
 
+(defstruct font
+  base-size chars-count texture recs chars)
+
 (defmethod translate-into-foreign-memory (object (type font-type) pointer)
-  (with-foreign-slots ((base-size chars-count texture recs chars) pointer (:struct %font))
-                      
-                      (setf base-size (nth 0 object))
-                      (setf chars-count (nth 1 object))
-					  (setf texture (nth 2 object))
-					  (setf recs (nth 3 object))
-                      (setf chars (nth 4 object))))
+  (with-foreign-slots ((base-size chars-count recs chars) pointer (:struct %font))
+                      (convert-into-foreign-memory (font-texture object) '(:struct %texture) (foreign-slot-pointer pointer '(:struct %font) 'texture))
+                      (setf base-size (font-base-size object))
+                      (setf chars-count (font-chars-count object))
+                      (setf recs (font-recs object))
+                      (setf chars (font-chars object))))
 
 (defmethod translate-from-foreign (pointer (type font-type))
   (with-foreign-slots ((base-size chars-count texture recs chars) pointer (:struct %font))
-                      (list base-size chars-count texture recs chars)))
+                      (let ((tid (foreign-slot-value texture '(:struct %texture) 'id))
+                            (twidth (foreign-slot-value texture '(:struct %texture) 'width))
+                            (theight (foreign-slot-value texture '(:struct %texture) 'height))
+                            (tmipmaps (foreign-slot-value texture '(:struct %texture) 'mipmaps))
+                            (tformat (foreign-slot-value texture '(:struct %texture) 'format)))
+                        (make-font :base-size base-size
+                                   :chars-count chars-count
+                                   :texture (make-texture :id tid :width twidth :height theight :mipmaps tmipmaps :format tformat)
+                                   :recs recs
+                                   :chars chars))))
 
 ;;// Camera type, defines a camera position/orientation in 3d space
 ;;typedef struct Camera3D {
@@ -560,17 +632,33 @@
  (fovy :float)
  (type :int))
 
+(defstruct camera3d
+  position target up fovy type)
+
 (defmethod translate-into-foreign-memory (object (type camera3d-type) pointer)
-  (with-foreign-slots ((position target up fovy type) pointer (:struct %camera3d))
-                      (setf position (nth 0 object))
-                      (setf target (nth 1 object))
-                      (setf up (nth 2 object))
-                      (setf fovy (nth 3 object))
-                      (setf type (nth 4 object))))
+  (with-foreign-slots ((fovy type) pointer (:struct %camera3d))
+                      (convert-into-foreign-memory (camera3d-position object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'position))
+                      (convert-into-foreign-memory (camera3d-target object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'target))
+                      (convert-into-foreign-memory (camera3d-up object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'up))
+                      (setf fovy (camera3d-fovy object)
+                            type (camera3d-type object))))
 
 (defmethod translate-from-foreign (pointer (type camera3d-type))
   (with-foreign-slots ((position target up fovy type) pointer (:struct %camera3d))
-                      (list position target up fovy type)))
+                      (let ((px (foreign-slot-value position '(:struct %vector3) 'x))
+                            (py (foreign-slot-value position '(:struct %vector3) 'y))
+                            (pz (foreign-slot-value position '(:struct %vector3) 'z))
+                            (tx (foreign-slot-value target '(:struct %vector3) 'x))
+                            (ty (foreign-slot-value target '(:struct %vector3) 'y))
+                            (tz (foreign-slot-value target '(:struct %vector3) 'z))
+                            (ux (foreign-slot-value up '(:struct %vector3) 'x))
+                            (uy (foreign-slot-value up '(:struct %vector3) 'y))
+                            (uz (foreign-slot-value up '(:struct %vector3) 'z)))
+                        (make-camera3d :position (make-vector3 :x px :y py :z pz)
+                                       :target (make-vector3 :x tx :y ty :z tz)
+                                       :up (make-vector3 :x ux :y uy :z uz)
+                                       :fovy fovy
+                                       :type type))))
 
 ;;// Camera2D type, defines a 2d camera
 ;;typedef struct Camera2D {
@@ -586,16 +674,26 @@
  (rotation :float)
  (zoom :float))
 
+(defstruct camera2d
+ offset target rotation zoom)
+
 (defmethod translate-into-foreign-memory (object (type camera2d-type) pointer)
-  (with-foreign-slots ((offset target rotation zoom) pointer (:struct %camera2d))
-                      (setf offset (nth 0 object))
-                      (setf target (nth 1 object))
-                      (setf rotation (nth 2 object))
-                      (setf zoom (nth 3 object))))
+  (with-foreign-slots ((rotation zoom) pointer (:struct %camera2d))
+                      (convert-into-foreign-memory (camera2d-offset object) '(:struct %vector2) (foreign-slot-pointer pointer '(:struct %camera2d) 'offset))
+                      (convert-into-foreign-memory (camera2d-target object) '(:struct %vector2) (foreign-slot-pointer pointer '(:struct %camera2d) 'target))
+                      (setf rotation (camera2d-rotation object))
+                      (setf zoom (camera2d-zoom object))))
 
 (defmethod translate-from-foreign (pointer (type camera2d-type))
   (with-foreign-slots ((offset target rotation zoom) pointer (:struct %camera2d))
-                      (list offset target rotation zoom)))
+                      (let ((ox (foreign-slot-value offset '(:struct %vector2) 'x))
+                            (oy (foreign-slot-value offset '(:struct %vector2) 'y))
+                            (tx (foreign-slot-value target '(:struct %vector2) 'x))
+                            (ty (foreign-slot-value target '(:struct %vector2) 'y)))
+                        (make-camera2d :offset (make-vector2 :x ox :y oy)
+                                       :target (make-vector2 :x tx :y ty)
+                                       :rotation rotation
+                                       :zoom zoom))))
 
 ;;// Vertex data definning a mesh
 ;;// NOTE: Data stored in CPU memory (and GPU)
@@ -890,6 +988,7 @@
   (sample-size :unsigned-int)
   (channels :unsigned-int)
   (buffer :pointer))
+
 (defmethod translate-into-foreign-memory (object (type audio-stream-type) pointer)
  (with-foreign-slots ((sample-rate sample-size channels buffer) pointer (:struct %audio-stream))
                       (setf sample-rate (nth 0 object))
@@ -937,6 +1036,7 @@
  (sample-count :unsigned-int)
  (loop-count :unsigned-int)
  (stream (:struct %audio-stream)))
+
 (defmethod translate-into-foreign-memory (object (type music-type) pointer)
  (with-foreign-slots ((ctx-type ctx-data sample-count loop-count stream) pointer (:struct %music))
                       (setf ctx-type (nth 0 object))
@@ -1020,7 +1120,7 @@
 ;;    LOG_FATAL,
 ;;    LOG_NONE            // Disable logging
 ;;} TraceLogType;
-;;
+
 ;;// Keyboard keys
 ;;typedef enum {
 ;;    // Alphanumeric keys
@@ -1067,7 +1167,50 @@
 ;;    KEY_X               = 88,
 ;;    KEY_Y               = 89,
 ;;    KEY_Z               = 90,
-;;
+(define-constant +key-apostrophe+ 39)
+(define-constant +key-comma+ 44)
+(define-constant +key-minus+ 45)
+(define-constant +key-period+ 46)
+(define-constant +key-slash+ 47)
+(define-constant +key-zero+ 48)
+(define-constant +key-one+ 49)
+(define-constant +key-two+ 50)
+(define-constant +key-three+ 51)
+(define-constant +key-four+ 52)
+(define-constant +key-five+ 53)
+(define-constant +key-six+ 54)
+(define-constant +key-seven+ 55)
+(define-constant +key-eight+ 56)
+(define-constant +key-nine+ 57)
+(define-constant +key-semicolon+ 59)
+(define-constant +key-equal+ 61)
+(define-constant +key-a+ 65)
+(define-constant +key-b+ 66)
+(define-constant +key-c+ 67)
+(define-constant +key-d+ 68)
+(define-constant +key-e+ 69)
+(define-constant +key-f+ 70)
+(define-constant +key-g+ 71)
+(define-constant +key-h+ 72)
+(define-constant +key-i+ 73)
+(define-constant +key-j+ 74)
+(define-constant +key-k+ 75)
+(define-constant +key-l+ 76)
+(define-constant +key-m+ 77)
+(define-constant +key-n+ 78)
+(define-constant +key-o+ 79)
+(define-constant +key-p+ 80)
+(define-constant +key-q+ 81)
+(define-constant +key-r+ 82)
+(define-constant +key-s+ 83)
+(define-constant +key-t+ 84)
+(define-constant +key-u+ 85)
+(define-constant +key-v+ 86)
+(define-constant +key-w+ 87)
+(define-constant +key-x+ 88)
+(define-constant +key-y+ 89)
+(define-constant +key-z+ 90)
+
 ;;    // Function keys
 ;;    KEY_SPACE           = 32,
 ;;    KEY_ESCAPE          = 256,
@@ -1114,7 +1257,52 @@
 ;;    KEY_BACKSLASH       = 92,
 ;;    KEY_RIGHT_BRACKET   = 93,
 ;;    KEY_GRAVE           = 96,
-;;
+(define-constant +key-space+ 32)
+(define-constant +key-escape+ 256)
+(define-constant +key-enter+ 257)
+(define-constant +key-tab+ 258)
+(define-constant +key-backspace+ 259)
+(define-constant +key-insert+ 260)
+(define-constant +key-delete+ 261)
+(define-constant +key-right+ 262)
+(define-constant +key-left+ 263)
+(define-constant +key-down+ 264)
+(define-constant +key-up+ 265)
+(define-constant +key-page-up+ 266)
+(define-constant +key-page-down+ 267)
+(define-constant +key-home+ 268)
+(define-constant +key-end+ 269)
+(define-constant +key-caps-lock+ 280)
+(define-constant +key-scroll-lock+ 281)
+(define-constant +key-num-lock+ 282)
+(define-constant +key-print-screen+ 283)
+(define-constant +key-pause+ 284)
+(define-constant +key-f1+ 290)
+(define-constant +key-f2+ 291)
+(define-constant +key-f3+ 292)
+(define-constant +key-f4+ 293)
+(define-constant +key-f5+ 294)
+(define-constant +key-f6+ 295)
+(define-constant +key-f7+ 296)
+(define-constant +key-f8+ 297)
+(define-constant +key-f9+ 298)
+(define-constant +key-f10+ 299)
+(define-constant +key-f11+ 300)
+(define-constant +key-f12+ 301)
+(define-constant +key-left-shift+ 340)
+(define-constant +key-left-control+ 341)
+(define-constant +key-left-alt+ 342)
+(define-constant +key-left-super+ 343)
+(define-constant +key-right-shift+ 344)
+(define-constant +key-right-control+ 345)
+(define-constant +key-right-alt+ 346)
+(define-constant +key-right-super+ 347)
+(define-constant +key-kb-menu+ 348)
+(define-constant +key-left-bracket+ 91)
+(define-constant +key-backslash+ 92)
+(define-constant +key-right-bracket+ 93)
+(define-constant +key-grave+ 96)
+
 ;;    // Keypad keys
 ;;    KEY_KP_0            = 320,
 ;;    KEY_KP_1            = 321,
@@ -1134,7 +1322,24 @@
 ;;    KEY_KP_ENTER        = 335,
 ;;    KEY_KP_EQUAL        = 336
 ;;} KeyboardKey;
-;;
+(define-constant +key-kp-0+ 320)
+(define-constant +key-kp-1+ 321)
+(define-constant +key-kp-2+ 322)
+(define-constant +key-kp-3+ 323)
+(define-constant +key-kp-4+ 324)
+(define-constant +key-kp-5+ 325)
+(define-constant +key-kp-6+ 326)
+(define-constant +key-kp-7+ 327)
+(define-constant +key-kp-8+ 328)
+(define-constant +key-kp-9+ 329)
+(define-constant +key-kp-decimal+ 330)
+(define-constant +key-kp-divide+ 331)
+(define-constant +key-kp-multiply+ 332)
+(define-constant +key-kp-subtract+ 333)
+(define-constant +key-kp-add+ 334)
+(define-constant +key-kp-enter+ 335)
+(define-constant +key-kp-equal+ 336)
+
 ;;// Android buttons
 ;;typedef enum {
 ;;    KEY_BACK            = 4,
@@ -1149,7 +1354,10 @@
 ;;    MOUSE_RIGHT_BUTTON  = 1,
 ;;    MOUSE_MIDDLE_BUTTON = 2
 ;;} MouseButton;
-;;
+(define-constant +mouse-left-button+ 0)
+(define-constant +mouse-right-button+ 1)
+(define-constant +mouse-middle-button+ 2)
+
 ;;// Gamepad number
 ;;typedef enum {
 ;;    GAMEPAD_PLAYER1     = 0,
@@ -1368,13 +1576,20 @@
 ;;    CAMERA_FIRST_PERSON,
 ;;    CAMERA_THIRD_PERSON
 ;;} CameraMode;
-;;
+(define-constant +camera-custom+ 0)
+(define-constant +camera-free+ 1)
+(define-constant +camera-orbital+ 2)
+(define-constant +camera-first_person+ 3)
+(define-constant +camera-third_person+ 4)
+
 ;;// Camera projection modes
 ;;typedef enum {
 ;;    CAMERA_PERSPECTIVE = 0,
 ;;    CAMERA_ORTHOGRAPHIC
 ;;} CameraType;
-;;
+(define-constant +camera-perspective+ 0)
+(define-constant +camera-orthographic+ 1)
+
 ;;// Type of n-patch
 ;;typedef enum {
 ;;    NPT_9PATCH = 0,         // Npatch defined by 3x3 tiles
@@ -1863,22 +2078,22 @@
 ;;
 ;;// Input-related functions: keyboard
 ;;RLAPI bool IsKeyPressed(int key);                             // Detect if a key has been pressed once
-(defcfun "IsKeyPressed" :boolean
+(defcfun "IsKeyPressed" :bool
  "Detect if a key has been pressed once"
  (key :int))
 
 ;;RLAPI bool IsKeyDown(int key);                                // Detect if a key is being pressed
-(defcfun "IsKeyDown" :boolean
+(defcfun "IsKeyDown" :bool
  "Detect if a key is being pressed"
  (key :int))
 
 ;;RLAPI bool IsKeyReleased(int key);                            // Detect if a key has been released once
-(defcfun "IsKeyReleased" :boolean
+(defcfun "IsKeyReleased" :bool
  "Detect if a key has been released once"
  (key :int))
 
 ;;RLAPI bool IsKeyUp(int key);                                  // Detect if a key is NOT being pressed
-(defcfun "IsKeyUp" :boolean
+(defcfun "IsKeyUp" :bool
  "Detect if a key is NOT being pressed"
  (key :int))
  
