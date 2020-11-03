@@ -391,10 +391,14 @@
     #:export-image-as-code
     #:get-image-data
     #:get-image-data-normalized
-    #:get-image-color
-    #:get-image-gradient-v
-    #:get-image-gradient-h
-    #:get-image-cellular
+    #:gen-image-color
+    #:gen-image-gradient-v
+    #:gen-image-gradient-h
+    #:gen-image-gradient-radial
+    #:gen-image-checked
+    #:gen-image-white-noise
+    #:gen-image-perlin-noise
+    #:gen-image-cellular
     #:image-copy
     #:image-from-image
     #:image-text
@@ -423,6 +427,14 @@
     #:image-color-replace
     #:image-extract-palette
     #:get-image-alpha-border
+    #:load-texture
+    #:load-texture-from-image
+    #:load-texture-cubemap
+    #:load-render-texture
+    #:unload-texture
+    #:unload-render-texture
+    #:update-texture
+    #:get-texture-data
     #:get-screen-data
     #:gen-texture-mipmaps
     #:set-texture-filter
@@ -442,6 +454,12 @@
     #:unload-font
     #:draw-fps
     #:draw-text
+    #:draw-text-ex
+    #:draw-text-rec
+    #:draw-text-rec-ex
+    #:draw-text-codepoint
+    #:measure-text
+    #:measure-text-ex
     #:get-glyph-index
     #:text-copy
     #:text-is-equal
@@ -459,6 +477,10 @@
     #:text-to-pascal
     #:text-to-integer
     #:text-to-utf8
+    #:get-codepoints
+    #:get-codepoints-count
+    #:get-next-codepoint
+    #:codepoint-to-utf8
     #:draw-line-3d
     #:draw-circle-3d
     #:draw-cube
@@ -481,6 +503,15 @@
     #:load-meshes
     #:export-mesh
     #:unload-mesh
+    #:load-materials
+    #:load-material-defaults
+    #:unload-material
+    #:set-material-texture
+    #:set-model-mesh-material
+    #:load-model-animations
+    #:update-model-animation
+    #:unload-model-animation
+    #:is-model-animation-valid
     #:gen-mesh-plane
     #:gen-mesh-cube
     #:gen-mesh-sphere
