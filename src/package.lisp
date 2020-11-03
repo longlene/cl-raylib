@@ -630,4 +630,11 @@
     #:with-window
     #:with-drawing
     #:with-mode-2d
-    #:with-mode-3d))
+    #:with-mode-3d
+    #:with-texture-mode
+    #:with-shader-mode
+    #:with-blend-mode
+    #:with-vr-simulator
+    #:with-vr-drawing
+    #:with-audio-device
+    #:with-audio-stream))

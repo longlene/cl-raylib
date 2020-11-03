@@ -821,7 +821,7 @@
 (defcstruct (%transform :class transform-type)
  "Transformation properties"
  (translation (:struct %vector3))
- (rotation (:struct %quaternion))
+ (rotation (:struct %vector4))
  (scale (:struct %vector3)))
 
 (defmethod translate-into-foreign-memory (object (type transform-type) pointer)
@@ -842,7 +842,7 @@
 ;;} BoneInfo;
 (defcstruct (%bone-info :class bone-info-type)
  "Bone information"
- (name :string :count 32)
+ (name :string)
  (parent :int))
 
 (defmethod translate-into-foreign-memory (object (type bone-info-type) pointer)
@@ -3335,7 +3335,7 @@
  (text :string))
  
 ;;RLAPI char *TextToUtf8(int *codepoints, int length);                  // Encode text codepoint into utf8 text (memory must be freed!)
-(defcfun "TextToUtf8" (:pointer :char)
+(defcfun ("TextToUtf8" text-to-utf8) (:pointer :char)
  "Encode text codepoint into utf8 text (memory must be freed!)"
  (codepoints (:pointer :int))
  (length :int))
@@ -3346,6 +3346,11 @@
  "Get all codepoints in a string, codepoints count returned by parameters"
  (text :string)
  (count (:pointer :int)))
+
+;; example 
+;; (let ((ptr (cffi:foreign-alloc :int)))
+;;   (raylib:get-codepoints "hello" ptr)
+;;   (cffi:mem-aref ptr) => 5
 
 ;;RLAPI int GetCodepointsCount(const char *text);                       // Get total number of characters (codepoints) in a UTF8 encoded string
 (defcfun "GetCodepointsCount" :int
@@ -3359,7 +3364,7 @@
  (bytes-processed (:pointer :int)))
 
 ;;RLAPI const char *CodepointToUtf8(int codepoint, int *byteLength);    // Encode codepoint into utf8 text (char array length returned as parameter)
-(defcfun "CodepointToUtf8" :char
+(defcfun ("CodepointToUtf8" codepoint-to-utf8) :string
  "Encode codepoint into utf8 text (char array length returned as parameter)"
  (codepoint :int)
  (byte-length (:pointer :int)))
@@ -3563,7 +3568,7 @@
 ;;
 ;;// Model animations loading/unloading functions
 ;;RLAPI ModelAnimation *LoadModelAnimations(const char *fileName, int *animsCount);                       // Load model animations from file
-(defcfun "LoadModelAnimations" (:struct %model-animations)
+(defcfun "LoadModelAnimations" (:struct %model-animation)
  "Load model animations from file"
  (file-name :string)
  (animation-count (:pointer :int)))
