@@ -818,12 +818,42 @@
 ;;    Quaternion rotation;    // Rotation
 ;;    Vector3 scale;          // Scale
 ;;} Transform;
+(defcstruct (%transform :class transform-type)
+ "Transformation properties"
+ (translation (:struct %vector3))
+ (rotation (:struct %quaternion))
+ (scale (:struct %vector3)))
+
+(defmethod translate-into-foreign-memory (object (type transform-type) pointer)
+ (with-foreign-slots ((translation rotation scale) pointer (:struct %transform))
+                      (setf translation (nth 0 object))
+                      (setf rotation (nth 1 object))
+                      (setf scale (nth 2 object))))
+
+(defmethod translate-from-foreign (pointer (type transform-type))
+ (with-foreign-slots ((translation rotation scale) pointer (:struct %transform))
+                     (list translation rotation scale)))
+
 ;;
 ;;// Bone information
 ;;typedef struct BoneInfo {
 ;;    char name[32];          // Bone name
 ;;    int parent;             // Bone parent
 ;;} BoneInfo;
+(defcstruct (%bone-info :class bone-info-type)
+ "Bone information"
+ (name :string :count 32)
+ (parent :int))
+
+(defmethod translate-into-foreign-memory (object (type bone-info-type) pointer)
+ (with-foreign-slots ((name parent) pointer (:struct %bone-info))
+                      (setf name (nth 0 object))
+                      (setf parent (nth 1 object))))
+
+(defmethod translate-from-foreign (pointer (type bone-info-type))
+ (with-foreign-slots ((name parent) pointer (:struct %bone-info))
+                     (list name parent)))
+
 ;;
 ;;// Model type
 ;;typedef struct Model {
@@ -845,17 +875,23 @@
  "Model type"
  (mesh (:struct %mesh))
  (transform (:struct %matrix))
- (material (:struct %material)))
+ (material (:struct %material))
+ (bone-count :int)
+ (bones (:struct %bone-info))
+ (bind-pose (:struct %transform)))
 
 (defmethod translate-into-foreign-memory (object (type model-type) pointer)
- (with-foreign-slots ((mesh transform material) pointer (:struct %model))
+ (with-foreign-slots ((mesh transform material bone-count bones bind-pose) pointer (:struct %model))
                       (setf mesh (nth 0 object))
                       (setf transform (nth 1 object))
-                      (setf material (nth 2 object))))
+                      (setf material (nth 2 object))
+                      (setf bone-count (nth 3 object))
+                      (setf bones (nth 4 object))
+                      (setf bind-pose (nth 5 object))))
 
 (defmethod translate-from-foreign (pointer (type model-type))
- (with-foreign-slots ((mesh transform material) pointer (:struct %model))
-                     (list mesh transform material)))
+ (with-foreign-slots ((mesh transform material bone-count bones bind-pose) pointer (:struct %model))
+                     (list mesh transform material bone-count bones bind-pose)))
 ;;
 ;;// Model animation
 ;;typedef struct ModelAnimation {
@@ -865,6 +901,24 @@
 ;;    int frameCount;         // Number of animation frames
 ;;    Transform **framePoses; // Poses array by frame
 ;;} ModelAnimation;
+(defcstruct (%model-animation :class model-animation-type)
+ "Model animation"
+ (bone-count :int)
+ (bones (:struct %bone-info))
+ (frame-count :int)
+ (frame-poses (:struct %transform)))
+
+(defmethod translate-into-foreign-memory (object (type model-animation-type) pointer)
+ (with-foreign-slots ((bone-count bones frame-count frame-poses) pointer (:struct %model-animation))
+                      (setf bone-count (nth 0 object))
+                      (setf bones (nth 1 object))
+                      (setf frame-count (nth 0 object))
+                      (setf frame-poses (nth 1 object))))
+
+(defmethod translate-from-foreign (pointer (type model-animation-type))
+ (with-foreign-slots ((bone-count bones frame-count frame-poses) pointer (:struct %model-animation))
+                     (list bone-count bones frame-count frame-poses)))
+
 ;;
 ;;// Ray type (useful for raycast)
 ;;typedef struct Ray {
@@ -883,7 +937,8 @@
 
 (defmethod translate-from-foreign (pointer (type ray-type))
  (with-foreign-slots ((position direction) pointer (:struct %ray))
- (list position direction)))
+                      (list position direction)))
+
 ;;
 ;;// Raycast hit information
 ;;typedef struct RayHitInfo {
