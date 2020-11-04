@@ -3586,7 +3586,7 @@
  (anim (:struct %model-animation)))
 
 ;;RLAPI bool IsModelAnimationValid(Model model, ModelAnimation anim);                                     // Check model animation skeleton match
-(defcfun "IsModelAnimationValid" :boolean
+(defcfun "IsModelAnimationValid" :bool
  "Check model animation skeleton match"
  (model (:struct %model))
  (anim (:struct %model-animation)))
