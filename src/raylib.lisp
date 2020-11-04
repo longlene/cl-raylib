@@ -818,12 +818,42 @@
 ;;    Quaternion rotation;    // Rotation
 ;;    Vector3 scale;          // Scale
 ;;} Transform;
+(defcstruct (%transform :class transform-type)
+ "Transformation properties"
+ (translation (:struct %vector3))
+ (rotation (:struct %vector4))
+ (scale (:struct %vector3)))
+
+(defmethod translate-into-foreign-memory (object (type transform-type) pointer)
+ (with-foreign-slots ((translation rotation scale) pointer (:struct %transform))
+                      (setf translation (nth 0 object))
+                      (setf rotation (nth 1 object))
+                      (setf scale (nth 2 object))))
+
+(defmethod translate-from-foreign (pointer (type transform-type))
+ (with-foreign-slots ((translation rotation scale) pointer (:struct %transform))
+                     (list translation rotation scale)))
+
 ;;
 ;;// Bone information
 ;;typedef struct BoneInfo {
 ;;    char name[32];          // Bone name
 ;;    int parent;             // Bone parent
 ;;} BoneInfo;
+(defcstruct (%bone-info :class bone-info-type)
+ "Bone information"
+ (name :string)
+ (parent :int))
+
+(defmethod translate-into-foreign-memory (object (type bone-info-type) pointer)
+ (with-foreign-slots ((name parent) pointer (:struct %bone-info))
+                      (setf name (nth 0 object))
+                      (setf parent (nth 1 object))))
+
+(defmethod translate-from-foreign (pointer (type bone-info-type))
+ (with-foreign-slots ((name parent) pointer (:struct %bone-info))
+                     (list name parent)))
+
 ;;
 ;;// Model type
 ;;typedef struct Model {
@@ -845,17 +875,23 @@
  "Model type"
  (mesh (:struct %mesh))
  (transform (:struct %matrix))
- (material (:struct %material)))
+ (material (:struct %material))
+ (bone-count :int)
+ (bones (:struct %bone-info))
+ (bind-pose (:struct %transform)))
 
 (defmethod translate-into-foreign-memory (object (type model-type) pointer)
- (with-foreign-slots ((mesh transform material) pointer (:struct %model))
+ (with-foreign-slots ((mesh transform material bone-count bones bind-pose) pointer (:struct %model))
                       (setf mesh (nth 0 object))
                       (setf transform (nth 1 object))
-                      (setf material (nth 2 object))))
+                      (setf material (nth 2 object))
+                      (setf bone-count (nth 3 object))
+                      (setf bones (nth 4 object))
+                      (setf bind-pose (nth 5 object))))
 
 (defmethod translate-from-foreign (pointer (type model-type))
- (with-foreign-slots ((mesh transform material) pointer (:struct %model))
-                     (list mesh transform material)))
+ (with-foreign-slots ((mesh transform material bone-count bones bind-pose) pointer (:struct %model))
+                     (list mesh transform material bone-count bones bind-pose)))
 ;;
 ;;// Model animation
 ;;typedef struct ModelAnimation {
@@ -865,6 +901,24 @@
 ;;    int frameCount;         // Number of animation frames
 ;;    Transform **framePoses; // Poses array by frame
 ;;} ModelAnimation;
+(defcstruct (%model-animation :class model-animation-type)
+ "Model animation"
+ (bone-count :int)
+ (bones (:struct %bone-info))
+ (frame-count :int)
+ (frame-poses (:struct %transform)))
+
+(defmethod translate-into-foreign-memory (object (type model-animation-type) pointer)
+ (with-foreign-slots ((bone-count bones frame-count frame-poses) pointer (:struct %model-animation))
+                      (setf bone-count (nth 0 object))
+                      (setf bones (nth 1 object))
+                      (setf frame-count (nth 0 object))
+                      (setf frame-poses (nth 1 object))))
+
+(defmethod translate-from-foreign (pointer (type model-animation-type))
+ (with-foreign-slots ((bone-count bones frame-count frame-poses) pointer (:struct %model-animation))
+                     (list bone-count bones frame-count frame-poses)))
+
 ;;
 ;;// Ray type (useful for raycast)
 ;;typedef struct Ray {
@@ -883,7 +937,8 @@
 
 (defmethod translate-from-foreign (pointer (type ray-type))
  (with-foreign-slots ((position direction) pointer (:struct %ray))
- (list position direction)))
+                      (list position direction)))
+
 ;;
 ;;// Raycast hit information
 ;;typedef struct RayHitInfo {
@@ -2711,9 +2766,40 @@
  (right (:struct %color)))
 
 ;;RLAPI Image GenImageGradientRadial(int width, int height, float density, Color inner, Color outer);      // Generate image: radial gradient
+(defcfun "GenImageGradientRadial" (:struct %image)
+ "Generate image: radial gradient"
+ (width :int)
+ (height :int)
+ (density :float)
+ (inner (:struct %color))
+ (outer (:struct %color)))         
+   
 ;;RLAPI Image GenImageChecked(int width, int height, int checksX, int checksY, Color col1, Color col2);    // Generate image: checked
+(defcfun "GenImageChecked" (:struct %image)
+ "Generate image: checked"
+ (width :int)
+ (height :int)
+ (checks-x :int)
+ (checks-y :int)
+ (col1 (:struct %color))
+ (col2 (:struct %color)))
+
 ;;RLAPI Image GenImageWhiteNoise(int width, int height, float factor);                                     // Generate image: white noise
+(defcfun "GenImageWhiteNoise" (:struct %image)
+ "Generate image: white noise"
+ (width :int)
+ (height :int)
+ (factor :float))
+
 ;;RLAPI Image GenImagePerlinNoise(int width, int height, int offsetX, int offsetY, float scale);           // Generate image: perlin noise
+(defcfun "GenImagePerlinNoise" (:struct %image)
+ "Generate image: perlin noise"
+ (width :int)
+ (height :int)
+ (offset-x :int)
+ (offset-y :int)
+ (scale :float))
+
 ;;RLAPI Image GenImageCellular(int width, int height, int tileSize);                                       // Generate image: cellular algorithm. Bigger tileSize means bigger cells
 (defcfun "GenImageCellular" (:struct %image)
  "Generate image: cellular algorithm. Bigger tileSize means bigger cells"
@@ -2907,13 +2993,48 @@
 ;;// Texture loading functions
 ;;// NOTE: These functions require GPU access
 ;;RLAPI Texture2D LoadTexture(const char *fileName);                                                       // Load texture from file into GPU memory (VRAM)
+(defcfun "LoadTexture" (:struct %texture)
+ "Load texture from file into GPU memory (VRAM)"
+ (file-name :string))
+
 ;;RLAPI Texture2D LoadTextureFromImage(Image image);                                                       // Load texture from image data
+(defcfun "LoadTextureFromImage" (:struct %texture)
+ "Load texture from image data"
+ (image (:struct %image)))
+
 ;;RLAPI TextureCubemap LoadTextureCubemap(Image image, int layoutType);                                    // Load cubemap from image, multiple image cubemap layouts supported
+(defcfun "LoadTextureCubemap" texture-cubemap
+ "Load cubemap from image, multiple image cubemap layouts supported"
+ (image (:struct %image))
+ (layout-type :int))
+
 ;;RLAPI RenderTexture2D LoadRenderTexture(int width, int height);                                          // Load texture for rendering (framebuffer)
+(defcfun "LoadRenderTexture" (:struct %render-texture)
+ "Load texture for rendering (framebuffer)"
+ (width :int)
+ (height :int))
+
 ;;RLAPI void UnloadTexture(Texture2D texture);                                                             // Unload texture from GPU memory (VRAM)
+(defcfun "UnloadTexture" :void
+ "Unload texture from GPU memory (VRAM)"
+ (texture (:struct %texture)))
+
 ;;RLAPI void UnloadRenderTexture(RenderTexture2D target);                                                  // Unload render texture from GPU memory (VRAM)
+(defcfun "UnloadRenderTexture" :void
+ "Unload render texture from GPU memory (VRAM)"
+ (target (:struct %render-texture)))
+
 ;;RLAPI void UpdateTexture(Texture2D texture, const void *pixels);                                         // Update GPU texture with new data
+(defcfun "UpdateTexture" :void
+ "Update GPU texture with new data"
+ (texture (:struct %texture))
+ (pixels :pointer))
+
 ;;RLAPI Image GetTextureData(Texture2D texture);                                                           // Get pixel data from GPU texture and return an Image
+(defcfun "GetTextureData" (:struct %image)
+ "Get pixel data from GPU texture and return an Image"
+ (texture (:struct %texture)))
+
 ;;RLAPI Image GetScreenData(void);                                                                         // Get pixel data from screen buffer and return an Image (screenshot)
 (defcfun "GetScreenData" (:struct %image)
  "Get pixel data from screen buffer and return an Image (screenshot)")
@@ -3055,14 +3176,66 @@
  (color (:struct %color)))
 
 ;;RLAPI void DrawTextEx(Font font, const char *text, Vector2 position, float fontSize, float spacing, Color tint);                // Draw text using font and additional parameters
+(defcfun "DrawTextEx" :void
+ "Draw text using font and additional parameters"
+ (font (:struct %font))
+ (text :string)
+ (position (:struct %vector2))
+ (font-size :float)
+ (spacing :float)
+ (tint (:struct %color)))
+
 ;;RLAPI void DrawTextRec(Font font, const char *text, Rectangle rec, float fontSize, float spacing, bool wordWrap, Color tint);   // Draw text using font inside rectangle limits
+(defcfun "DrawTextRec" :void
+ "Draw text using font inside rectangle limits"
+ (font (:struct %font))
+ (text :string)
+ (rec (:struct %rectangle))
+ (font-size :float)
+ (spacing :float)
+ (word-wrap :boolean)
+ (tint (:struct %color)))
+
 ;;RLAPI void DrawTextRecEx(Font font, const char *text, Rectangle rec, float fontSize, float spacing, bool wordWrap, Color tint,
 ;;                         int selectStart, int selectLength, Color selectTint, Color selectBackTint); // Draw text using font inside rectangle limits with support for text selection
+(defcfun "DrawTextRecEx" :void
+ "Draw text using font inside rectangle limits with support for text selection"
+ (font (:struct %font))
+ (text :string)
+ (rec (:struct %rectangle))
+ (font-size :float)
+ (spacing :float)
+ (word-wrap :boolean)
+ (tint (:struct %color))
+ (select-start :int)
+ (select-length :int)
+ (select-tint (:struct %color))
+ (select-back-tint (:struct %color)))
+
 ;;RLAPI void DrawTextCodepoint(Font font, int codepoint, Vector2 position, float scale, Color tint);   // Draw one character (codepoint)
+(defcfun "DrawTextCodepoint" :void
+ "Draw one character (codepoint)"
+ (font (:struct %font))
+ (codepoint :int)
+ (position (:struct %vector2))
+ (scale :float)
+ (tint (:struct %color)))
+
 ;;
 ;;// Text misc. functions
 ;;RLAPI int MeasureText(const char *text, int fontSize);                                      // Measure string width for default font
+(defcfun "MeasureText" :int
+  "Measure string width for default font"
+  (text :string)
+  (font-size :int))
+
 ;;RLAPI Vector2 MeasureTextEx(Font font, const char *text, float fontSize, float spacing);    // Measure string size for Font
+(defcfun "MeasureTextEx" (:struct %vector2)
+  (font (:struct %font))
+  (text :string)
+  (font-size :float)
+  (spacing :float))
+
 ;;RLAPI int GetGlyphIndex(Font font, int codepoint);                                          // Get index position for a unicode character on font
 (defcfun "GetGlyphIndex" :int
  "Get index position for a unicode character on font"
@@ -3162,16 +3335,40 @@
  (text :string))
  
 ;;RLAPI char *TextToUtf8(int *codepoints, int length);                  // Encode text codepoint into utf8 text (memory must be freed!)
-(defcfun "TextToUtf8" (:pointer :char)
+(defcfun ("TextToUtf8" text-to-utf8) (:pointer :char)
  "Encode text codepoint into utf8 text (memory must be freed!)"
  (codepoints (:pointer :int))
  (length :int))
 
 ;;// UTF8 text strings management functions
 ;;RLAPI int *GetCodepoints(const char *text, int *count);               // Get all codepoints in a string, codepoints count returned by parameters
+(defcfun "GetCodepoints" :int
+ "Get all codepoints in a string, codepoints count returned by parameters"
+ (text :string)
+ (count (:pointer :int)))
+
+;; example 
+;; (let ((ptr (cffi:foreign-alloc :int)))
+;;   (raylib:get-codepoints "hello" ptr)
+;;   (cffi:mem-aref ptr) => 5
+
 ;;RLAPI int GetCodepointsCount(const char *text);                       // Get total number of characters (codepoints) in a UTF8 encoded string
+(defcfun "GetCodepointsCount" :int
+ "Get total number of characters (codepoints) in a UTF8 encoded string"
+ (text :string))
+
 ;;RLAPI int GetNextCodepoint(const char *text, int *bytesProcessed);    // Returns next codepoint in a UTF8 encoded string; 0x3f('?') is returned on failure
+(defcfun "GetNextCodepoint" :int
+ "Returns next codepoint in a UTF8 encoded string; 0x3f('?') is returned on failure"
+ (text :string)
+ (bytes-processed (:pointer :int)))
+
 ;;RLAPI const char *CodepointToUtf8(int codepoint, int *byteLength);    // Encode codepoint into utf8 text (char array length returned as parameter)
+(defcfun ("CodepointToUtf8" codepoint-to-utf8) :string
+ "Encode codepoint into utf8 text (char array length returned as parameter)"
+ (codepoint :int)
+ (byte-length (:pointer :int)))
+
 ;;
 ;;//------------------------------------------------------------------------------------
 ;;// Basic 3d Shapes Drawing Functions (Module: models)
@@ -3340,16 +3537,60 @@
 
 ;;// Material loading/unloading functions
 ;;RLAPI Material *LoadMaterials(const char *fileName, int *materialCount);                                // Load materials from model file
+(defcfun "LoadMaterials" (:struct %material)
+ "Load materials from model file"
+ (file-name :string)
+ (material-count (:pointer :int)))
+
 ;;RLAPI Material LoadMaterialDefault(void);                                                               // Load default material (Supports: DIFFUSE, SPECULAR, NORMAL maps)
+(defcfun "LoadMaterialDefault" (:struct %material)
+ "Load default material (Supports: DIFFUSE, SPECULAR, NORMAL maps)")
+
 ;;RLAPI void UnloadMaterial(Material material);                                                           // Unload material from GPU memory (VRAM)
+(defcfun "UnloadMaterial" :void
+ "Unload material from GPU memory (VRAM)"
+ (material (:struct %material)))
+
 ;;RLAPI void SetMaterialTexture(Material *material, int mapType, Texture2D texture);                      // Set texture for a material map type (MAP_DIFFUSE, MAP_SPECULAR...)
+(defcfun "SetMaterialTexture" :void
+ "Set texture for a material map type (MAP_DIFFUSE, MAP_SPECULAR...)"
+ (material (:struct %material))
+ (map-type :int)
+ (texture (:struct %texture)))
+
 ;;RLAPI void SetModelMeshMaterial(Model *model, int meshId, int materialId);                              // Set material for a mesh
+(defcfun "SetModelMeshMaterial" :void
+ "Set material for a mesh"
+ (model (:struct %model))
+ (mesh-id :int)
+ (material-id :int))
+
 ;;
 ;;// Model animations loading/unloading functions
 ;;RLAPI ModelAnimation *LoadModelAnimations(const char *fileName, int *animsCount);                       // Load model animations from file
+(defcfun "LoadModelAnimations" (:struct %model-animation)
+ "Load model animations from file"
+ (file-name :string)
+ (animation-count (:pointer :int)))
+
 ;;RLAPI void UpdateModelAnimation(Model model, ModelAnimation anim, int frame);                           // Update model animation pose
+(defcfun "UpdateModelAnimation" :void
+ "Update model animation pose"
+ (model (:struct %model))
+ (anim (:struct %model-animation))
+ (frame :int))
+
 ;;RLAPI void UnloadModelAnimation(ModelAnimation anim);                                                   // Unload animation data
+(defcfun "UnloadModelAnimation" :void
+ "Unload animation data"
+ (anim (:struct %model-animation)))
+
 ;;RLAPI bool IsModelAnimationValid(Model model, ModelAnimation anim);                                     // Check model animation skeleton match
+(defcfun "IsModelAnimationValid" :boolean
+ "Check model animation skeleton match"
+ (model (:struct %model))
+ (anim (:struct %model-animation)))
+
 ;;
 ;;// Mesh generation functions
 ;;RLAPI Mesh GenMeshPoly(int sides, float radius);                                                        // Generate polygonal mesh
