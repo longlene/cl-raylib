@@ -1151,7 +1151,16 @@
 ;;    FLAG_MSAA_4X_HINT       = 32,   // Set to try enabling MSAA 4X
 ;;    FLAG_VSYNC_HINT         = 64    // Set to try enabling V-Sync on GPU
 ;;} ConfigFlag;
-;;
+(define-constant +flag-reserved+ 1)
+(define-constant +flag-fullscreen-mode+ 2)
+(define-constant +flag-window-resizable+ 4)
+(define-constant +flag-window-undecorated+ 8)
+(define-constant +flag-window-transparent+ 16)
+(define-constant +flag-window-hidden+ 128)
+(define-constant +flag-window-always-run+ 256)
+(define-constant +flag-msaa-4x-hint+ 32)
+(define-constant +flag-vsync-hint+ 64)
+
 ;;// Trace log type
 ;;typedef enum {
 ;;    LOG_ALL = 0,        // Display all logs
@@ -1390,7 +1399,11 @@
 ;;    KEY_VOLUME_UP       = 24,
 ;;    KEY_VOLUME_DOWN     = 25
 ;;} AndroidButton;
-;;
+(define-constant +key-back+ 4)
+(define-constant +key-menu+ 82)
+(define-constant +key-volume-up+ 24)
+(define-constant +key-volume-down+ 25)
+
 ;;// Mouse buttons
 ;;typedef enum {
 ;;    MOUSE_LEFT_BUTTON   = 0,
@@ -1408,7 +1421,12 @@
 ;;    GAMEPAD_PLAYER3     = 2,
 ;;    GAMEPAD_PLAYER4     = 3
 ;;} GamepadNumber;
-;;
+(define-constant +gamepad-player1+ 0)
+(define-constant +gamepad-player2+ 1)
+(define-constant +gamepad-player3+ 2)
+(define-constant +gamepad-player4+ 3)
+
+
 ;;// Gamepad Buttons
 ;;typedef enum {
 ;;    // This is here just for error checking
@@ -1444,7 +1462,25 @@
 ;;    GAMEPAD_BUTTON_LEFT_THUMB,
 ;;    GAMEPAD_BUTTON_RIGHT_THUMB
 ;;} GamepadButton;
-;;
+(define-constant +gamepad-button-unknown+ 0)
+(define-constant +gamepad-button-left-face-up+ 1)
+(define-constant +gamepad-button-left-face-right+ 2)
+(define-constant +gamepad-button-left-face-down+ 3)
+(define-constant +gamepad-button-left-face-left+ 4)
+(define-constant +gamepad-button-right-face-up+ 5)
+(define-constant +gamepad-button-right-face-right+ 6)
+(define-constant +gamepad-button-right-face-down+ 7)
+(define-constant +gamepad-button-right-face-left+ 8)
+(define-constant +gamepad-button-left-trigger-1+ 9)
+(define-constant +gamepad-button-left-trigger-2+ 10)
+(define-constant +gamepad-button-right-trigger-1+ 11)
+(define-constant +gamepad-button-right-trigger-2+ 12)
+(define-constant +gamepad-button-middle-left+ 13)
+(define-constant +gamepad-button-middle+ 14)
+(define-constant +gamepad-button-middle-right+ 15)
+(define-constant +gamepad-button-left-thumb+ 16)
+(define-constant +gamepad-button-right-thumb+ 17)
+
 ;;typedef enum {
 ;;    // This is here just for error checking
 ;;    GAMEPAD_AXIS_UNKNOWN = 0,
@@ -1461,7 +1497,14 @@
 ;;    GAMEPAD_AXIS_LEFT_TRIGGER,      // [1..-1] (pressure-level)
 ;;    GAMEPAD_AXIS_RIGHT_TRIGGER      // [1..-1] (pressure-level)
 ;;} GamepadAxis;
-;;
+(define-constant +gamepad-axis-unknown+ 0)
+(define-constant +gamepad-axis-left-x+ 1)
+(define-constant +gamepad-axis-left-y+ 2)
+(define-constant +gamepad-axis-right-x+ 3)
+(define-constant +gamepad-axis-right-y+ 4)
+(define-constant +gamepad-axis-left-trigger+ 5)
+(define-constant +gamepad-axis-right-trigger+ 6)
+
 ;;// Shader location point type
 ;;typedef enum {
 ;;    LOC_VERTEX_POSITION = 0,
@@ -1490,10 +1533,37 @@
 ;;    LOC_MAP_PREFILTER,
 ;;    LOC_MAP_BRDF
 ;;} ShaderLocationIndex;
-;;
+(define-constant +loc-vertex-position+ 0)
+(define-constant +loc-vertex-texcoord01+ 1)
+(define-constant +loc-vertex-texcoord02+ 2)
+(define-constant +loc-vertex-normal+ 3)
+(define-constant +loc-vertex-tangent+ 4)
+(define-constant +loc-vertex-color+ 5)
+(define-constant +loc-matrix-mvp+ 6)
+(define-constant +loc-matrix-model+ 7)
+(define-constant +loc-matrix-view+ 8)
+(define-constant +loc-matrix-projection+ 9)
+(define-constant +loc-vector-view+ 10)
+(define-constant +loc-color-diffuse+ 11)
+(define-constant +loc-color-specular+ 12)
+(define-constant +loc-color-ambient+ 13)
+(define-constant +loc-map-albedo+ 14)
+(define-constant +loc-map-metalness+ 15)
+(define-constant +loc-map-normal+ 16)
+(define-constant +loc-map-roughness+ 17)
+(define-constant +loc-map-occlusion+ 18)
+(define-constant +loc-map-emission+ 19)
+(define-constant +loc-map-height+ 20)
+(define-constant +loc-map-cubemap+ 21)
+(define-constant +loc-map-irradiance+ 22)
+(define-constant +loc-map-prefilter+ 23)
+(define-constant +loc-map-brdf+ 24)
+
 ;;#define LOC_MAP_DIFFUSE      LOC_MAP_ALBEDO
 ;;#define LOC_MAP_SPECULAR     LOC_MAP_METALNESS
-;;
+(define-constant +loc-map-diffuse+ +loc-map-albedo+)
+(define-constant +loc-map-specular+ +loc-map-metalness+)
+
 ;;// Shader uniform data types
 ;;typedef enum {
 ;;    UNIFORM_FLOAT = 0,
@@ -1506,7 +1576,16 @@
 ;;    UNIFORM_IVEC4,
 ;;    UNIFORM_SAMPLER2D
 ;;} ShaderUniformDataType;
-;;
+(define-constant +uniform-float+ 0)
+(define-constant +uniform-vec2+ 1)
+(define-constant +uniform-vec3+ 2)
+(define-constant +uniform-vec4+ 3)
+(define-constant +uniform-int+ 4)
+(define-constant +uniform-ivec2+ 5)
+(define-constant +uniform-ivec3+ 6)
+(define-constant +uniform-ivec4+ 7)
+(define-constant +uniform-sampler2d+ 8)
+
 ;;// Material map type
 ;;typedef enum {
 ;;    MAP_ALBEDO    = 0,       // MAP_DIFFUSE
@@ -1521,10 +1600,23 @@
 ;;    MAP_PREFILTER,           // NOTE: Uses GL_TEXTURE_CUBE_MAP
 ;;    MAP_BRDF
 ;;} MaterialMapType;
-;;
+(define-constant +map-albedo+ 0)
+(define-constant +map-metalness+ 1)
+(define-constant +map-normal+ 2)
+(define-constant +map-roughness+ 3)
+(define-constant +map-occlusion+ 4)
+(define-constant +map-emission+ 5)
+(define-constant +map-height+ 6)
+(define-constant +map-cubemap+ 7)
+(define-constant +map-irradianc+ 8)
+(define-constant +map-prefilter+ 9)
+(define-constant +map-brdf+ 10)
+
 ;;#define MAP_DIFFUSE      MAP_ALBEDO
 ;;#define MAP_SPECULAR     MAP_METALNESS
-;;
+(define-constant +map-diffuse+ +map-albedo+)
+(define-constant +map-specular+ +map-metalness+)
+
 ;;// Pixel formats
 ;;// NOTE: Support depends on OpenGL version and platform
 ;;typedef enum {
@@ -1550,7 +1642,28 @@
 ;;    COMPRESSED_ASTC_4x4_RGBA,       // 8 bpp
 ;;    COMPRESSED_ASTC_8x8_RGBA        // 2 bpp
 ;;} PixelFormat;
-;;
+(define-constant +uncompressed-grayscale+ 1)
+(define-constant +uncompressed-gray-alpha+ 2)
+(define-constant +uncompressed-r5g6b5+ 3)
+(define-constant +uncompressed-r8g8b8+ 4)
+(define-constant +uncompressed-r5g5b5a1+ 5)
+(define-constant +uncompressed-r4g4b4a4+ 6)
+(define-constant +uncompressed-r8g8b8a8+ 7)
+(define-constant +uncompressed-r32+ 8)
+(define-constant +uncompressed-r32g32b32+ 9)
+(define-constant +uncompressed-r32g32b32a32+ 10)
+(define-constant +compressed-dxt1-rgb+ 11)
+(define-constant +compressed-dxt1-rgba+ 12)
+(define-constant +compressed-dxt3-rgba+ 13)
+(define-constant +compressed-dxt5-rgba+ 14)
+(define-constant +compressed-etc1-rgb+ 15)
+(define-constant +compressed-etc2-rgb+ 16)
+(define-constant +compressed-etc2-eac-rgba+ 17)
+(define-constant +compressed-pvrt-rgb+ 18)
+(define-constant +compressed-pvrt-rgba+ 19)
+(define-constant +compressed-astc-4x4-rgba+ 20)
+(define-constant +compressed-astc-8x8-rgba+ 21)
+
 ;;// Texture parameters: filter mode
 ;;// NOTE 1: Filtering considers mipmaps if available in the texture
 ;;// NOTE 2: Filter is accordingly set for minification and magnification
@@ -1562,7 +1675,13 @@
 ;;    FILTER_ANISOTROPIC_8X,          // Anisotropic filtering 8x
 ;;    FILTER_ANISOTROPIC_16X,         // Anisotropic filtering 16x
 ;;} TextureFilterMode;
-;;
+(define-constant +filter-point+ 0)
+(define-constant +filter-bilinear+ 1)
+(define-constant +filter-trilinear+ 2)
+(define-constant +filter-anisotropic-4x+ 3)
+(define-constant +filter-anisotropic-8x+ 4)
+(define-constant +filter-anisotropic-16x+ 5)
+
 ;;// Cubemap layout type
 ;;typedef enum {
 ;;    CUBEMAP_AUTO_DETECT = 0,        // Automatically detect layout type
@@ -1572,7 +1691,13 @@
 ;;    CUBEMAP_CROSS_FOUR_BY_THREE,    // Layout is defined by a 4x3 cross with cubemap faces
 ;;    CUBEMAP_PANORAMA                // Layout is defined by a panorama image (equirectangular map)
 ;;} CubemapLayoutType;
-;;
+(define-constant +cubemap-auto-detect+ 0)
+(define-constant +cubemap-line-vertical+ 1)
+(define-constant +cubemap-line-horizontal+ 2)
+(define-constant +cubemap-cross-three-by-four+ 3)
+(define-constant +cubemap-cross-four-by-three+ 4)
+(define-constant +cubemap-panorama+ 5)
+
 ;;// Texture parameters: wrap mode
 ;;typedef enum {
 ;;    WRAP_REPEAT = 0,        // Repeats texture in tiled mode
@@ -1580,21 +1705,33 @@
 ;;    WRAP_MIRROR_REPEAT,     // Mirrors and repeats the texture in tiled mode
 ;;    WRAP_MIRROR_CLAMP       // Mirrors and clamps to border the texture in tiled mode
 ;;} TextureWrapMode;
-;;
+(define-constant +cubemap-auto-detect+ 0)
+(define-constant +cubemap-line-vertical+ 1)
+(define-constant +cubemap-line-horizontal+ 2)
+(define-constant +cubemap-cross-three-by-four+ 3)
+(define-constant +cubemap-cross-four-by-three+ 4)
+(define-constant +cubemap-panorama+ 5)
+
 ;;// Font type, defines generation method
 ;;typedef enum {
 ;;    FONT_DEFAULT = 0,       // Default font generation, anti-aliased
 ;;    FONT_BITMAP,            // Bitmap font generation, no anti-aliasing
 ;;    FONT_SDF                // SDF font generation, requires external shader
 ;;} FontType;
-;;
+(define-constant +font-default+ 0)
+(define-constant +font-bitmap+ 1)
+(define-constant +font-sdf+ 2)
+
 ;;// Color blending modes (pre-defined)
 ;;typedef enum {
 ;;    BLEND_ALPHA = 0,        // Blend textures considering alpha (default)
 ;;    BLEND_ADDITIVE,         // Blend textures adding colors
 ;;    BLEND_MULTIPLIED        // Blend textures multiplying colors
 ;;} BlendMode;
-;;
+(define-constant +blend-alpha+ 0)
+(define-constant +blend-additive+ 1)
+(define-constant +blend-multiplied+ 2)
+
 ;;// Gestures type
 ;;// NOTE: It could be used as flags to enable only some gestures
 ;;typedef enum {
@@ -1610,7 +1747,18 @@
 ;;    GESTURE_PINCH_IN    = 256,
 ;;    GESTURE_PINCH_OUT   = 512
 ;;} GestureType;
-;;
+(define-constant +gesture-none+ 0)
+(define-constant +gesture-tap+ 1)
+(define-constant +gesture-doubletap+ 2)
+(define-constant +gesture-hold+ 4)
+(define-constant +gesture-drag+ 8)
+(define-constant +gesture-swipe-right+ 16)
+(define-constant +gesture-swipe-left+ 32)
+(define-constant +gesture-swipe-up+ 64)
+(define-constant +gesture-swipe-down+ 128)
+(define-constant +gesture-pinch-in+ 256)
+(define-constant +gesture-pinch-out+ 512)
+
 ;;// Camera system modes
 ;;typedef enum {
 ;;    CAMERA_CUSTOM = 0,
@@ -1639,7 +1787,10 @@
 ;;    NPT_3PATCH_VERTICAL,    // Npatch defined by 1x3 tiles
 ;;    NPT_3PATCH_HORIZONTAL   // Npatch defined by 3x1 tiles
 ;;} NPatchType;
-;;
+(define-constant +npt-9patch+ 0)
+(define-constant +npt-3patch-vertical+ 1)
+(define-constant +npt-3patch-horizontal+ 2)
+
 ;;// Callbacks to be implemented by users
 ;;typedef void (*TraceLogCallback)(int logType, const char *text, va_list args);
 ;;
