@@ -1816,7 +1816,7 @@
  (title :string))
 
 ;;RLAPI bool WindowShouldClose(void);                               // Check if KEY_ESCAPE pressed or Close icon pressed
-(defcfun "WindowShouldClose" :boolean
+(defcfun "WindowShouldClose" :bool
  "Check if KEY_ESCAPE pressed or Close icon pressed")
 
 ;;RLAPI void CloseWindow(void);                                     // Close window and unload OpenGL context
