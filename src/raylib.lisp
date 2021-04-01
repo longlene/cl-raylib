@@ -212,8 +212,8 @@
 
 (defmethod translate-into-foreign-memory (object (type vector2-type) pointer)
   (with-foreign-slots ((x y) pointer (:struct %vector2))
-                      (setf x (vector2-x object))
-                      (setf y (vector2-y object))))
+                      (setf x (coerce (vector2-x object) 'float))
+                      (setf y (coerce (vector2-y object) 'float))))
 
 (defmethod translate-from-foreign (pointer (type vector2-type))
   (with-foreign-slots ((x y) pointer (:struct %vector2))
@@ -236,9 +236,9 @@
 
 (defmethod translate-into-foreign-memory (object (type vector3-type) pointer)
   (with-foreign-slots ((x y z) pointer (:struct %vector3))
-                      (setf x (vector3-x object))
-                      (setf y (vector3-y object))
-                      (setf z (vector3-z object))))
+                      (setf x (coerce (vector3-x object) 'float))
+                      (setf y (coerce (vector3-y object) 'float))
+                      (setf z (coerce (vector3-z object) 'float))))
 
 (defmethod translate-from-foreign (pointer (type vector3-type))
   (with-foreign-slots ((x y z) pointer (:struct %vector3))
@@ -263,10 +263,10 @@
 
 (defmethod translate-into-foreign-memory (object (type vector4-type) pointer)
   (with-foreign-slots ((x y z w) pointer (:struct %vector4))
-                      (setf x (vector4-x object))
-                      (setf y (vector4-y object))
-                      (setf z (vector4-z object))
-		      (setf w (vector4-w object))))
+                      (setf x (coerce (vector4-x object) 'float))
+                      (setf y (coerce (vector4-y object) 'float))
+                      (setf z (coerce (vector4-z object) 'float))
+		      (setf w (coerce (vector4-w object) 'float))))
 
 (defmethod translate-from-foreign (pointer (type vector4-type))
   (with-foreign-slots ((x y z w) pointer (:struct %vector4))
@@ -291,22 +291,22 @@
 
 (defmethod translate-into-foreign-memory (object (type matrix-type) pointer)
   (with-foreign-slots ((m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15) pointer (:struct %matrix))
-                      (setf m0 (nth 0 object))
-                      (setf m1 (nth 1 object))
-                      (setf m2 (nth 2 object))
-                      (setf m3 (nth 3 object))
-                      (setf m4 (nth 4 object))
-                      (setf m5 (nth 5 object))
-                      (setf m6 (nth 6 object))
-                      (setf m7 (nth 7 object))
-                      (setf m8 (nth 8 object))
-                      (setf m9 (nth 9 object))
-                      (setf m10 (nth 10 object))
-                      (setf m11 (nth 11 object))
-                      (setf m12 (nth 12 object))
-                      (setf m13 (nth 13 object))
-                      (setf m14 (nth 14 object))
-                      (setf m15 (nth 15 object))))
+                      (setf m0 (coerce (nth 0 object) 'float))
+                      (setf m1 (coerce (nth 1 object) 'float))
+                      (setf m2 (coerce (nth 2 object) 'float))
+                      (setf m3 (coerce (nth 3 object) 'float))
+                      (setf m4 (coerce (nth 4 object) 'float))
+                      (setf m5 (coerce (nth 5 object) 'float))
+                      (setf m6 (coerce (nth 6 object) 'float))
+                      (setf m7 (coerce (nth 7 object) 'float))
+                      (setf m8 (coerce (nth 8 object) 'float))
+                      (setf m9 (coerce (nth 9 object) 'float))
+                      (setf m10 (coerce (nth 10 object) 'float))
+                      (setf m11 (coerce (nth 11 object) 'float))
+                      (setf m12 (coerce (nth 12 object) 'float))
+                      (setf m13 (coerce (nth 13 object) 'float))
+                      (setf m14 (coerce (nth 14 object) 'float))
+                      (setf m15 (coerce (nth 15 object) 'float))))
 
 (defmethod translate-from-foreign (pointer (type matrix-type))
   (with-foreign-slots ((m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15) pointer (:struct %matrix))
@@ -356,10 +356,10 @@
 
 (defmethod translate-into-foreign-memory (object (type rectangle-type) pointer)
   (with-foreign-slots ((x y width height) pointer (:struct %rectangle))
-                      (setf x (rectangle-x object))
-                      (setf y (rectangle-y object))
-                      (setf width (rectangle-width object))
-                      (setf height (rectangle-height object))))
+                      (setf x (coerce (rectangle-x object) 'float))
+                      (setf y (coerce (rectangle-y object) 'float))
+                      (setf width (coerce (rectangle-width object) 'float))
+                      (setf height (coerce (rectangle-height object) 'float))))
 
 (defmethod translate-from-foreign (pointer (type rectangle-type))
   (with-foreign-slots ((x y width height) pointer (:struct %rectangle))
@@ -628,7 +628,7 @@
                       (convert-into-foreign-memory (camera3d-position object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'position))
                       (convert-into-foreign-memory (camera3d-target object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'target))
                       (convert-into-foreign-memory (camera3d-up object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'up))
-                      (setf fovy (camera3d-fovy object)
+                      (setf fovy (coerce (camera3d-fovy object) 'float)
                             type (camera3d-type object))))
 
 (defmethod translate-from-foreign (pointer (type camera3d-type))
@@ -669,8 +669,8 @@
   (with-foreign-slots ((rotation zoom) pointer (:struct %camera2d))
                       (convert-into-foreign-memory (camera2d-offset object) '(:struct %vector2) (foreign-slot-pointer pointer '(:struct %camera2d) 'offset))
                       (convert-into-foreign-memory (camera2d-target object) '(:struct %vector2) (foreign-slot-pointer pointer '(:struct %camera2d) 'target))
-                      (setf rotation (camera2d-rotation object))
-                      (setf zoom (camera2d-zoom object))))
+                      (setf rotation (coerce (camera2d-rotation object) 'float))
+                      (setf zoom (coerce (camera2d-zoom object) 'float))))
 
 (defmethod translate-from-foreign (pointer (type camera2d-type))
   (with-foreign-slots ((offset target rotation zoom) pointer (:struct %camera2d))
@@ -783,7 +783,7 @@
  (with-foreign-slots ((texture color value) pointer (:struct %material-map))
                       (setf texture (nth 0 object))
                       (setf color (nth 1 object))
-                      (setf value (nth 2 object))))
+                      (setf value (coerce (nth 2 object) 'float))))
 
 (defmethod translate-from-foreign (pointer (type material-map-type))
  (with-foreign-slots ((texture color value) pointer (:struct %material-map))
@@ -1052,10 +1052,13 @@
  "Sound source type"
  (sample-count :unsigned-int)
  (stream (:struct %audio-stream)))
+
 (defmethod translate-into-foreign-memory (object (type sound-type) pointer)
  (with-foreign-slots ((sample-count stream) pointer (:struct %sound))
                       (setf sample-count (nth 0 object))
-                      (setf stream (nth 1 object))))
+                      (convert-into-foreign-memory (nth 1 object)
+                                                   '(:struct %audio-stream)
+                                                   (foreign-slot-pointer pointer '(:struct %sound) 'stream))))
 
 (defmethod translate-from-foreign (pointer (type sound-type))
   (with-foreign-slots ((sample-count stream) pointer (:struct %sound))
@@ -1086,7 +1089,9 @@
                       (setf ctx-data (nth 1 object))
                       (setf sample-count (nth 2 object))
                       (setf loop-count (nth 3 object))
-                      (setf stream (nth 4 object))))
+                      (convert-into-foreign-memory (nth 4 object)
+                                                   '(:struct %audio-stream)
+                                                   (foreign-slot-pointer pointer '(:struct %music) 'stream))))
 
 (defmethod translate-from-foreign (pointer (type music-type))
   (with-foreign-slots ((ctx-type ctx-data sample-count loop-count stream) pointer (:struct %music))
@@ -1122,12 +1127,12 @@
  (with-foreign-slots ((h-resolution v-resolution h-screen-size v-screen-size v-screen-center eye-to-screen-distance lens-separation-distance interpupillary-distance lens-distortion-values chroma-ab-correction) pointer (:struct %vr-device-info))
                       (setf h-resolution (nth 0 object))
                       (setf v-resolution (nth 1 object))
-                      (setf h-screen-size (nth 2 object))
-                      (setf v-screen-size (nth 3 object))
-                      (setf v-screen-center (nth 4 object))
-                      (setf eye-to-screen-distance (nth 5 object))
-                      (setf lens-separation-distance (nth 6 object))
-                      (setf interpupillary-distance (nth 7 object))
+                      (setf h-screen-size (coerce (nth 2 object) 'float))
+                      (setf v-screen-size (coerce (nth 3 object) 'float))
+                      (setf v-screen-center (coerce (nth 4 object) 'float))
+                      (setf eye-to-screen-distance (coerce (nth 5 object) 'float))
+                      (setf lens-separation-distance (coerce (nth 6 object) 'float))
+                      (setf interpupillary-distance (coerce (nth 7 object) 'float))
                       (setf lens-distortion-values (nth 8 object))
                       (setf chroma-ab-correction (nth 9 object))))
 
@@ -2526,7 +2531,8 @@
  (start-pos-x :int)
  (start-pos-y :int)
  (end-pos-x :int)
- (end-pos-y :int))
+ (end-pos-y :int)
+ (color (:struct %color)))
 
 ;;RLAPI void DrawLineV(Vector2 startPos, Vector2 endPos, Color color);                                     // Draw a line (Vector version)
 (defcfun "DrawLineV" :void
@@ -4195,6 +4201,10 @@
   (sound (:struct %sound)))
 
 ;;RLAPI void StopSound(Sound sound);                                    // Stop playing a sound
+(defcfun "StopSound" :void
+ "Stop playing a sound"
+ (sound (:struct %sound)))
+
 ;;RLAPI void PauseSound(Sound sound);                                   // Pause a sound
 (defcfun "PauseSound" :void
  "Pause a sound"
