@@ -4474,7 +4474,7 @@
 (defcfun "DrawModel" :void
   (model (:struct %model))
   (position (:struct %vector3))
-  (scale (:struct %vector3))
+  (scale :float)
   (tint (:struct %color)))
 
 ;;RLAPI void DrawModelEx(Model model, Vector3 position, Vector3 rotationAxis, float rotationAngle, Vector3 scale, Color tint); // Draw a model with extended parameters
