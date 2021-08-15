@@ -459,8 +459,8 @@
 
 (defmethod translate-into-foreign-memory (object (type render-texture-type) pointer)
   (with-foreign-slots ((id  depth-texture) pointer (:struct %render-texture))
-                      (convert-into-foreign-memory (reander-texture-texture object) '(:struct %texture) (foreign-slot-pointer pointer '(:struct %render-texture) 'texture))
-                      (convert-into-foreign-memory (reander-texture-depth object) '(:struct %texture) (foreign-slot-pointer pointer '(:struct %render-texture) 'depth))
+                      (convert-into-foreign-memory (render-texture-texture object) '(:struct %texture) (foreign-slot-pointer pointer '(:struct %render-texture) 'texture))
+                      (convert-into-foreign-memory (render-texture-depth object) '(:struct %texture) (foreign-slot-pointer pointer '(:struct %render-texture) 'depth))
                       (setf id (render-texture-id object))
                       (setf depth-texture (render-texture-depth-texture object))))
 
