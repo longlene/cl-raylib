@@ -4420,7 +4420,7 @@
 
 ;;RLAPI void DrawPlane(Vector3 centerPos, Vector2 size, Color color);                                      // Draw a plane XZ
 (defcfun "DrawPlane" :void
- (current-pos (:struct %vector3))
+ (center-pos (:struct %vector3))
  (size  (:struct %vector2))
  (color (:struct %color)))
 
