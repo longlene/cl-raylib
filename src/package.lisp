@@ -493,7 +493,7 @@
     #:draw-sphere-wires
     #:draw-cylinder
     #:draw-cylinder-wires
-    #:draw-plance
+    #:draw-plane
     #:draw-ray
     #:draw-grid
     #:draw-gizmo
