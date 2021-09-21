@@ -2095,7 +2095,7 @@
 ;;RLAPI Color GetColor(int hexValue);                               // Returns a Color struct from hexadecimal value
 (defcfun "GetColor" (:struct %color)
  "Returns a Color struct from hexadecimal value"
- (hex-value :int))
+ (hex-value :unsigned-int))
 
 ;;RLAPI Color Fade(Color color, float alpha);                       // Color fade-in or fade-out, alpha goes from 0.0f to 1.0f
 (defcfun "Fade" (:struct %color)
