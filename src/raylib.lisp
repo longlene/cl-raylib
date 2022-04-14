@@ -648,6 +648,14 @@
                                        :fovy fovy
                                        :type type))))
 
+(defmacro update-camera3d-from-foreign (lisp-var ptr)
+  `(cffi:with-foreign-slots ((position target up fovy type) ,ptr (:struct %camera3d))
+     (setf (camera3d-position ,lisp-var) position)
+     (setf (camera3d-target ,lisp-var) target)
+     (setf (camera3d-fovy ,lisp-var) fovy)
+     (setf (camera3d-up ,lisp-var) up)
+     (setf (camera3d-type ,lisp-var) type)))
+
 ;;// Camera2D type, defines a 2d camera
 ;;typedef struct Camera2D {
 ;;    Vector2 offset;         // Camera offset (displacement from target)
@@ -2481,8 +2489,15 @@
  (mode :int))
 
 ;;RLAPI void UpdateCamera(Camera *camera);                          // Update camera position for selected mode
-(defcfun "UpdateCamera" :void
- (camera (:pointer (:struct %camera3d))))
+(defcfun ("UpdateCamera" %update-camera) :void
+  (camera (:pointer (:struct %camera3d))))
+
+(defmacro update-camera (camera)
+  (let ((foreign-camera (gensym)))
+    `(cffi:with-foreign-object (,foreign-camera '(:struct %camera3d))
+       (convert-into-foreign-memory ,camera '(:struct %camera3d) ,foreign-camera)
+       (%update-camera ,foreign-camera)
+       (update-camera3d-from-foreign ,camera ,foreign-camera))))
 
 ;;RLAPI void SetCameraPanControl(int panKey);                       // Set camera pan key to combine with mouse movement (free camera)
 (defcfun "SetCameraPanControl" :void
