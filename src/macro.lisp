@@ -54,3 +54,8 @@
  `(let ((,stream (init-audio-stream ,sample-rate ,sample-size ,channels)))
     (unwind-protect (progn ,@body)
       (close-audio-stream ,stream))))
+
+(defmacro with-sound ((sound file-name) &body body)
+  `(let ((,sound (load-sound ,file-name)))
+     (unwind-protect (progn ,@body)
+       (unload-sound ,sound))))

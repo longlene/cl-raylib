@@ -1,19 +1,20 @@
 (in-package #:cl-raylib)
 ;;/**********************************************************************************************
 ;;*
-;;*   raylib - A simple and easy-to-use library to enjoy videogames programming (www.raylib.com)
+;;*   raylib v4.0 - A simple and easy-to-use library to enjoy videogames programming (www.raylib.com)
 ;;*
 ;;*   FEATURES:
 ;;*       - NO external dependencies, all required libraries included with raylib
-;;*       - Multiplatform: Windows, Linux, FreeBSD, OpenBSD, NetBSD, DragonFly, MacOS, UWP, Android, Raspberry Pi, HTML5.
+;;*       - Multiplatform: Windows, Linux, FreeBSD, OpenBSD, NetBSD, DragonFly,
+;;*                        MacOS, Haiku, Android, Raspberry Pi, DRM native, HTML5.
 ;;*       - Written in plain C code (C99) in PascalCase/camelCase notation
-;;*       - Hardware accelerated with OpenGL (1.1, 2.1, 3.3 or ES2 - choose at compile)
+;;*       - Hardware accelerated with OpenGL (1.1, 2.1, 3.3, 4.3 or ES2 - choose at compile)
 ;;*       - Unique OpenGL abstraction layer (usable as standalone module): [rlgl]
 ;;*       - Multiple Fonts formats supported (TTF, XNA fonts, AngelCode fonts)
 ;;*       - Outstanding texture formats support, including compressed formats (DXT, ETC, ASTC)
 ;;*       - Full 3d support for 3d Shapes, Models, Billboards, Heightmaps and more!
 ;;*       - Flexible Materials system, supporting classic maps and PBR maps
-;;*       - Skeletal Animation support (CPU bones-based animation)
+;;*       - Animated 3D models supported (skeletal bones animation) (IQM)
 ;;*       - Shaders support, including Model shaders and Postprocessing shaders
 ;;*       - Powerful math module for Vector, Matrix and Quaternion operations: [raymath]
 ;;*       - Audio loading and playing with streaming support (WAV, OGG, MP3, FLAC, XM, MOD)
@@ -21,29 +22,32 @@
 ;;*       - Bindings to multiple programming languages available!
 ;;*
 ;;*   NOTES:
-;;*       One custom font is loaded by default when InitWindow() [core]
-;;*       If using OpenGL 3.3 or ES2, one default shader is loaded automatically (internally defined) [rlgl]
-;;*       If using OpenGL 3.3 or ES2, several vertex buffers (VAO/VBO) are created to manage lines-triangles-quads
+;;*       - One default Font is loaded on InitWindow()->LoadFontDefault() [core, text]
+;;*       - One default Texture2D is loaded on rlglInit(), 1x1 white pixel R8G8B8A8 [rlgl] (OpenGL 3.3 or ES2)
+;;*       - One default Shader is loaded on rlglInit()->rlLoadShaderDefault() [rlgl] (OpenGL 3.3 or ES2)
+;;*       - One default RenderBatch is loaded on rlglInit()->rlLoadRenderBatch() [rlgl] (OpenGL 3.3 or ES2)
 ;;*
 ;;*   DEPENDENCIES (included):
-;;*       [core] rglfw (github.com/glfw/glfw) for window/context management and input (only PLATFORM_DESKTOP)
-;;*       [rlgl] glad (github.com/Dav1dde/glad) for OpenGL 3.3 extensions loading (only PLATFORM_DESKTOP)
-;;*       [raudio] miniaudio (github.com/dr-soft/miniaudio) for audio device/context management
+;;*       [rcore] rglfw (Camilla Löwy - github.com/glfw/glfw) for window/context management and input (PLATFORM_DESKTOP)
+;;*       [rlgl] glad (David Herberth - github.com/Dav1dde/glad) for OpenGL 3.3 extensions loading (PLATFORM_DESKTOP)
+;;*       [raudio] miniaudio (David Reid - github.com/mackron/miniaudio) for audio device/context management
 ;;*
 ;;*   OPTIONAL DEPENDENCIES (included):
-;;*       [core] rgif (Charlie Tangora, Ramon Santamaria) for GIF recording
-;;*       [textures] stb_image (Sean Barret) for images loading (BMP, TGA, PNG, JPEG, HDR...)
-;;*       [textures] stb_image_write (Sean Barret) for image writting (BMP, TGA, PNG, JPG)
-;;*       [textures] stb_image_resize (Sean Barret) for image resizing algorithms
-;;*       [textures] stb_perlin (Sean Barret) for Perlin noise image generation
-;;*       [text] stb_truetype (Sean Barret) for ttf fonts loading
-;;*       [text] stb_rect_pack (Sean Barret) for rectangles packing
-;;*       [models] par_shapes (Philip Rideout) for parametric 3d shapes generation
-;;*       [models] tinyobj_loader_c (Syoyo Fujita) for models loading (OBJ, MTL)
-;;*       [models] cgltf (Johannes Kuhlmann) for models loading (glTF)
-;;*       [raudio] stb_vorbis (Sean Barret) for OGG audio loading
+;;*       [rcore] msf_gif (Miles Fogle) for GIF recording
+;;*       [rcore] sinfl (Micha Mettke) for DEFLATE decompression algorythm
+;;*       [rcore] sdefl (Micha Mettke) for DEFLATE compression algorythm
+;;*       [rtextures] stb_image (Sean Barret) for images loading (BMP, TGA, PNG, JPEG, HDR...)
+;;*       [rtextures] stb_image_write (Sean Barret) for image writing (BMP, TGA, PNG, JPG)
+;;*       [rtextures] stb_image_resize (Sean Barret) for image resizing algorithms
+;;*       [rtext] stb_truetype (Sean Barret) for ttf fonts loading
+;;*       [rtext] stb_rect_pack (Sean Barret) for rectangles packing
+;;*       [rmodels] par_shapes (Philip Rideout) for parametric 3d shapes generation
+;;*       [rmodels] tinyobj_loader_c (Syoyo Fujita) for models loading (OBJ, MTL)
+;;*       [rmodels] cgltf (Johannes Kuhlmann) for models loading (glTF)
+;;*       [raudio] dr_wav (David Reid) for WAV audio file loading
 ;;*       [raudio] dr_flac (David Reid) for FLAC audio file loading
 ;;*       [raudio] dr_mp3 (David Reid) for MP3 audio file loading
+;;*       [raudio] stb_vorbis (Sean Barret) for OGG audio loading
 ;;*       [raudio] jar_xm (Joshua Reisenauer) for XM audio module loading
 ;;*       [raudio] jar_mod (Joshua Reisenauer) for MOD audio module loading
 ;;*
@@ -53,7 +57,7 @@
 ;;*   raylib is licensed under an unmodified zlib/libpng license, which is an OSI-certified,
 ;;*   BSD-like license that allows static linking with closed source software:
 ;;*
-;;*   Copyright (c) 2013-2020 Ramon Santamaria (@raysan5)
+;;*   Copyright (c) 2013-2021 Ramon Santamaria (@raysan5)
 ;;*
 ;;*   This software is provided "as-is", without any express or implied warranty. In no event
 ;;*   will the authors be held liable for any damages arising from the use of this software.
@@ -77,17 +81,20 @@
 ;;
 ;;#include <stdarg.h>     // Required for: va_list - Only used by TraceLogCallback
 ;;
+;;#define RAYLIB_VERSION  "4.0"
+;;
+;;// Function specifiers in case library is build/used as a shared library (Windows)
+;;// NOTE: Microsoft specifiers to tell compiler that symbols are imported/exported from a .dll
 ;;#if defined(_WIN32)
-;;    // Microsoft attibutes to tell compiler that symbols are imported/exported from a .dll
 ;;    #if defined(BUILD_LIBTYPE_SHARED)
-;;        #define RLAPI __declspec(dllexport)     // We are building raylib as a Win32 shared library (.dll)
+;;        #define RLAPI __declspec(dllexport)     // We are building the library as a Win32 shared library (.dll)
 ;;    #elif defined(USE_LIBTYPE_SHARED)
-;;        #define RLAPI __declspec(dllimport)     // We are using raylib as a Win32 shared library (.dll)
-;;    #else
-;;        #define RLAPI   // We are building or using raylib as a static library
+;;        #define RLAPI __declspec(dllimport)     // We are using the library as a Win32 shared library (.dll)
 ;;    #endif
-;;#else
-;;    #define RLAPI       // We are building or using raylib as a static library (or Linux shared library)
+;;#endif
+;;
+;;#ifndef RLAPI
+;;    #define RLAPI       // Functions defined as 'extern' by default (implicit specifiers)
 ;;#endif
 ;;
 ;;//----------------------------------------------------------------------------------
@@ -96,11 +103,12 @@
 ;;#ifndef PI
 ;;    #define PI 3.14159265358979323846f
 ;;#endif
-;;
-;;#define DEG2RAD (PI/180.0f)
-;;#define RAD2DEG (180.0f/PI)
-;;
-;;#define MAX_TOUCH_POINTS        10      // Maximum number of touch points supported
+;;#ifndef DEG2RAD
+;;    #define DEG2RAD (PI/180.0f)
+;;#endif
+;;#ifndef RAD2DEG
+;;    #define RAD2DEG (180.0f/PI)
+;;#endif
 ;;
 ;;// Allow custom memory allocators
 ;;#ifndef RL_MALLOC
@@ -116,13 +124,25 @@
 ;;    #define RL_FREE(ptr)        free(ptr)
 ;;#endif
 ;;
-;;// NOTE: MSC C++ compiler does not support compound literals (C99 feature)
-;;// Plain structures in C++ (without constructors) can be initialized from { } initializers.
+;;// NOTE: MSVC C++ compiler does not support compound literals (C99 feature)
+;;// Plain structures in C++ (without constructors) can be initialized with { }
 ;;#if defined(__cplusplus)
 ;;    #define CLITERAL(type)      type
 ;;#else
 ;;    #define CLITERAL(type)      (type)
 ;;#endif
+;;
+;;// NOTE: We set some defines with some data types declared by raylib
+;;// Other modules (raymath, rlgl) also require some of those types, so,
+;;// to be able to use those other modules as standalone (not depending on raylib)
+;;// this defines are very useful for internal check and avoid type (re)definitions
+;;#define RL_COLOR_TYPE
+;;#define RL_RECTANGLE_TYPE
+;;#define RL_VECTOR2_TYPE
+;;#define RL_VECTOR3_TYPE
+;;#define RL_VECTOR4_TYPE
+;;#define RL_QUATERNION_TYPE
+;;#define RL_MATRIX_TYPE
 ;;
 ;;// Some Basic Colors
 ;;// NOTE: Custom raylib color palette for amazing visuals on WHITE background
@@ -180,13 +200,6 @@
 ;;#define RAYWHITE   CLITERAL(Color){ 245, 245, 245, 255 }   // My own White (raylib logo)
 (define-constant +raywhite+    '(245 245 245 255) :test #'equal)
 
-;;// Temporal hack to avoid breaking old codebases using
-;;// deprecated raylib implementation of these functions
-;;#define FormatText  TextFormat
-;;#define SubText     TextSubtext
-;;#define ShowWindow  UnhideWindow
-;;#define LoadText    LoadFileText
-;;
 ;;//----------------------------------------------------------------------------------
 ;;// Structures Definition
 ;;//----------------------------------------------------------------------------------
@@ -194,16 +207,17 @@
 ;;#if defined(__STDC__) && __STDC_VERSION__ >= 199901L
 ;;    #include <stdbool.h>
 ;;#elif !defined(__cplusplus) && !defined(bool)
-;;    typedef enum { false, true } bool;
+;;    typedef enum bool { false, true } bool;
+;;    #define RL_BOOL_TYPE
 ;;#endif
 ;;
-;;// Vector2 type
+;;// Vector2, 2 components
 ;;typedef struct Vector2 {
-;;    float x;
-;;    float y;
+;;    float x;                // Vector x component
+;;    float y;                // Vector y component
 ;;} Vector2;
 (defcstruct (%vector2 :class vector2-type)
- "Vector2 type"
+ "Vector2, 2 components"
  (x :float)
  (y :float))
 
@@ -219,14 +233,14 @@
   (with-foreign-slots ((x y) pointer (:struct %vector2))
                       (make-vector2 :x x :y y)))
 
-;;// Vector3 type
+;;// Vector3, 3 components
 ;;typedef struct Vector3 {
-;;    float x;
-;;    float y;
-;;    float z;
+;;    float x;                // Vector x component
+;;    float y;                // Vector y component
+;;    float z;                // Vector z component
 ;;} Vector3;
 (defcstruct (%vector3 :class vector3-type)
- "Vector3 type"
+ "Vector3 components"
  (x :float)
  (y :float)
  (z :float))
@@ -244,15 +258,15 @@
   (with-foreign-slots ((x y z) pointer (:struct %vector3))
                       (make-vector3 :x x :y y :z z)))
 
-;;// Vector4 type
+;;// Vector4, 4 components
 ;;typedef struct Vector4 {
-;;    float x;
-;;    float y;
-;;    float z;
-;;    float w;
+;;    float x;                // Vector x component
+;;    float y;                // Vector y component
+;;    float z;                // Vector z component
+;;    float w;                // Vector w component
 ;;} Vector4;
 (defcstruct (%vector4 :class vector4-type)
- "Vector4 type"
+ "Vector4, 4 components"
  (x :float)
  (y :float)
  (z :float)
@@ -272,15 +286,15 @@
   (with-foreign-slots ((x y z w) pointer (:struct %vector4))
                       (make-vector4 :x x :y y :z z :w w)))
 ;;
-;;// Quaternion type, same as Vector4
+;;// Quaternion, 4 components (Vector4 alias)
 ;;typedef Vector4 Quaternion;
 ;;
-;;// Matrix type (OpenGL style 4x4 - right handed, column major)
+;;// Matrix, 4x4 components, column major, OpenGL style, right handed
 ;;typedef struct Matrix {
-;;    float m0, m4, m8, m12;
-;;    float m1, m5, m9, m13;
-;;    float m2, m6, m10, m14;
-;;    float m3, m7, m11, m15;
+;;    float m0, m4, m8, m12;  // Matrix first row (4 components)
+;;    float m1, m5, m9, m13;  // Matrix second row (4 components)
+;;    float m2, m6, m10, m14; // Matrix third row (4 components)
+;;    float m3, m7, m11, m15; // Matrix fourth row (4 components)
 ;;} Matrix;
 (defcstruct (%matrix :class matrix-type)
   "Matrix type (OpenGL style 4x4"
@@ -312,12 +326,12 @@
   (with-foreign-slots ((m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15) pointer (:struct %matrix))
                       (list m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15)))
 
-;;// Color type, RGBA (32bit)
+;;// Color, 4 components, R8G8B8A8 (32bit)
 ;;typedef struct Color {
-;;    unsigned char r;
-;;    unsigned char g;
-;;    unsigned char b;
-;;    unsigned char a;
+;;    unsigned char r;        // Color red value
+;;    unsigned char g;        // Color green value
+;;    unsigned char b;        // Color blue value
+;;    unsigned char a;        // Color alpha value
 ;;} Color;
 (defcstruct (%color :class color-type)
   "Color type, RGBA (32bit)"
@@ -337,12 +351,12 @@
   (with-foreign-slots ((r g b a) pointer (:struct %color))
    (list r g b a)))
 
-;;// Rectangle type
+;;// Rectangle, 4 components
 ;;typedef struct Rectangle {
-;;    float x;
-;;    float y;
-;;    float width;
-;;    float height;
+;;    float x;                // Rectangle top-left corner position x
+;;    float y;                // Rectangle top-left corner position y
+;;    float width;            // Rectangle width
+;;    float height;           // Rectangle height
 ;;} Rectangle;
 (defcstruct (%rectangle :class rectangle-type)
   "Rectangle type"
@@ -365,8 +379,7 @@
   (with-foreign-slots ((x y width height) pointer (:struct %rectangle))
                       (make-rectangle :x x :y y :width width :height height)))
 
-;;// Image type, bpp always RGBA (32bit)
-;;// NOTE: Data stored in CPU memory (RAM)
+;;// Image, pixel data stored in CPU memory (RAM)
 ;;typedef struct Image {
 ;;    void *data;             // Image raw data
 ;;    int width;              // Image base width
@@ -397,18 +410,17 @@
   (with-foreign-slots ((data width height maps ft) pointer (:struct %image))
   (make-image :data data :width width :height height :maps maps :ft ft)))
 
-;;// Texture2D type
-;;// NOTE: Data stored in GPU memory
-;;typedef struct Texture2D {
+;;// Texture, tex data stored in GPU memory (VRAM)
+;;typedef struct Texture {
 ;;    unsigned int id;        // OpenGL texture id
 ;;    int width;              // Texture base width
 ;;    int height;             // Texture base height
 ;;    int mipmaps;            // Mipmap levels, 1 by default
 ;;    int format;             // Data format (PixelFormat type)
-;;} Texture2D;
+;;} Texture;
 ;;
-;;// Texture type, same as Texture2D
-;;typedef Texture2D Texture;
+;;// Texture2D, same as Texture
+;;typedef Texture Texture2D;
 ;;
 (defcstruct (%texture :class texture-type)
   "Texture type"
@@ -433,39 +445,36 @@
   (with-foreign-slots ((id width height mipmaps format) pointer (:struct %texture))
                       (make-texture :id id :width width :height height :mipmaps mipmaps :format format)))
 
-;;// TextureCubemap type, actually, same as Texture2D
-;;typedef Texture2D TextureCubemap;
+;;// TextureCubemap, same as Texture
+;;typedef Texture TextureCubemap;
 (defctype texture-cubemap (:struct %texture))
 
-;;// RenderTexture2D type, for texture rendering
-;;typedef struct RenderTexture2D {
-;;    unsigned int id;        // OpenGL Framebuffer Object (FBO) id
-;;    Texture2D texture;      // Color buffer attachment texture
-;;    Texture2D depth;        // Depth buffer attachment texture
-;;    bool depthTexture;      // Track if depth attachment is a texture or renderbuffer
-;;} RenderTexture2D;
+;;// RenderTexture, fbo for texture rendering
+;;typedef struct RenderTexture {
+;;    unsigned int id;        // OpenGL framebuffer object id
+;;    Texture texture;        // Color buffer attachment texture
+;;    Texture depth;          // Depth buffer attachment texture
+;;} RenderTexture;
 ;;
-;;// RenderTexture type, same as RenderTexture2D
-;;typedef RenderTexture2D RenderTexture;
+;;// RenderTexture2D, same as RenderTexture
+;;typedef RenderTexture RenderTexture2D;
 (defcstruct (%render-texture :class render-texture-type)
  "RenderTexture2D type, for texture rendering"
  (id :unsigned-int)
  (texture (:struct %texture))
- (depth (:struct %texture))
- (depth-texture :boolean))
+ (depth (:struct %texture)))
 
 (defstruct render-texture
- id texture depth depth-texture)
+ id texture depth)
 
 (defmethod translate-into-foreign-memory (object (type render-texture-type) pointer)
-  (with-foreign-slots ((id  depth-texture) pointer (:struct %render-texture))
+  (with-foreign-slots ((id) pointer (:struct %render-texture))
                       (convert-into-foreign-memory (render-texture-texture object) '(:struct %texture) (foreign-slot-pointer pointer '(:struct %render-texture) 'texture))
                       (convert-into-foreign-memory (render-texture-depth object) '(:struct %texture) (foreign-slot-pointer pointer '(:struct %render-texture) 'depth))
-                      (setf id (render-texture-id object))
-                      (setf depth-texture (render-texture-depth-texture object))))
+                      (setf id (render-texture-id object))))
 
 (defmethod translate-from-foreign (pointer (type render-texture-type))
-  (with-foreign-slots ((id texture depth depth-texture) pointer (:struct %render-texture))
+  (with-foreign-slots ((id texture depth) pointer (:struct %render-texture))
                       (let* ((tid (foreign-slot-value texture '(:struct %texture) 'id))
                              (twidth (foreign-slot-value texture '(:struct %texture) 'width))
                              (theight (foreign-slot-value texture '(:struct %texture) 'height))
@@ -478,185 +487,186 @@
                              (dformat (foreign-slot-value depth '(:struct %texture) 'format)))
                         (make-render-texture :id id
                                              :texture (make-texture :id tid :width twidth :height theight :mipmaps tmipmaps :format tformat)
-                                             :depth (make-texture :id did :width dwidth :height dheight :mipmaps dmipmaps :format dformat)
-                                             :depth-texture depth-texture))))
+                                             :depth (make-texture :id did :width dwidth :height dheight :mipmaps dmipmaps :format dformat)))))
 ;;
-;;// N-Patch layout info
+;;// NPatchInfo, n-patch layout info
 ;;typedef struct NPatchInfo {
-;;    Rectangle sourceRec;   // Region in the texture
-;;    int left;              // left border offset
-;;    int top;               // top border offset
-;;    int right;             // right border offset
-;;    int bottom;            // bottom border offset
-;;    int type;              // layout of the n-patch: 3x3, 1x3 or 3x1
+;;    Rectangle source;       // Texture source rectangle
+;;    int left;               // Left border offset
+;;    int top;                // Top border offset
+;;    int right;              // Right border offset
+;;    int bottom;             // Bottom border offset
+;;    int layout;             // Layout of the n-patch: 3x3, 1x3 or 3x1
 ;;} NPatchInfo;
 (defcstruct (%patch-info :class patch-info-type)
- "N-Patch layout info"
- (source-rec (:struct %rectangle))
+ "n-patch layout info"
+ (source (:struct %rectangle))
  (left :int)
  (top :int)
  (right :int)
  (bottom :int)
- (type :int))
+ (layout :int))
 
 (defstruct patch-info
- rec left top right bottom type)
+ source left top right bottom layout)
 
 (defmethod translate-into-foreign-memory (object (type patch-info-type) pointer)
-  (with-foreign-slots ((left top right bottom type) pointer (:struct %patch-info))
-                      (convert-into-foreign-memory (patch-info-rec object) '(:struct %rectangle) (foreign-slot-pointer pointer '(:struct %patch-info) 'source-rec))
+  (with-foreign-slots ((left top right bottom layout) pointer (:struct %patch-info))
+                      (convert-into-foreign-memory (patch-info-source object) '(:struct %rectangle) (foreign-slot-pointer pointer '(:struct %patch-info) 'source))
                       (setf left (patch-info-left object))
                       (setf top (patch-info-top object))
                       (setf right (patch-info-right object))
                       (setf bottom (patch-info-bottom object))
-                      (setf type (patch-info-type object))))
+                      (setf layout (patch-info-layout object))))
 
 (defmethod translate-from-foreign (pointer (type patch-info-type))
-  (with-foreign-slots ((source-rec left top right bottom type) pointer (:struct %patch-info))
-   (let ((rx (foreign-slot-value source-rec '(:struct %rectangle) 'x))
-         (ry (foreign-slot-value source-rec '(:struct %rectangle) 'y))
-         (rwidth (foreign-slot-value source-rec '(:struct %rectangle) 'width))
-         (rheight (foreign-slot-value source-rec '(:struct %rectangle) 'height)))
-     (make-patch-info :rec (make-rectangle :x rx :y ry :width rwidth :height :rheight) :left left :top top :right right :bottom bottom :type type))))
+  (with-foreign-slots ((source left top right bottom layout) pointer (:struct %patch-info))
+   (let ((rx (foreign-slot-value source '(:struct %rectangle) 'x))
+         (ry (foreign-slot-value source '(:struct %rectangle) 'y))
+         (rwidth (foreign-slot-value source '(:struct %rectangle) 'width))
+         (rheight (foreign-slot-value source '(:struct %rectangle) 'height)))
+     (make-patch-info :source (make-rectangle :x rx :y ry :width rwidth :height :rheight) :left left :top top :right right :bottom bottom :layout layout))))
 
-;;// Font character info
-;;typedef struct CharInfo {
+;;// GlyphInfo, font characters glyphs info
+;;typedef struct GlyphInfo {
 ;;    int value;              // Character value (Unicode)
 ;;    int offsetX;            // Character offset X when drawing
 ;;    int offsetY;            // Character offset Y when drawing
 ;;    int advanceX;           // Character advance position X
 ;;    Image image;            // Character image data
-;;} CharInfo;
-(defcstruct (%char-info :class char-info-type)
- "Font character info"
+;;} GlyphInfo;
+(defcstruct (%glyph-info :class glyph-info-type)
+ "font characters glyphs info"
  (value :int)
  (offset-x :int)
  (offset-y :int)
  (advance-x :int)
  (image (:struct %image)))
 
-(defstruct char-info
+(defstruct glyph-info
  value offset-x offset-y advance-x image)
 
-(defmethod translate-into-foreign-memory (object (type char-info-type) pointer)
-  (with-foreign-slots ((value offset-x offset-y advance-x) pointer (:struct %char-info))
-                      (convert-into-foreign-memory (char-info-image object) '(:struct %image) (foreign-slot-pointer pointer '(:struct %char-info) 'image))
-                      (setf value (char-info-value object))
-                      (setf offset-x (char-info-offset-x object))
-                      (setf offset-y (char-info-offset-y object))
-                      (setf advance-x (char-info-advance-x object))))
+(defmethod translate-into-foreign-memory (object (type glyph-info-type) pointer)
+  (with-foreign-slots ((value offset-x offset-y advance-x) pointer (:struct %glyph-info))
+                      (convert-into-foreign-memory (glyph-info-image object) '(:struct %image) (foreign-slot-pointer pointer '(:struct %glyph-info) 'image))
+                      (setf value (glyph-info-value object))
+                      (setf offset-x (glyph-info-offset-x object))
+                      (setf offset-y (glyph-info-offset-y object))
+                      (setf advance-x (glyph-info-advance-x object))))
 
-(defmethod translate-from-foreign (pointer (type char-info-type))
-  (with-foreign-slots ((value offset-x offset-y advance-x image) pointer (:struct %char-info))
+(defmethod translate-from-foreign (pointer (type glyph-info-type))
+  (with-foreign-slots ((value offset-x offset-y advance-x image) pointer (:struct %glyph-info))
    (let ((image-data (foreign-slot-value image '(:struct %image) 'data))
          (image-width (foreign-slot-value image '(:struct %image) 'width))
          (image-height (foreign-slot-value image '(:struct %image) 'height))
          (image-maps (foreign-slot-value image '(:struct %image) 'maps))
          (image-ft (foreign-slot-value image '(:struct %image) 'ft)))
-     (make-char-info :value value
+     (make-glyph-info :value value
                      :offset-x offset-x
                      :offset-y offset-y
                      :advance-x advance-x
                      :image (make-image :data image-data :width image-width :height image-height :maps image-maps :ft image-ft)))))
  
 ;;
-;;// Font type, includes texture and charSet array data
+;;// Font, font texture and GlyphInfo array data
 ;;typedef struct Font {
 ;;    int baseSize;           // Base size (default chars height)
-;;    int charsCount;         // Number of characters
-;;    Texture2D texture;      // Characters texture atlas
-;;    Rectangle *recs;        // Characters rectangles in texture
-;;    CharInfo *chars;        // Characters info data
+;;    int glyphCount;         // Number of glyph characters
+;;    int glyphPadding;       // Padding around the glyph characters
+;;    Texture2D texture;      // Texture atlas containing the glyphs
+;;    Rectangle *recs;        // Rectangles in texture for the glyphs
+;;    GlyphInfo *glyphs;      // Glyphs info data
 ;;} Font;
-;;
-;;#define SpriteFont Font     // SpriteFont type fallback, defaults to Font
 (defcstruct (%font :class font-type)
- "Font type, includes texture and charSet array data"
+ "Font, font texture and GlyphInfo array data"
  (base-size :int)
- (chars-count :int)
+ (glyph-count :int)
+ (glyph-padding :int)
  (texture (:struct %texture))
  (recs :pointer)
- (chars (:pointer (:struct %char-info))))
+ (glyphs (:pointer (:struct %glyph-info))))
 
 (defstruct font
-  base-size chars-count texture recs chars)
+  base-size glyph-count glyph-padding texture recs glyphs)
 
 (defmethod translate-into-foreign-memory (object (type font-type) pointer)
-  (with-foreign-slots ((base-size chars-count recs chars) pointer (:struct %font))
+  (with-foreign-slots ((base-size glyph-count glyph-padding recs glyphs) pointer (:struct %font))
                       (convert-into-foreign-memory (font-texture object) '(:struct %texture) (foreign-slot-pointer pointer '(:struct %font) 'texture))
                       (setf base-size (font-base-size object))
-                      (setf chars-count (font-chars-count object))
+                      (setf glyph-count (font-glyph-count object))
+                      (setf glyph-padding (font-glyph-padding object))
                       (setf recs (font-recs object))
-                      (setf chars (font-chars object))))
+                      (setf glyphs (font-glyphs object))))
 
 (defmethod translate-from-foreign (pointer (type font-type))
-  (with-foreign-slots ((base-size chars-count texture recs chars) pointer (:struct %font))
+  (with-foreign-slots ((base-size glyph-count glyph-padding texture recs glyphs) pointer (:struct %font))
                       (let ((tid (foreign-slot-value texture '(:struct %texture) 'id))
                             (twidth (foreign-slot-value texture '(:struct %texture) 'width))
                             (theight (foreign-slot-value texture '(:struct %texture) 'height))
                             (tmipmaps (foreign-slot-value texture '(:struct %texture) 'mipmaps))
                             (tformat (foreign-slot-value texture '(:struct %texture) 'format)))
                         (make-font :base-size base-size
-                                   :chars-count chars-count
+                                   :glyph-count glyph-count
+                                   :glyph-padding glyph-padding
                                    :texture (make-texture :id tid :width twidth :height theight :mipmaps tmipmaps :format tformat)
                                    :recs recs
-                                   :chars chars))))
+                                   :glyphs glyphs))))
 
-;;// Camera type, defines a camera position/orientation in 3d space
+;;// Camera, defines position/orientation in 3d space
 ;;typedef struct Camera3D {
 ;;    Vector3 position;       // Camera position
 ;;    Vector3 target;         // Camera target it looks-at
 ;;    Vector3 up;             // Camera up vector (rotation over its axis)
 ;;    float fovy;             // Camera field-of-view apperture in Y (degrees) in perspective, used as near plane width in orthographic
-;;    int type;               // Camera type, defines projection type: CAMERA_PERSPECTIVE or CAMERA_ORTHOGRAPHIC
+;;    int projection;         // Camera projection: CAMERA_PERSPECTIVE or CAMERA_ORTHOGRAPHIC
 ;;} Camera3D;
 ;;
 ;;typedef Camera3D Camera;    // Camera type fallback, defaults to Camera3D
 (defcstruct (%camera3d :class camera3d-type)
- "Camera type, defines a camera position/orientation in 3d space"
- (position (:struct %vector3))
- (target (:struct %vector3))
- (up (:struct %vector3))
- (fovy :float)
- (type :int))
+  "Camera, defines position/orientation in 3d space"
+  (position (:struct %vector3))
+  (target (:struct %vector3))
+  (up (:struct %vector3))
+  (fovy :float)
+  (projection :int))
 
 (defstruct camera3d
-  position target up fovy type)
+  position target up fovy projection)
 
 (defmethod translate-into-foreign-memory (object (type camera3d-type) pointer)
-  (with-foreign-slots ((fovy type) pointer (:struct %camera3d))
-                      (convert-into-foreign-memory (camera3d-position object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'position))
-                      (convert-into-foreign-memory (camera3d-target object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'target))
-                      (convert-into-foreign-memory (camera3d-up object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'up))
-                      (setf fovy (coerce (camera3d-fovy object) 'float)
-                            type (camera3d-type object))))
+  (with-foreign-slots ((fovy projection) pointer (:struct %camera3d))
+    (convert-into-foreign-memory (camera3d-position object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'position))
+    (convert-into-foreign-memory (camera3d-target object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'target))
+    (convert-into-foreign-memory (camera3d-up object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'up))
+    (setf fovy (coerce (camera3d-fovy object) 'float)
+          projection (camera3d-projection object))))
 
 (defmethod translate-from-foreign (pointer (type camera3d-type))
-  (with-foreign-slots ((position target up fovy type) pointer (:struct %camera3d))
-                      (let ((px (foreign-slot-value position '(:struct %vector3) 'x))
-                            (py (foreign-slot-value position '(:struct %vector3) 'y))
-                            (pz (foreign-slot-value position '(:struct %vector3) 'z))
-                            (tx (foreign-slot-value target '(:struct %vector3) 'x))
-                            (ty (foreign-slot-value target '(:struct %vector3) 'y))
-                            (tz (foreign-slot-value target '(:struct %vector3) 'z))
-                            (ux (foreign-slot-value up '(:struct %vector3) 'x))
-                            (uy (foreign-slot-value up '(:struct %vector3) 'y))
-                            (uz (foreign-slot-value up '(:struct %vector3) 'z)))
-                        (make-camera3d :position (make-vector3 :x px :y py :z pz)
-                                       :target (make-vector3 :x tx :y ty :z tz)
-                                       :up (make-vector3 :x ux :y uy :z uz)
-                                       :fovy fovy
-                                       :type type))))
+  (with-foreign-slots ((position target up fovy projection) pointer (:struct %camera3d))
+    (let ((px (foreign-slot-value position '(:struct %vector3) 'x))
+          (py (foreign-slot-value position '(:struct %vector3) 'y))
+          (pz (foreign-slot-value position '(:struct %vector3) 'z))
+          (tx (foreign-slot-value target '(:struct %vector3) 'x))
+          (ty (foreign-slot-value target '(:struct %vector3) 'y))
+          (tz (foreign-slot-value target '(:struct %vector3) 'z))
+          (ux (foreign-slot-value up '(:struct %vector3) 'x))
+          (uy (foreign-slot-value up '(:struct %vector3) 'y))
+          (uz (foreign-slot-value up '(:struct %vector3) 'z)))
+      (make-camera3d :position (make-vector3 :x px :y py :z pz)
+                     :target (make-vector3 :x tx :y ty :z tz)
+                     :up (make-vector3 :x ux :y uy :z uz)
+                     :fovy fovy
+                     :projection projection))))
 
 (defmacro update-camera3d-from-foreign (lisp-var ptr)
-  `(cffi:with-foreign-slots ((position target up fovy type) ,ptr (:struct %camera3d))
+  `(cffi:with-foreign-slots ((position target up fovy projection) ,ptr (:struct %camera3d))
      (setf (camera3d-position ,lisp-var) position)
      (setf (camera3d-target ,lisp-var) target)
      (setf (camera3d-fovy ,lisp-var) fovy)
      (setf (camera3d-up ,lisp-var) up)
-     (setf (camera3d-type ,lisp-var) type)))
+     (setf (camera3d-projection ,lisp-var) projection)))
 
-;;// Camera2D type, defines a 2d camera
+;;// Camera2D, defines position/orientation in 2d space
 ;;typedef struct Camera2D {
 ;;    Vector2 offset;         // Camera offset (displacement from target)
 ;;    Vector2 target;         // Camera target (rotation and zoom origin)
@@ -664,7 +674,7 @@
 ;;    float zoom;             // Camera zoom (scaling), should be 1.0f by default
 ;;} Camera2D;
 (defcstruct (%camera2d :class camera2d-type)
- "Camera2D type, defines a 2d camera"
+ "Camera2D, defines position/orientation in 2d space"
  (offset (:struct %vector2))
  (target (:struct %vector2))
  (rotation :float)
@@ -691,25 +701,24 @@
                                        :rotation rotation
                                        :zoom zoom))))
 
-;;// Vertex data definning a mesh
-;;// NOTE: Data stored in CPU memory (and GPU)
+;;// Mesh, vertex data and vao/vbo
 ;;typedef struct Mesh {
 ;;    int vertexCount;        // Number of vertices stored in arrays
 ;;    int triangleCount;      // Number of triangles stored (indexed or not)
 ;;
-;;    // Default vertex data
+;;    // Vertex attributes data
 ;;    float *vertices;        // Vertex position (XYZ - 3 components per vertex) (shader-location = 0)
 ;;    float *texcoords;       // Vertex texture coordinates (UV - 2 components per vertex) (shader-location = 1)
 ;;    float *texcoords2;      // Vertex second texture coordinates (useful for lightmaps) (shader-location = 5)
 ;;    float *normals;         // Vertex normals (XYZ - 3 components per vertex) (shader-location = 2)
 ;;    float *tangents;        // Vertex tangents (XYZW - 4 components per vertex) (shader-location = 4)
-;;    unsigned char *colors;  // Vertex colors (RGBA - 4 components per vertex) (shader-location = 3)
-;;    unsigned short *indices;// Vertex indices (in case vertex data comes indexed)
+;;    unsigned char *colors;      // Vertex colors (RGBA - 4 components per vertex) (shader-location = 3)
+;;    unsigned short *indices;    // Vertex indices (in case vertex data comes indexed)
 ;;
 ;;    // Animation vertex data
 ;;    float *animVertices;    // Animated vertex positions (after bones transformations)
 ;;    float *animNormals;     // Animated normals (after bones transformations)
-;;    int *boneIds;           // Vertex bone ids, up to 4 bones influence by vertex (skinning)
+;;    unsigned char *boneIds; // Vertex bone ids, max 255 bone ids, up to 4 bones influence by vertex (skinning)
 ;;    float *boneWeights;     // Vertex bone weight, up to 4 bones influence by vertex (skinning)
 ;;
 ;;    // OpenGL identifiers
@@ -729,7 +738,7 @@
   (indices (:pointer :unsigned-short))
   (anim-vertices (:pointer :float))
   (anim-normals (:pointer :float))
-  (bone-ids (:pointer :int))
+  (bone-ids (:pointer :unsigned-char))
   (bone-weights (:pointer :float))
   (vao-id :unsigned-int)
   (vbo-id (:pointer :unsigned-int)))
@@ -756,13 +765,13 @@
   (with-foreign-slots ((vertex-count triangle-count vertices texcoords texcoords2 normals tangents colors indices anim-vertices anim-normals bone-ids bone-weights vao-id vbo-id) pointer (:struct %mesh))
                       (list vertex-count triangle-count vertices texcoords texcoords2 normals tangents colors indices anim-vertices anim-normals bone-ids bone-weights vao-id vbo-id)))
 
-;;// Shader type (generic)
+;;// Shader
 ;;typedef struct Shader {
 ;;    unsigned int id;        // Shader program id
-;;    int *locs;              // Shader locations array (MAX_SHADER_LOCATIONS)
+;;    int *locs;              // Shader locations array (RL_MAX_SHADER_LOCATIONS)
 ;;} Shader;
 (defcstruct (%shader :class shader-type)
- "Shader type"
+ "Shader"
  (id :unsigned-int)
  (locs (:pointer :int)))
  
@@ -775,7 +784,7 @@
  (with-foreign-slots ((id locs) pointer (:struct %shader))
  (list id locs)))
 
-;;// Material texture map
+;;// MaterialMap
 ;;typedef struct MaterialMap {
 ;;    Texture2D texture;      // Material map texture
 ;;    Color color;            // Material map color
@@ -797,11 +806,11 @@
  (with-foreign-slots ((texture color value) pointer (:struct %material-map))
  (list texture color value)))
 ;;
-;;// Material type (generic)
+;;// Material, includes shader and maps
 ;;typedef struct Material {
 ;;    Shader shader;          // Material shader
 ;;    MaterialMap *maps;      // Material maps array (MAX_MATERIAL_MAPS)
-;;    float *params;          // Material generic parameters (if required)
+;;    float params[4];        // Material generic parameters (if required)
 ;;} Material;
 (defcstruct (%material :class material-type)
  "Material type"
@@ -820,7 +829,7 @@
                       (list shader maps params)))
 
 ;;
-;;// Transformation properties
+;;// Transform, vectex transformation data
 ;;typedef struct Transform {
 ;;    Vector3 translation;    // Translation
 ;;    Quaternion rotation;    // Rotation
@@ -843,7 +852,7 @@
                      (list translation rotation scale)))
 
 ;;
-;;// Bone information
+;;// Bone, skeletal animation bone
 ;;typedef struct BoneInfo {
 ;;    char name[32];          // Bone name
 ;;    int parent;             // Bone parent
@@ -863,14 +872,13 @@
                      (list name parent)))
 
 ;;
-;;// Model type
+;;// Model, meshes, materials and animation data
 ;;typedef struct Model {
 ;;    Matrix transform;       // Local transform matrix
 ;;
 ;;    int meshCount;          // Number of meshes
-;;    Mesh *meshes;           // Meshes array
-;;
 ;;    int materialCount;      // Number of materials
+;;    Mesh *meshes;           // Meshes array
 ;;    Material *materials;    // Materials array
 ;;    int *meshMaterial;      // Mesh material number
 ;;
@@ -881,54 +889,59 @@
 ;;} Model;
 (defcstruct (%model :class model-type)
  "Model type"
- (mesh (:struct %mesh))
  (transform (:struct %matrix))
- (material (:struct %material))
+ (mesh-count :int)
+ (material-count :int)
+ (meshes (:pointer (:struct %mesh)))
+ (materials (:pointer (:struct %material)))
+ (mesh-material (:pointer :int))
  (bone-count :int)
  (bones (:struct %bone-info))
  (bind-pose (:struct %transform)))
 
 (defmethod translate-into-foreign-memory (object (type model-type) pointer)
- (with-foreign-slots ((mesh transform material bone-count bones bind-pose) pointer (:struct %model))
-                      (setf mesh (nth 0 object))
-                      (setf transform (nth 1 object))
-                      (setf material (nth 2 object))
-                      (setf bone-count (nth 3 object))
-                      (setf bones (nth 4 object))
-                      (setf bind-pose (nth 5 object))))
+ (with-foreign-slots ((transform mesh-count material-count meshes materials mesh-material bone-count bones bind-pose) pointer (:struct %model))
+                      (setf transform (nth 0 object))
+                      (setf mesh-count (nth 1 object))
+                      (setf material-count (nth 2 object))
+                      (setf meshes (nth 3 object))
+                      (setf materials (nth 4 object))
+                      (setf mesh-material (nth 5 object))
+                      (setf bone-count (nth 6 object))
+                      (setf bones (nth 7 object))
+                      (setf bind-pose (nth 8 object))))
 
 (defmethod translate-from-foreign (pointer (type model-type))
- (with-foreign-slots ((mesh transform material bone-count bones bind-pose) pointer (:struct %model))
-                     (list mesh transform material bone-count bones bind-pose)))
+ (with-foreign-slots ((transform mesh-count material-count meshes materials mesh-material bone-count bones bind-pose) pointer (:struct %model))
+                     (list transform mesh-count material-count meshes materials mesh-material bone-count bones bind-pose)))
 ;;
-;;// Model animation
+;;// ModelAnimation
 ;;typedef struct ModelAnimation {
 ;;    int boneCount;          // Number of bones
-;;    BoneInfo *bones;        // Bones information (skeleton)
-;;
 ;;    int frameCount;         // Number of animation frames
+;;    BoneInfo *bones;        // Bones information (skeleton)
 ;;    Transform **framePoses; // Poses array by frame
 ;;} ModelAnimation;
 (defcstruct (%model-animation :class model-animation-type)
- "Model animation"
+ "ModelAnimation"
  (bone-count :int)
- (bones (:struct %bone-info))
  (frame-count :int)
- (frame-poses (:struct %transform)))
+ (bones (:pointer (:struct %bone-info)))
+ (frame-poses (:pointer)))
 
 (defmethod translate-into-foreign-memory (object (type model-animation-type) pointer)
- (with-foreign-slots ((bone-count bones frame-count frame-poses) pointer (:struct %model-animation))
+ (with-foreign-slots ((bone-count frame-count bones frame-poses) pointer (:struct %model-animation))
                       (setf bone-count (nth 0 object))
-                      (setf bones (nth 1 object))
-                      (setf frame-count (nth 0 object))
-                      (setf frame-poses (nth 1 object))))
+                      (setf frame-count (nth 1 object))
+                      (setf bones (nth 2 object))
+                      (setf frame-poses (nth 3 object))))
 
 (defmethod translate-from-foreign (pointer (type model-animation-type))
- (with-foreign-slots ((bone-count bones frame-count frame-poses) pointer (:struct %model-animation))
-                     (list bone-count bones frame-count frame-poses)))
+ (with-foreign-slots ((bone-count frame-count bones frame-poses) pointer (:struct %model-animation))
+                     (list bone-count frame-count bones frame-poses)))
 
 ;;
-;;// Ray type (useful for raycast)
+;;// Ray, ray for raycasting
 ;;typedef struct Ray {
 ;;    Vector3 position;       // Ray position (origin)
 ;;    Vector3 direction;      // Ray direction
@@ -948,33 +961,33 @@
                       (list position direction)))
 
 ;;
-;;// Raycast hit information
-;;typedef struct RayHitInfo {
+;;// RayCollision, ray hit information
+;;typedef struct RayCollision {
 ;;    bool hit;               // Did the ray hit something?
 ;;    float distance;         // Distance to nearest hit
-;;    Vector3 position;       // Position of nearest hit
+;;    Vector3 point;          // Point of nearest hit
 ;;    Vector3 normal;         // Surface normal of hit
-;;} RayHitInfo;
-(defcstruct (%ray-hit-info :class ray-hit-info-type)
+;;} RayCollision;
+(defcstruct (%ray-collision :class ray-collision-type)
  "Raycast hit information"
  (hit :boolean)
  (distance :float)
- (position (:struct %vector3))
+ (point (:struct %vector3))
  (normal (:struct %vector3)))
 
-(defmethod translate-into-foreign-memory (object (type ray-hit-info-type) pointer)
- (with-foreign-slots ((hit distance position normal) pointer (:struct %ray-hit-info))
+(defmethod translate-into-foreign-memory (object (type ray-collision-type) pointer)
+ (with-foreign-slots ((hit distance point normal) pointer (:struct %ray-collision))
                       (setf hit (nth 0 object))
                       (setf distance (nth 1 object))
-                      (setf position (nth 2 object))
+                      (setf point (nth 2 object))
                       (setf normal (nth 3 object))))
 
-(defmethod translate-from-foreign (pointer (type ray-hit-info-type))
- (with-foreign-slots ((hit distance position normal) pointer (:struct %ray-hit-info))
-                     (list hit distance position normal)))
+(defmethod translate-from-foreign (pointer (type ray-collision-type))
+ (with-foreign-slots ((hit distance point normal) pointer (:struct %ray-collision))
+                     (list hit distance point normal)))
 
 ;;
-;;// Bounding box type
+;;// BoundingBox
 ;;typedef struct BoundingBox {
 ;;    Vector3 min;            // Minimum vertex box-corner
 ;;    Vector3 max;            // Maximum vertex box-corner
@@ -994,244 +1007,286 @@
   (list min max)))
 
 ;;
-;;// Wave type, defines audio wave data
+;;// Wave, audio wave data
 ;;typedef struct Wave {
-;;    unsigned int sampleCount;       // Total number of samples
-;;    unsigned int sampleRate;        // Frequency (samples per second)
-;;    unsigned int sampleSize;        // Bit depth (bits per sample): 8, 16, 32 (24 not supported)
-;;    unsigned int channels;          // Number of channels (1-mono, 2-stereo)
-;;    void *data;                     // Buffer data pointer
+;;    unsigned int frameCount;    // Total number of frames (considering channels)
+;;    unsigned int sampleRate;    // Frequency (samples per second)
+;;    unsigned int sampleSize;    // Bit depth (bits per sample): 8, 16, 32 (24 not supported)
+;;    unsigned int channels;      // Number of channels (1-mono, 2-stereo, ...)
+;;    void *data;                 // Buffer data pointer
 ;;} Wave;
 (defcstruct (%wave :class wave-type)
  "Wave type, defines audio wave data"
- (sample-count :unsigned-int)
+ (frame-count :unsigned-int)
  (sample-rate :unsigned-int)
  (sample-size :unsigned-int)
  (channels :unsigned-int)
  (data :pointer))
 
 (defmethod translate-into-foreign-memory (object (type wave-type) pointer)
- (with-foreign-slots ((sample-count sample-rate sample-size channels data) pointer (:struct %wave))
-                      (setf sample-count (nth 0 object))
+ (with-foreign-slots ((frame-count sample-rate sample-size channels data) pointer (:struct %wave))
+                      (setf frame-count (nth 0 object))
                       (setf sample-rate (nth 1 object))
                       (setf sample-size (nth 2 object))
                       (setf channels (nth 3 object))
                       (setf data (nth 4 object))))
 
 (defmethod translate-from-foreign (pointer (type wave-type))
- (with-foreign-slots ((sample-count sample-rate sample-size channels data) pointer (:struct %wave))
- (list sample-count sample-rate sample-size channels data)))
+ (with-foreign-slots ((frame-count sample-rate sample-size channels data) pointer (:struct %wave))
+ (list frame-count sample-rate sample-size channels data)))
 ;;
 ;;typedef struct rAudioBuffer rAudioBuffer;
 ;;
-;;// Audio stream type
-;;// NOTE: Useful to create custom audio streams not bound to a specific file
+;;// AudioStream, custom audio stream
 ;;typedef struct AudioStream {
-;;    unsigned int sampleRate;        // Frequency (samples per second)
-;;    unsigned int sampleSize;        // Bit depth (bits per sample): 8, 16, 32 (24 not supported)
-;;    unsigned int channels;          // Number of channels (1-mono, 2-stereo)
+;;    rAudioBuffer *buffer;       // Pointer to internal data used by the audio system
 ;;
-;;    rAudioBuffer *buffer;           // Pointer to internal data used by the audio system
+;;    unsigned int sampleRate;    // Frequency (samples per second)
+;;    unsigned int sampleSize;    // Bit depth (bits per sample): 8, 16, 32 (24 not supported)
+;;    unsigned int channels;      // Number of channels (1-mono, 2-stereo, ...)
 ;;} AudioStream;
 (defcstruct (%audio-stream :class audio-stream-type)
  "Audio stream type"
+  (buffer :pointer)
   (sample-rate :unsigned-int)
   (sample-size :unsigned-int)
-  (channels :unsigned-int)
-  (buffer :pointer))
+  (channels :unsigned-int))
 
 (defmethod translate-into-foreign-memory (object (type audio-stream-type) pointer)
- (with-foreign-slots ((sample-rate sample-size channels buffer) pointer (:struct %audio-stream))
-                      (setf sample-rate (nth 0 object))
-                      (setf sample-size (nth 1 object))
-                      (setf channels (nth 2 object))
-                      (setf buffer (nth 3 object))))
+ (with-foreign-slots ((buffer sample-rate sample-size channels) pointer (:struct %audio-stream))
+                      (setf buffer (nth 0 object))
+                      (setf sample-rate (nth 1 object))
+                      (setf sample-size (nth 2 object))
+                      (setf channels (nth 3 object))))
 
 (defmethod translate-from-foreign (pointer (type audio-stream-type))
-  (with-foreign-slots ((sample-rate sample-size channels buffer) pointer (:struct %audio-stream))
-                      (list sample-rate sample-size channels buffer)))
+  (with-foreign-slots ((buffer sample-rate sample-size channels) pointer (:struct %audio-stream))
+                      (list buffer sample-rate sample-size channels)))
 
-;;// Sound source type
+;;// Sound
 ;;typedef struct Sound {
-;;    unsigned int sampleCount;       // Total number of samples
-;;    AudioStream stream;             // Audio stream
+;;    AudioStream stream;         // Audio stream
+;;    unsigned int frameCount;    // Total number of frames (considering channels)
 ;;} Sound;
 (defcstruct (%sound :class sound-type)
  "Sound source type"
- (sample-count :unsigned-int)
- (stream (:struct %audio-stream)))
+ (stream (:struct %audio-stream))
+ (frame-count :unsigned-int))
 
 (defmethod translate-into-foreign-memory (object (type sound-type) pointer)
- (with-foreign-slots ((sample-count stream) pointer (:struct %sound))
-                      (setf sample-count (nth 0 object))
-                      (convert-into-foreign-memory (nth 1 object)
+ (with-foreign-slots ((stream frame-count) pointer (:struct %sound))
+                      (convert-into-foreign-memory (nth 0 object)
                                                    '(:struct %audio-stream)
-                                                   (foreign-slot-pointer pointer '(:struct %sound) 'stream))))
+                                                   (foreign-slot-pointer pointer '(:struct %sound) 'stream))
+                      (setf frame-count (nth 1 object))))
 
 (defmethod translate-from-foreign (pointer (type sound-type))
-  (with-foreign-slots ((sample-count stream) pointer (:struct %sound))
-                      (list sample-count stream)))
+  (with-foreign-slots ((stream frame-count) pointer (:struct %sound))
+                      (list stream frame-count)))
 ;;
-;;// Music stream type (audio file streaming from memory)
-;;// NOTE: Anything longer than ~10 seconds should be streamed
+;;// Music, audio stream, anything longer than ~10 seconds should be streamed
 ;;typedef struct Music {
-;;    int ctxType;                    // Type of music context (audio filetype)
-;;    void *ctxData;                  // Audio context data, depends on type
+;;    AudioStream stream;         // Audio stream
+;;    unsigned int frameCount;    // Total number of frames (considering channels)
+;;    bool looping;               // Music looping enable
 ;;
-;;    unsigned int sampleCount;       // Total number of samples
-;;    unsigned int loopCount;         // Loops count (times music will play), 0 means infinite loop
-;;
-;;    AudioStream stream;             // Audio stream
+;;    int ctxType;                // Type of music context (audio filetype)
+;;    void *ctxData;              // Audio context data, depends on type
 ;;} Music;
 (defcstruct (%music :class music-type)
- "Music stream type (audio file streaming from memory)"
+ "Music, audio stream, anything longer than ~10 seconds should be streamed"
+ (stream (:struct %audio-stream))
+ (frame-count :unsigned-int)
+ (looping :boolean)
  (ctx-type :int)
- (ctx-data :pointer)
- (sample-count :unsigned-int)
- (loop-count :unsigned-int)
- (stream (:struct %audio-stream)))
+ (ctx-data :pointer))
 
 (defmethod translate-into-foreign-memory (object (type music-type) pointer)
- (with-foreign-slots ((ctx-type ctx-data sample-count loop-count stream) pointer (:struct %music))
-                      (setf ctx-type (nth 0 object))
-                      (setf ctx-data (nth 1 object))
-                      (setf sample-count (nth 2 object))
-                      (setf loop-count (nth 3 object))
-                      (convert-into-foreign-memory (nth 4 object)
+ (with-foreign-slots ((stream frame-count looping ctx-type ctx-data) pointer (:struct %music))
+                      (convert-into-foreign-memory (nth 0 object)
                                                    '(:struct %audio-stream)
-                                                   (foreign-slot-pointer pointer '(:struct %music) 'stream))))
+                                                   (foreign-slot-pointer pointer '(:struct %music) 'stream))
+                      (setf frame-count (nth 1 object))
+                      (setf looping (nth 2 object))
+                      (setf ctx-type (nth 3 object))
+                      (setf ctx-data (nth 4 object))))
 
 (defmethod translate-from-foreign (pointer (type music-type))
-  (with-foreign-slots ((ctx-type ctx-data sample-count loop-count stream) pointer (:struct %music))
-                      (list ctx-type ctx-data sample-count loop-count stream)))
+  (with-foreign-slots ((stream frame-count looping ctx-type ctx-data) pointer (:struct %music))
+                      (list stream frame-count looping ctx-type ctx-data)))
 
-;;// Head-Mounted-Display device parameters
+;;// VrDeviceInfo, Head-Mounted-Display device parameters
 ;;typedef struct VrDeviceInfo {
-;;    int hResolution;                // HMD horizontal resolution in pixels
-;;    int vResolution;                // HMD vertical resolution in pixels
-;;    float hScreenSize;              // HMD horizontal size in meters
-;;    float vScreenSize;              // HMD vertical size in meters
-;;    float vScreenCenter;            // HMD screen center in meters
-;;    float eyeToScreenDistance;      // HMD distance between eye and display in meters
-;;    float lensSeparationDistance;   // HMD lens separation distance in meters
-;;    float interpupillaryDistance;   // HMD IPD (distance between pupils) in meters
-;;    float lensDistortionValues[4];  // HMD lens distortion constant parameters
-;;    float chromaAbCorrection[4];    // HMD chromatic aberration correction parameters
+;;    int hResolution;                // Horizontal resolution in pixels
+;;    int vResolution;                // Vertical resolution in pixels
+;;    float hScreenSize;              // Horizontal size in meters
+;;    float vScreenSize;              // Vertical size in meters
+;;    float vScreenCenter;            // Screen center in meters
+;;    float eyeToScreenDistance;      // Distance between eye and display in meters
+;;    float lensSeparationDistance;   // Lens separation distance in meters
+;;    float interpupillaryDistance;   // IPD (distance between pupils) in meters
+;;    float lensDistortionValues[4];  // Lens distortion constant parameters
+;;    float chromaAbCorrection[4];    // Chromatic aberration correction parameters
 ;;} VrDeviceInfo;
 (defcstruct (%vr-device-info :class vr-device-info-type)
- "Head-Mounted-Display device parameters"
- (h-resolution :int)
- (v-resolution :int)
- (h-screen-size :float)
- (v-screen-size :float)
- (v-screen-center :float)
- (eye-to-screen-distance :float)
- (lens-separation-distance :float)
- (interpupillary-distance :float)
- (lens-distortion-values :float :count 4)
- (chroma-ab-correction :float :count 4))
+  "Head-Mounted-Display device parameters"
+  (h-resolution :int)
+  (v-resolution :int)
+  (h-screen-size :float)
+  (v-screen-size :float)
+  (v-screen-center :float)
+  (eye-to-screen-distance :float)
+  (lens-separation-distance :float)
+  (interpupillary-distance :float)
+  (lens-distortion-values :float :count 4)
+  (chroma-ab-correction :float :count 4))
 
 (defmethod translate-into-foreign-memory (object (type vr-device-info-type) pointer)
- (with-foreign-slots ((h-resolution v-resolution h-screen-size v-screen-size v-screen-center eye-to-screen-distance lens-separation-distance interpupillary-distance lens-distortion-values chroma-ab-correction) pointer (:struct %vr-device-info))
-                      (setf h-resolution (nth 0 object))
-                      (setf v-resolution (nth 1 object))
-                      (setf h-screen-size (coerce (nth 2 object) 'float))
-                      (setf v-screen-size (coerce (nth 3 object) 'float))
-                      (setf v-screen-center (coerce (nth 4 object) 'float))
-                      (setf eye-to-screen-distance (coerce (nth 5 object) 'float))
-                      (setf lens-separation-distance (coerce (nth 6 object) 'float))
-                      (setf interpupillary-distance (coerce (nth 7 object) 'float))
-                      (setf lens-distortion-values (nth 8 object))
-                      (setf chroma-ab-correction (nth 9 object))))
+  (with-foreign-slots ((h-resolution v-resolution h-screen-size v-screen-size v-screen-center eye-to-screen-distance lens-separation-distance interpupillary-distance lens-distortion-values chroma-ab-correction) pointer (:struct %vr-device-info))
+    (setf h-resolution (nth 0 object))
+    (setf v-resolution (nth 1 object))
+    (setf h-screen-size (coerce (nth 2 object) 'float))
+    (setf v-screen-size (coerce (nth 3 object) 'float))
+    (setf v-screen-center (coerce (nth 4 object) 'float))
+    (setf eye-to-screen-distance (coerce (nth 5 object) 'float))
+    (setf lens-separation-distance (coerce (nth 6 object) 'float))
+    (setf interpupillary-distance (coerce (nth 7 object) 'float))
+    (setf lens-distortion-values (nth 8 object))
+    (setf chroma-ab-correction (nth 9 object))))
 
 (defmethod translate-from-foreign (pointer (type vr-device-info-type))
   (with-foreign-slots ((h-resolution v-resolution h-screen-size v-screen-size v-screen-center eye-to-screen-distance lens-separation-distance interpupillary-distance lens-distortion-values chroma-ab-correction) pointer (:struct %vr-device-info))
-                      (list h-resolution v-resolution h-screen-size v-screen-size v-screen-center eye-to-screen-distance lens-separation-distance interpupillary-distance lens-distortion-values chroma-ab-correction)))
-                       
+    (list h-resolution v-resolution h-screen-size v-screen-size v-screen-center eye-to-screen-distance lens-separation-distance interpupillary-distance lens-distortion-values chroma-ab-correction)))
+
+;;// VrStereoConfig, VR stereo rendering configuration for simulator
+;;typedef struct VrStereoConfig {
+;;    Matrix projection[2];           // VR projection matrices (per eye)
+;;    Matrix viewOffset[2];           // VR view offset matrices (per eye)
+;;    float leftLensCenter[2];        // VR left lens center
+;;    float rightLensCenter[2];       // VR right lens center
+;;    float leftScreenCenter[2];      // VR left screen center
+;;    float rightScreenCenter[2];     // VR right screen center
+;;    float scale[2];                 // VR distortion scale
+;;    float scaleIn[2];               // VR distortion scale in
+;;} VrStereoConfig;
+(defcstruct (%vr-stereo-config :class vr-stereo-config)
+  "VR stereo rendering configuration for simulator"
+  (projection (:struct %matrix) :count 2)
+  (view-offset (:struct %matrix) :count 2)
+  (left-lens-center :float :count 2)
+  (right-lens-center :float :count 2)
+  (left-screen-center :float :count 2)
+  (right-screen-center :float :count 2)
+  (scale :float :count 2)
+  (scale-in :float :count 2))
+
+; TODO
+
 ;;//----------------------------------------------------------------------------------
 ;;// Enumerators Definition
 ;;//----------------------------------------------------------------------------------
-;;// System config flags
-;;// NOTE: Used for bit masks
+;;// System/Window config flags
+;;// NOTE: Every bit registers one state (use it with bit masks)
+;;// By default all flags are set to 0
 ;;typedef enum {
-;;    FLAG_RESERVED           = 1,    // Reserved
-;;    FLAG_FULLSCREEN_MODE    = 2,    // Set to run program in fullscreen
-;;    FLAG_WINDOW_RESIZABLE   = 4,    // Set to allow resizable window
-;;    FLAG_WINDOW_UNDECORATED = 8,    // Set to disable window decoration (frame and buttons)
-;;    FLAG_WINDOW_TRANSPARENT = 16,   // Set to allow transparent window
-;;    FLAG_WINDOW_HIDDEN      = 128,  // Set to create the window initially hidden
-;;    FLAG_WINDOW_ALWAYS_RUN  = 256,  // Set to allow windows running while minimized
-;;    FLAG_MSAA_4X_HINT       = 32,   // Set to try enabling MSAA 4X
-;;    FLAG_VSYNC_HINT         = 64    // Set to try enabling V-Sync on GPU
-;;} ConfigFlag;
-(define-constant +flag-reserved+ 1)
-(define-constant +flag-fullscreen-mode+ 2)
-(define-constant +flag-window-resizable+ 4)
-(define-constant +flag-window-undecorated+ 8)
-(define-constant +flag-window-transparent+ 16)
-(define-constant +flag-window-hidden+ 128)
-(define-constant +flag-window-always-run+ 256)
-(define-constant +flag-msaa-4x-hint+ 32)
-(define-constant +flag-vsync-hint+ 64)
+;;    FLAG_VSYNC_HINT         = 0x00000040,   // Set to try enabling V-Sync on GPU
+;;    FLAG_FULLSCREEN_MODE    = 0x00000002,   // Set to run program in fullscreen
+;;    FLAG_WINDOW_RESIZABLE   = 0x00000004,   // Set to allow resizable window
+;;    FLAG_WINDOW_UNDECORATED = 0x00000008,   // Set to disable window decoration (frame and buttons)
+;;    FLAG_WINDOW_HIDDEN      = 0x00000080,   // Set to hide window
+;;    FLAG_WINDOW_MINIMIZED   = 0x00000200,   // Set to minimize window (iconify)
+;;    FLAG_WINDOW_MAXIMIZED   = 0x00000400,   // Set to maximize window (expanded to monitor)
+;;    FLAG_WINDOW_UNFOCUSED   = 0x00000800,   // Set to window non focused
+;;    FLAG_WINDOW_TOPMOST     = 0x00001000,   // Set to window always on top
+;;    FLAG_WINDOW_ALWAYS_RUN  = 0x00000100,   // Set to allow windows running while minimized
+;;    FLAG_WINDOW_TRANSPARENT = 0x00000010,   // Set to allow transparent framebuffer
+;;    FLAG_WINDOW_HIGHDPI     = 0x00002000,   // Set to support HighDPI
+;;    FLAG_MSAA_4X_HINT       = 0x00000020,   // Set to try enabling MSAA 4X
+;;    FLAG_INTERLACED_HINT    = 0x00010000    // Set to try enabling interlaced video format (for V3D)
+;;} ConfigFlags;
 
-;;// Trace log type
+(define-constant   +flag-vsync-hint+         #x00000040)
+(define-constant   +flag-fullscreen-mode+    #x00000002)
+(define-constant   +flag-window-resizable+   #x00000004)
+(define-constant   +flag-window-undecorated+ #x00000008)
+(define-constant   +flag-window-hidden+      #x00000080)
+(define-constant   +flag-window-minimized+   #x00000200)
+(define-constant   +flag-window-maximized+   #x00000400)
+(define-constant   +flag-window-unfocused+   #x00000800)
+(define-constant   +flag-window-topmost+     #x00001000)
+(define-constant   +flag-window-always-run+  #x00000100)
+(define-constant   +flag-window-transparent+ #x00000010)
+(define-constant   +flag-window-highdpi+     #x00002000)
+(define-constant   +flag-msaa-4x-hint+       #x00000020)
+(define-constant   +flag-interlaced-hint+    #x00010000)
+
+;;// Trace log level
+;;// NOTE: Organized by priority level
 ;;typedef enum {
 ;;    LOG_ALL = 0,        // Display all logs
-;;    LOG_TRACE,
-;;    LOG_DEBUG,
-;;    LOG_INFO,
-;;    LOG_WARNING,
-;;    LOG_ERROR,
-;;    LOG_FATAL,
+;;    LOG_TRACE,          // Trace logging, intended for internal use only
+;;    LOG_DEBUG,          // Debug logging, used for internal debugging, it should be disabled on release builds
+;;    LOG_INFO,           // Info logging, used for program execution info
+;;    LOG_WARNING,        // Warning logging, used on recoverable failures
+;;    LOG_ERROR,          // Error logging, used on unrecoverable failures
+;;    LOG_FATAL,          // Fatal logging, used to abort program: exit(EXIT_FAILURE)
 ;;    LOG_NONE            // Disable logging
-;;} TraceLogType;
-
-;;// Keyboard keys
+;;} TraceLogLevel;
+;;
+;;// Keyboard keys (US keyboard layout)
+;;// NOTE: Use GetKeyPressed() to allow redefining
+;;// required keys for alternative layouts
 ;;typedef enum {
+;;    KEY_NULL            = 0,        // Key: NULL, used for no key pressed
 ;;    // Alphanumeric keys
-;;    KEY_APOSTROPHE      = 39,
-;;    KEY_COMMA           = 44,
-;;    KEY_MINUS           = 45,
-;;    KEY_PERIOD          = 46,
-;;    KEY_SLASH           = 47,
-;;    KEY_ZERO            = 48,
-;;    KEY_ONE             = 49,
-;;    KEY_TWO             = 50,
-;;    KEY_THREE           = 51,
-;;    KEY_FOUR            = 52,
-;;    KEY_FIVE            = 53,
-;;    KEY_SIX             = 54,
-;;    KEY_SEVEN           = 55,
-;;    KEY_EIGHT           = 56,
-;;    KEY_NINE            = 57,
-;;    KEY_SEMICOLON       = 59,
-;;    KEY_EQUAL           = 61,
-;;    KEY_A               = 65,
-;;    KEY_B               = 66,
-;;    KEY_C               = 67,
-;;    KEY_D               = 68,
-;;    KEY_E               = 69,
-;;    KEY_F               = 70,
-;;    KEY_G               = 71,
-;;    KEY_H               = 72,
-;;    KEY_I               = 73,
-;;    KEY_J               = 74,
-;;    KEY_K               = 75,
-;;    KEY_L               = 76,
-;;    KEY_M               = 77,
-;;    KEY_N               = 78,
-;;    KEY_O               = 79,
-;;    KEY_P               = 80,
-;;    KEY_Q               = 81,
-;;    KEY_R               = 82,
-;;    KEY_S               = 83,
-;;    KEY_T               = 84,
-;;    KEY_U               = 85,
-;;    KEY_V               = 86,
-;;    KEY_W               = 87,
-;;    KEY_X               = 88,
-;;    KEY_Y               = 89,
-;;    KEY_Z               = 90,
+;;    KEY_APOSTROPHE      = 39,       // Key: '
+;;    KEY_COMMA           = 44,       // Key: ,
+;;    KEY_MINUS           = 45,       // Key: -
+;;    KEY_PERIOD          = 46,       // Key: .
+;;    KEY_SLASH           = 47,       // Key: /
+;;    KEY_ZERO            = 48,       // Key: 0
+;;    KEY_ONE             = 49,       // Key: 1
+;;    KEY_TWO             = 50,       // Key: 2
+;;    KEY_THREE           = 51,       // Key: 3
+;;    KEY_FOUR            = 52,       // Key: 4
+;;    KEY_FIVE            = 53,       // Key: 5
+;;    KEY_SIX             = 54,       // Key: 6
+;;    KEY_SEVEN           = 55,       // Key: 7
+;;    KEY_EIGHT           = 56,       // Key: 8
+;;    KEY_NINE            = 57,       // Key: 9
+;;    KEY_SEMICOLON       = 59,       // Key: ;
+;;    KEY_EQUAL           = 61,       // Key: =
+;;    KEY_A               = 65,       // Key: A | a
+;;    KEY_B               = 66,       // Key: B | b
+;;    KEY_C               = 67,       // Key: C | c
+;;    KEY_D               = 68,       // Key: D | d
+;;    KEY_E               = 69,       // Key: E | e
+;;    KEY_F               = 70,       // Key: F | f
+;;    KEY_G               = 71,       // Key: G | g
+;;    KEY_H               = 72,       // Key: H | h
+;;    KEY_I               = 73,       // Key: I | i
+;;    KEY_J               = 74,       // Key: J | j
+;;    KEY_K               = 75,       // Key: K | k
+;;    KEY_L               = 76,       // Key: L | l
+;;    KEY_M               = 77,       // Key: M | m
+;;    KEY_N               = 78,       // Key: N | n
+;;    KEY_O               = 79,       // Key: O | o
+;;    KEY_P               = 80,       // Key: P | p
+;;    KEY_Q               = 81,       // Key: Q | q
+;;    KEY_R               = 82,       // Key: R | r
+;;    KEY_S               = 83,       // Key: S | s
+;;    KEY_T               = 84,       // Key: T | t
+;;    KEY_U               = 85,       // Key: U | u
+;;    KEY_V               = 86,       // Key: V | v
+;;    KEY_W               = 87,       // Key: W | w
+;;    KEY_X               = 88,       // Key: X | x
+;;    KEY_Y               = 89,       // Key: Y | y
+;;    KEY_Z               = 90,       // Key: Z | z
+;;    KEY_LEFT_BRACKET    = 91,       // Key: [
+;;    KEY_BACKSLASH       = 92,       // Key: '\'
+;;    KEY_RIGHT_BRACKET   = 93,       // Key: ]
+;;    KEY_GRAVE           = 96,       // Key: `
+(define-constant +key-null+ 0)
 (define-constant +key-apostrophe+ 39)
 (define-constant +key-comma+ 44)
 (define-constant +key-minus+ 45)
@@ -1275,53 +1330,53 @@
 (define-constant +key-x+ 88)
 (define-constant +key-y+ 89)
 (define-constant +key-z+ 90)
+(define-constant +key-left-bracket+ 91)
+(define-constant +key-backslash+ 92)
+(define-constant +key-right-bracket+ 93)
+(define-constant +key-grave+ 96)
 
 ;;    // Function keys
-;;    KEY_SPACE           = 32,
-;;    KEY_ESCAPE          = 256,
-;;    KEY_ENTER           = 257,
-;;    KEY_TAB             = 258,
-;;    KEY_BACKSPACE       = 259,
-;;    KEY_INSERT          = 260,
-;;    KEY_DELETE          = 261,
-;;    KEY_RIGHT           = 262,
-;;    KEY_LEFT            = 263,
-;;    KEY_DOWN            = 264,
-;;    KEY_UP              = 265,
-;;    KEY_PAGE_UP         = 266,
-;;    KEY_PAGE_DOWN       = 267,
-;;    KEY_HOME            = 268,
-;;    KEY_END             = 269,
-;;    KEY_CAPS_LOCK       = 280,
-;;    KEY_SCROLL_LOCK     = 281,
-;;    KEY_NUM_LOCK        = 282,
-;;    KEY_PRINT_SCREEN    = 283,
-;;    KEY_PAUSE           = 284,
-;;    KEY_F1              = 290,
-;;    KEY_F2              = 291,
-;;    KEY_F3              = 292,
-;;    KEY_F4              = 293,
-;;    KEY_F5              = 294,
-;;    KEY_F6              = 295,
-;;    KEY_F7              = 296,
-;;    KEY_F8              = 297,
-;;    KEY_F9              = 298,
-;;    KEY_F10             = 299,
-;;    KEY_F11             = 300,
-;;    KEY_F12             = 301,
-;;    KEY_LEFT_SHIFT      = 340,
-;;    KEY_LEFT_CONTROL    = 341,
-;;    KEY_LEFT_ALT        = 342,
-;;    KEY_LEFT_SUPER      = 343,
-;;    KEY_RIGHT_SHIFT     = 344,
-;;    KEY_RIGHT_CONTROL   = 345,
-;;    KEY_RIGHT_ALT       = 346,
-;;    KEY_RIGHT_SUPER     = 347,
-;;    KEY_KB_MENU         = 348,
-;;    KEY_LEFT_BRACKET    = 91,
-;;    KEY_BACKSLASH       = 92,
-;;    KEY_RIGHT_BRACKET   = 93,
-;;    KEY_GRAVE           = 96,
+;;    KEY_SPACE           = 32,       // Key: Space
+;;    KEY_ESCAPE          = 256,      // Key: Esc
+;;    KEY_ENTER           = 257,      // Key: Enter
+;;    KEY_TAB             = 258,      // Key: Tab
+;;    KEY_BACKSPACE       = 259,      // Key: Backspace
+;;    KEY_INSERT          = 260,      // Key: Ins
+;;    KEY_DELETE          = 261,      // Key: Del
+;;    KEY_RIGHT           = 262,      // Key: Cursor right
+;;    KEY_LEFT            = 263,      // Key: Cursor left
+;;    KEY_DOWN            = 264,      // Key: Cursor down
+;;    KEY_UP              = 265,      // Key: Cursor up
+;;    KEY_PAGE_UP         = 266,      // Key: Page up
+;;    KEY_PAGE_DOWN       = 267,      // Key: Page down
+;;    KEY_HOME            = 268,      // Key: Home
+;;    KEY_END             = 269,      // Key: End
+;;    KEY_CAPS_LOCK       = 280,      // Key: Caps lock
+;;    KEY_SCROLL_LOCK     = 281,      // Key: Scroll down
+;;    KEY_NUM_LOCK        = 282,      // Key: Num lock
+;;    KEY_PRINT_SCREEN    = 283,      // Key: Print screen
+;;    KEY_PAUSE           = 284,      // Key: Pause
+;;    KEY_F1              = 290,      // Key: F1
+;;    KEY_F2              = 291,      // Key: F2
+;;    KEY_F3              = 292,      // Key: F3
+;;    KEY_F4              = 293,      // Key: F4
+;;    KEY_F5              = 294,      // Key: F5
+;;    KEY_F6              = 295,      // Key: F6
+;;    KEY_F7              = 296,      // Key: F7
+;;    KEY_F8              = 297,      // Key: F8
+;;    KEY_F9              = 298,      // Key: F9
+;;    KEY_F10             = 299,      // Key: F10
+;;    KEY_F11             = 300,      // Key: F11
+;;    KEY_F12             = 301,      // Key: F12
+;;    KEY_LEFT_SHIFT      = 340,      // Key: Shift left
+;;    KEY_LEFT_CONTROL    = 341,      // Key: Control left
+;;    KEY_LEFT_ALT        = 342,      // Key: Alt left
+;;    KEY_LEFT_SUPER      = 343,      // Key: Super left
+;;    KEY_RIGHT_SHIFT     = 344,      // Key: Shift right
+;;    KEY_RIGHT_CONTROL   = 345,      // Key: Control right
+;;    KEY_RIGHT_ALT       = 346,      // Key: Alt right
+;;    KEY_RIGHT_SUPER     = 347,      // Key: Super right
+;;    KEY_KB_MENU         = 348,      // Key: KB menu
 (define-constant +key-space+ 32)
 (define-constant +key-escape+ 256)
 (define-constant +key-enter+ 257)
@@ -1363,29 +1418,30 @@
 (define-constant +key-right-alt+ 346)
 (define-constant +key-right-super+ 347)
 (define-constant +key-kb-menu+ 348)
-(define-constant +key-left-bracket+ 91)
-(define-constant +key-backslash+ 92)
-(define-constant +key-right-bracket+ 93)
-(define-constant +key-grave+ 96)
 
 ;;    // Keypad keys
-;;    KEY_KP_0            = 320,
-;;    KEY_KP_1            = 321,
-;;    KEY_KP_2            = 322,
-;;    KEY_KP_3            = 323,
-;;    KEY_KP_4            = 324,
-;;    KEY_KP_5            = 325,
-;;    KEY_KP_6            = 326,
-;;    KEY_KP_7            = 327,
-;;    KEY_KP_8            = 328,
-;;    KEY_KP_9            = 329,
-;;    KEY_KP_DECIMAL      = 330,
-;;    KEY_KP_DIVIDE       = 331,
-;;    KEY_KP_MULTIPLY     = 332,
-;;    KEY_KP_SUBTRACT     = 333,
-;;    KEY_KP_ADD          = 334,
-;;    KEY_KP_ENTER        = 335,
-;;    KEY_KP_EQUAL        = 336
+;;    KEY_KP_0            = 320,      // Key: Keypad 0
+;;    KEY_KP_1            = 321,      // Key: Keypad 1
+;;    KEY_KP_2            = 322,      // Key: Keypad 2
+;;    KEY_KP_3            = 323,      // Key: Keypad 3
+;;    KEY_KP_4            = 324,      // Key: Keypad 4
+;;    KEY_KP_5            = 325,      // Key: Keypad 5
+;;    KEY_KP_6            = 326,      // Key: Keypad 6
+;;    KEY_KP_7            = 327,      // Key: Keypad 7
+;;    KEY_KP_8            = 328,      // Key: Keypad 8
+;;    KEY_KP_9            = 329,      // Key: Keypad 9
+;;    KEY_KP_DECIMAL      = 330,      // Key: Keypad .
+;;    KEY_KP_DIVIDE       = 331,      // Key: Keypad /
+;;    KEY_KP_MULTIPLY     = 332,      // Key: Keypad *
+;;    KEY_KP_SUBTRACT     = 333,      // Key: Keypad -
+;;    KEY_KP_ADD          = 334,      // Key: Keypad +
+;;    KEY_KP_ENTER        = 335,      // Key: Keypad Enter
+;;    KEY_KP_EQUAL        = 336,      // Key: Keypad =
+;;    // Android key buttons
+;;    KEY_BACK            = 4,        // Key: Android back button
+;;    KEY_MENU            = 82,       // Key: Android menu button
+;;    KEY_VOLUME_UP       = 24,       // Key: Android volume up button
+;;    KEY_VOLUME_DOWN     = 25        // Key: Android volume down button
 ;;} KeyboardKey;
 (define-constant +key-kp-0+ 320)
 (define-constant +key-kp-1+ 321)
@@ -1405,75 +1461,80 @@
 (define-constant +key-kp-enter+ 335)
 (define-constant +key-kp-equal+ 336)
 
-;;// Android buttons
-;;typedef enum {
-;;    KEY_BACK            = 4,
-;;    KEY_MENU            = 82,
-;;    KEY_VOLUME_UP       = 24,
-;;    KEY_VOLUME_DOWN     = 25
-;;} AndroidButton;
 (define-constant +key-back+ 4)
 (define-constant +key-menu+ 82)
 (define-constant +key-volume-up+ 24)
 (define-constant +key-volume-down+ 25)
 
+;;// Add backwards compatibility support for deprecated names
+;;#define MOUSE_LEFT_BUTTON   MOUSE_BUTTON_LEFT
+;;#define MOUSE_RIGHT_BUTTON  MOUSE_BUTTON_RIGHT
+;;#define MOUSE_MIDDLE_BUTTON MOUSE_BUTTON_MIDDLE
+;;
 ;;// Mouse buttons
 ;;typedef enum {
-;;    MOUSE_LEFT_BUTTON   = 0,
-;;    MOUSE_RIGHT_BUTTON  = 1,
-;;    MOUSE_MIDDLE_BUTTON = 2
+;;    MOUSE_BUTTON_LEFT    = 0,       // Mouse button left
+;;    MOUSE_BUTTON_RIGHT   = 1,       // Mouse button right
+;;    MOUSE_BUTTON_MIDDLE  = 2,       // Mouse button middle (pressed wheel)
+;;    MOUSE_BUTTON_SIDE    = 3,       // Mouse button side (advanced mouse device)
+;;    MOUSE_BUTTON_EXTRA   = 4,       // Mouse button extra (advanced mouse device)
+;;    MOUSE_BUTTON_FORWARD = 5,       // Mouse button fordward (advanced mouse device)
+;;    MOUSE_BUTTON_BACK    = 6,       // Mouse button back (advanced mouse device)
 ;;} MouseButton;
-(define-constant +mouse-left-button+ 0)
-(define-constant +mouse-right-button+ 1)
-(define-constant +mouse-middle-button+ 2)
+(define-constant +mouse-button-left+ 0)
+(define-constant +mouse-button-right+ 1)
+(define-constant +mouse-button-middle+ 2)
+(define-constant +mouse-button-side+ 3)
+(define-constant +mouse-button-extra+ 4)
+(define-constant +mouse-button-forward+ 5)
+(define-constant +mouse-button-back+ 6)
 
-;;// Gamepad number
+;;// Mouse cursor
 ;;typedef enum {
-;;    GAMEPAD_PLAYER1     = 0,
-;;    GAMEPAD_PLAYER2     = 1,
-;;    GAMEPAD_PLAYER3     = 2,
-;;    GAMEPAD_PLAYER4     = 3
-;;} GamepadNumber;
-(define-constant +gamepad-player1+ 0)
-(define-constant +gamepad-player2+ 1)
-(define-constant +gamepad-player3+ 2)
-(define-constant +gamepad-player4+ 3)
+;;    MOUSE_CURSOR_DEFAULT       = 0,     // Default pointer shape
+;;    MOUSE_CURSOR_ARROW         = 1,     // Arrow shape
+;;    MOUSE_CURSOR_IBEAM         = 2,     // Text writing cursor shape
+;;    MOUSE_CURSOR_CROSSHAIR     = 3,     // Cross shape
+;;    MOUSE_CURSOR_POINTING_HAND = 4,     // Pointing hand cursor
+;;    MOUSE_CURSOR_RESIZE_EW     = 5,     // Horizontal resize/move arrow shape
+;;    MOUSE_CURSOR_RESIZE_NS     = 6,     // Vertical resize/move arrow shape
+;;    MOUSE_CURSOR_RESIZE_NWSE   = 7,     // Top-left to bottom-right diagonal resize/move arrow shape
+;;    MOUSE_CURSOR_RESIZE_NESW   = 8,     // The top-right to bottom-left diagonal resize/move arrow shape
+;;    MOUSE_CURSOR_RESIZE_ALL    = 9,     // The omni-directional resize/move cursor shape
+;;    MOUSE_CURSOR_NOT_ALLOWED   = 10     // The operation-not-allowed shape
+;;} MouseCursor;
+(define-constant +mouse-cursor-default+       0)
+(define-constant +mouse-cursor-arrow+         1)
+(define-constant +mouse-cursor-ibeam+         2)
+(define-constant +mouse-cursor-crosshair+     3)
+(define-constant +mouse-cursor-pointing-hand+ 4)
+(define-constant +mouse-cursor-resize-ew+     5)
+(define-constant +mouse-cursor-resize-ns+     6)
+(define-constant +mouse-cursor-resize-nwse+   7)
+(define-constant +mouse-cursor-resize-nesw+   8)
+(define-constant +mouse-cursor-resize-all+    9)
+(define-constant +mouse-cursor-not-allowed+   10)
 
-
-;;// Gamepad Buttons
+;;// Gamepad buttons
 ;;typedef enum {
-;;    // This is here just for error checking
-;;    GAMEPAD_BUTTON_UNKNOWN = 0,
-;;
-;;    // This is normally a DPAD
-;;    GAMEPAD_BUTTON_LEFT_FACE_UP,
-;;    GAMEPAD_BUTTON_LEFT_FACE_RIGHT,
-;;    GAMEPAD_BUTTON_LEFT_FACE_DOWN,
-;;    GAMEPAD_BUTTON_LEFT_FACE_LEFT,
-;;
-;;    // This normally corresponds with PlayStation and Xbox controllers
-;;    // XBOX: [Y,X,A,B]
-;;    // PS3: [Triangle,Square,Cross,Circle]
-;;    // No support for 6 button controllers though..
-;;    GAMEPAD_BUTTON_RIGHT_FACE_UP,
-;;    GAMEPAD_BUTTON_RIGHT_FACE_RIGHT,
-;;    GAMEPAD_BUTTON_RIGHT_FACE_DOWN,
-;;    GAMEPAD_BUTTON_RIGHT_FACE_LEFT,
-;;
-;;    // Triggers
-;;    GAMEPAD_BUTTON_LEFT_TRIGGER_1,
-;;    GAMEPAD_BUTTON_LEFT_TRIGGER_2,
-;;    GAMEPAD_BUTTON_RIGHT_TRIGGER_1,
-;;    GAMEPAD_BUTTON_RIGHT_TRIGGER_2,
-;;
-;;    // These are buttons in the center of the gamepad
-;;    GAMEPAD_BUTTON_MIDDLE_LEFT,     //PS3 Select
-;;    GAMEPAD_BUTTON_MIDDLE,          //PS Button/XBOX Button
-;;    GAMEPAD_BUTTON_MIDDLE_RIGHT,    //PS3 Start
-;;
-;;    // These are the joystick press in buttons
-;;    GAMEPAD_BUTTON_LEFT_THUMB,
-;;    GAMEPAD_BUTTON_RIGHT_THUMB
+;;    GAMEPAD_BUTTON_UNKNOWN = 0,         // Unknown button, just for error checking
+;;    GAMEPAD_BUTTON_LEFT_FACE_UP,        // Gamepad left DPAD up button
+;;    GAMEPAD_BUTTON_LEFT_FACE_RIGHT,     // Gamepad left DPAD right button
+;;    GAMEPAD_BUTTON_LEFT_FACE_DOWN,      // Gamepad left DPAD down button
+;;    GAMEPAD_BUTTON_LEFT_FACE_LEFT,      // Gamepad left DPAD left button
+;;    GAMEPAD_BUTTON_RIGHT_FACE_UP,       // Gamepad right button up (i.e. PS3: Triangle, Xbox: Y)
+;;    GAMEPAD_BUTTON_RIGHT_FACE_RIGHT,    // Gamepad right button right (i.e. PS3: Square, Xbox: X)
+;;    GAMEPAD_BUTTON_RIGHT_FACE_DOWN,     // Gamepad right button down (i.e. PS3: Cross, Xbox: A)
+;;    GAMEPAD_BUTTON_RIGHT_FACE_LEFT,     // Gamepad right button left (i.e. PS3: Circle, Xbox: B)
+;;    GAMEPAD_BUTTON_LEFT_TRIGGER_1,      // Gamepad top/back trigger left (first), it could be a trailing button
+;;    GAMEPAD_BUTTON_LEFT_TRIGGER_2,      // Gamepad top/back trigger left (second), it could be a trailing button
+;;    GAMEPAD_BUTTON_RIGHT_TRIGGER_1,     // Gamepad top/back trigger right (one), it could be a trailing button
+;;    GAMEPAD_BUTTON_RIGHT_TRIGGER_2,     // Gamepad top/back trigger right (second), it could be a trailing button
+;;    GAMEPAD_BUTTON_MIDDLE_LEFT,         // Gamepad center buttons, left one (i.e. PS3: Select)
+;;    GAMEPAD_BUTTON_MIDDLE,              // Gamepad center buttons, middle one (i.e. PS3: PS, Xbox: XBOX)
+;;    GAMEPAD_BUTTON_MIDDLE_RIGHT,        // Gamepad center buttons, right one (i.e. PS3: Start)
+;;    GAMEPAD_BUTTON_LEFT_THUMB,          // Gamepad joystick pressed button left
+;;    GAMEPAD_BUTTON_RIGHT_THUMB          // Gamepad joystick pressed button right
 ;;} GamepadButton;
 (define-constant +gamepad-button-unknown+ 0)
 (define-constant +gamepad-button-left-face-up+ 1)
@@ -1494,242 +1555,239 @@
 (define-constant +gamepad-button-left-thumb+ 16)
 (define-constant +gamepad-button-right-thumb+ 17)
 
+;;// Gamepad axis
 ;;typedef enum {
-;;    // This is here just for error checking
-;;    GAMEPAD_AXIS_UNKNOWN = 0,
-;;
-;;    // Left stick
-;;    GAMEPAD_AXIS_LEFT_X,
-;;    GAMEPAD_AXIS_LEFT_Y,
-;;
-;;    // Right stick
-;;    GAMEPAD_AXIS_RIGHT_X,
-;;    GAMEPAD_AXIS_RIGHT_Y,
-;;
-;;    // Pressure levels for the back triggers
-;;    GAMEPAD_AXIS_LEFT_TRIGGER,      // [1..-1] (pressure-level)
-;;    GAMEPAD_AXIS_RIGHT_TRIGGER      // [1..-1] (pressure-level)
+;;    GAMEPAD_AXIS_LEFT_X        = 0,     // Gamepad left stick X axis
+;;    GAMEPAD_AXIS_LEFT_Y        = 1,     // Gamepad left stick Y axis
+;;    GAMEPAD_AXIS_RIGHT_X       = 2,     // Gamepad right stick X axis
+;;    GAMEPAD_AXIS_RIGHT_Y       = 3,     // Gamepad right stick Y axis
+;;    GAMEPAD_AXIS_LEFT_TRIGGER  = 4,     // Gamepad back trigger left, pressure level: [1..-1]
+;;    GAMEPAD_AXIS_RIGHT_TRIGGER = 5      // Gamepad back trigger right, pressure level: [1..-1]
 ;;} GamepadAxis;
-(define-constant +gamepad-axis-unknown+ 0)
-(define-constant +gamepad-axis-left-x+ 1)
-(define-constant +gamepad-axis-left-y+ 2)
-(define-constant +gamepad-axis-right-x+ 3)
-(define-constant +gamepad-axis-right-y+ 4)
-(define-constant +gamepad-axis-left-trigger+ 5)
-(define-constant +gamepad-axis-right-trigger+ 6)
+(define-constant +gamepad-axis-left-x+ 0)
+(define-constant +gamepad-axis-left-y+ 1)
+(define-constant +gamepad-axis-right-x+ 2)
+(define-constant +gamepad-axis-right-y+ 3)
+(define-constant +gamepad-axis-left-trigger+ 4)
+(define-constant +gamepad-axis-right-trigger+ 5)
 
-;;// Shader location point type
+;;// Material map index
 ;;typedef enum {
-;;    LOC_VERTEX_POSITION = 0,
-;;    LOC_VERTEX_TEXCOORD01,
-;;    LOC_VERTEX_TEXCOORD02,
-;;    LOC_VERTEX_NORMAL,
-;;    LOC_VERTEX_TANGENT,
-;;    LOC_VERTEX_COLOR,
-;;    LOC_MATRIX_MVP,
-;;    LOC_MATRIX_MODEL,
-;;    LOC_MATRIX_VIEW,
-;;    LOC_MATRIX_PROJECTION,
-;;    LOC_VECTOR_VIEW,
-;;    LOC_COLOR_DIFFUSE,
-;;    LOC_COLOR_SPECULAR,
-;;    LOC_COLOR_AMBIENT,
-;;    LOC_MAP_ALBEDO,          // LOC_MAP_DIFFUSE
-;;    LOC_MAP_METALNESS,       // LOC_MAP_SPECULAR
-;;    LOC_MAP_NORMAL,
-;;    LOC_MAP_ROUGHNESS,
-;;    LOC_MAP_OCCLUSION,
-;;    LOC_MAP_EMISSION,
-;;    LOC_MAP_HEIGHT,
-;;    LOC_MAP_CUBEMAP,
-;;    LOC_MAP_IRRADIANCE,
-;;    LOC_MAP_PREFILTER,
-;;    LOC_MAP_BRDF
+;;    MATERIAL_MAP_ALBEDO    = 0,     // Albedo material (same as: MATERIAL_MAP_DIFFUSE)
+;;    MATERIAL_MAP_METALNESS,         // Metalness material (same as: MATERIAL_MAP_SPECULAR)
+;;    MATERIAL_MAP_NORMAL,            // Normal material
+;;    MATERIAL_MAP_ROUGHNESS,         // Roughness material
+;;    MATERIAL_MAP_OCCLUSION,         // Ambient occlusion material
+;;    MATERIAL_MAP_EMISSION,          // Emission material
+;;    MATERIAL_MAP_HEIGHT,            // Heightmap material
+;;    MATERIAL_MAP_CUBEMAP,           // Cubemap material (NOTE: Uses GL_TEXTURE_CUBE_MAP)
+;;    MATERIAL_MAP_IRRADIANCE,        // Irradiance material (NOTE: Uses GL_TEXTURE_CUBE_MAP)
+;;    MATERIAL_MAP_PREFILTER,         // Prefilter material (NOTE: Uses GL_TEXTURE_CUBE_MAP)
+;;    MATERIAL_MAP_BRDF               // Brdf material
+;;} MaterialMapIndex;
+(define-constant +material-map-albedo+ 0)
+(define-constant +material-map-metalness+ 1)
+(define-constant +material-map-normal+ 2)
+(define-constant +material-map-roughness+ 3)
+(define-constant +material-map-occlusion+ 4)
+(define-constant +material-map-emission+ 5)
+(define-constant +material-map-height+ 6)
+(define-constant +material-map-cubemap+ 7)
+(define-constant +material-map-irradiance+ 8)
+(define-constant +material-map-prefilter+ 9)
+(define-constant +material-map-brdf+ 10)
+
+;;// Shader location index
+;;typedef enum {
+;;    SHADER_LOC_VERTEX_POSITION = 0, // Shader location: vertex attribute: position
+;;    SHADER_LOC_VERTEX_TEXCOORD01,   // Shader location: vertex attribute: texcoord01
+;;    SHADER_LOC_VERTEX_TEXCOORD02,   // Shader location: vertex attribute: texcoord02
+;;    SHADER_LOC_VERTEX_NORMAL,       // Shader location: vertex attribute: normal
+;;    SHADER_LOC_VERTEX_TANGENT,      // Shader location: vertex attribute: tangent
+;;    SHADER_LOC_VERTEX_COLOR,        // Shader location: vertex attribute: color
+;;    SHADER_LOC_MATRIX_MVP,          // Shader location: matrix uniform: model-view-projection
+;;    SHADER_LOC_MATRIX_VIEW,         // Shader location: matrix uniform: view (camera transform)
+;;    SHADER_LOC_MATRIX_PROJECTION,   // Shader location: matrix uniform: projection
+;;    SHADER_LOC_MATRIX_MODEL,        // Shader location: matrix uniform: model (transform)
+;;    SHADER_LOC_MATRIX_NORMAL,       // Shader location: matrix uniform: normal
+;;    SHADER_LOC_VECTOR_VIEW,         // Shader location: vector uniform: view
+;;    SHADER_LOC_COLOR_DIFFUSE,       // Shader location: vector uniform: diffuse color
+;;    SHADER_LOC_COLOR_SPECULAR,      // Shader location: vector uniform: specular color
+;;    SHADER_LOC_COLOR_AMBIENT,       // Shader location: vector uniform: ambient color
+;;    SHADER_LOC_MAP_ALBEDO,          // Shader location: sampler2d texture: albedo (same as: SHADER_LOC_MAP_DIFFUSE)
+;;    SHADER_LOC_MAP_METALNESS,       // Shader location: sampler2d texture: metalness (same as: SHADER_LOC_MAP_SPECULAR)
+;;    SHADER_LOC_MAP_NORMAL,          // Shader location: sampler2d texture: normal
+;;    SHADER_LOC_MAP_ROUGHNESS,       // Shader location: sampler2d texture: roughness
+;;    SHADER_LOC_MAP_OCCLUSION,       // Shader location: sampler2d texture: occlusion
+;;    SHADER_LOC_MAP_EMISSION,        // Shader location: sampler2d texture: emission
+;;    SHADER_LOC_MAP_HEIGHT,          // Shader location: sampler2d texture: height
+;;    SHADER_LOC_MAP_CUBEMAP,         // Shader location: samplerCube texture: cubemap
+;;    SHADER_LOC_MAP_IRRADIANCE,      // Shader location: samplerCube texture: irradiance
+;;    SHADER_LOC_MAP_PREFILTER,       // Shader location: samplerCube texture: prefilter
+;;    SHADER_LOC_MAP_BRDF             // Shader location: sampler2d texture: brdf
 ;;} ShaderLocationIndex;
-(define-constant +loc-vertex-position+ 0)
-(define-constant +loc-vertex-texcoord01+ 1)
-(define-constant +loc-vertex-texcoord02+ 2)
-(define-constant +loc-vertex-normal+ 3)
-(define-constant +loc-vertex-tangent+ 4)
-(define-constant +loc-vertex-color+ 5)
-(define-constant +loc-matrix-mvp+ 6)
-(define-constant +loc-matrix-model+ 7)
-(define-constant +loc-matrix-view+ 8)
-(define-constant +loc-matrix-projection+ 9)
-(define-constant +loc-vector-view+ 10)
-(define-constant +loc-color-diffuse+ 11)
-(define-constant +loc-color-specular+ 12)
-(define-constant +loc-color-ambient+ 13)
-(define-constant +loc-map-albedo+ 14)
-(define-constant +loc-map-metalness+ 15)
-(define-constant +loc-map-normal+ 16)
-(define-constant +loc-map-roughness+ 17)
-(define-constant +loc-map-occlusion+ 18)
-(define-constant +loc-map-emission+ 19)
-(define-constant +loc-map-height+ 20)
-(define-constant +loc-map-cubemap+ 21)
-(define-constant +loc-map-irradiance+ 22)
-(define-constant +loc-map-prefilter+ 23)
-(define-constant +loc-map-brdf+ 24)
+(define-constant +shader-loc-vertex-position+ 0)
+(define-constant +shader-loc-vertex-texcoord01+ 1)
+(define-constant +shader-loc-vertex-texcoord02+ 2)
+(define-constant +shader-loc-vertex-normal+ 3)
+(define-constant +shader-loc-vertex-tangent+ 4)
+(define-constant +shader-loc-vertex-color+ 5)
+(define-constant +shader-loc-matrix-mvp+ 6)
+(define-constant +shader-loc-matrix-view+ 7)
+(define-constant +shader-loc-matrix-projection+ 8)
+(define-constant +shader-loc-matrix-model+ 9)
+(define-constant +shader-loc-matrix-normal+ 10)
+(define-constant +shader-loc-vector-view+ 11)
+(define-constant +shader-loc-color-diffuse+ 12)
+(define-constant +shader-loc-color-specular+ 13)
+(define-constant +shader-loc-color-ambient+ 14)
+(define-constant +shader-loc-map-albedo+ 15)
+(define-constant +shader-loc-map-metalness+ 16)
+(define-constant +shader-loc-map-normal+ 17)
+(define-constant +shader-loc-map-roughness+ 18)
+(define-constant +shader-loc-map-occlusion+ 19)
+(define-constant +shader-loc-map-emission+ 20)
+(define-constant +shader-loc-map-height+ 21)
+(define-constant +shader-loc-map-cubemap+ 22)
+(define-constant +shader-loc-map-irradiance+ 23)
+(define-constant +shader-loc-map-prefilter+ 24)
+(define-constant +shader-loc-map-brdf+ 25)
 
-;;#define LOC_MAP_DIFFUSE      LOC_MAP_ALBEDO
-;;#define LOC_MAP_SPECULAR     LOC_MAP_METALNESS
-(define-constant +loc-map-diffuse+ +loc-map-albedo+)
-(define-constant +loc-map-specular+ +loc-map-metalness+)
-
-;;// Shader uniform data types
+;;#define SHADER_LOC_MAP_DIFFUSE      SHADER_LOC_MAP_ALBEDO
+;;#define SHADER_LOC_MAP_SPECULAR     SHADER_LOC_MAP_METALNESS
+;;
+;;// Shader uniform data type
 ;;typedef enum {
-;;    UNIFORM_FLOAT = 0,
-;;    UNIFORM_VEC2,
-;;    UNIFORM_VEC3,
-;;    UNIFORM_VEC4,
-;;    UNIFORM_INT,
-;;    UNIFORM_IVEC2,
-;;    UNIFORM_IVEC3,
-;;    UNIFORM_IVEC4,
-;;    UNIFORM_SAMPLER2D
+;;    SHADER_UNIFORM_FLOAT = 0,       // Shader uniform type: float
+;;    SHADER_UNIFORM_VEC2,            // Shader uniform type: vec2 (2 float)
+;;    SHADER_UNIFORM_VEC3,            // Shader uniform type: vec3 (3 float)
+;;    SHADER_UNIFORM_VEC4,            // Shader uniform type: vec4 (4 float)
+;;    SHADER_UNIFORM_INT,             // Shader uniform type: int
+;;    SHADER_UNIFORM_IVEC2,           // Shader uniform type: ivec2 (2 int)
+;;    SHADER_UNIFORM_IVEC3,           // Shader uniform type: ivec3 (3 int)
+;;    SHADER_UNIFORM_IVEC4,           // Shader uniform type: ivec4 (4 int)
+;;    SHADER_UNIFORM_SAMPLER2D        // Shader uniform type: sampler2d
 ;;} ShaderUniformDataType;
-(define-constant +uniform-float+ 0)
-(define-constant +uniform-vec2+ 1)
-(define-constant +uniform-vec3+ 2)
-(define-constant +uniform-vec4+ 3)
-(define-constant +uniform-int+ 4)
-(define-constant +uniform-ivec2+ 5)
-(define-constant +uniform-ivec3+ 6)
-(define-constant +uniform-ivec4+ 7)
-(define-constant +uniform-sampler2d+ 8)
+(define-constant +shader-uniform-float+ 0)
+(define-constant +shader-uniform-vec2+ 1)
+(define-constant +shader-uniform-vec3+ 2)
+(define-constant +shader-uniform-vec4+ 3)
+(define-constant +shader-uniform-int+ 4)
+(define-constant +shader-uniform-ivec2+ 5)
+(define-constant +shader-uniform-ivec3+ 6)
+(define-constant +shader-uniform-ivec4+ 7)
+(define-constant +shader-uniform-sampler2d+ 8)
 
-;;// Material map type
+;;// Shader attribute data types
 ;;typedef enum {
-;;    MAP_ALBEDO    = 0,       // MAP_DIFFUSE
-;;    MAP_METALNESS = 1,       // MAP_SPECULAR
-;;    MAP_NORMAL    = 2,
-;;    MAP_ROUGHNESS = 3,
-;;    MAP_OCCLUSION,
-;;    MAP_EMISSION,
-;;    MAP_HEIGHT,
-;;    MAP_CUBEMAP,             // NOTE: Uses GL_TEXTURE_CUBE_MAP
-;;    MAP_IRRADIANCE,          // NOTE: Uses GL_TEXTURE_CUBE_MAP
-;;    MAP_PREFILTER,           // NOTE: Uses GL_TEXTURE_CUBE_MAP
-;;    MAP_BRDF
-;;} MaterialMapType;
-(define-constant +map-albedo+ 0)
-(define-constant +map-metalness+ 1)
-(define-constant +map-normal+ 2)
-(define-constant +map-roughness+ 3)
-(define-constant +map-occlusion+ 4)
-(define-constant +map-emission+ 5)
-(define-constant +map-height+ 6)
-(define-constant +map-cubemap+ 7)
-(define-constant +map-irradianc+ 8)
-(define-constant +map-prefilter+ 9)
-(define-constant +map-brdf+ 10)
-
-;;#define MAP_DIFFUSE      MAP_ALBEDO
-;;#define MAP_SPECULAR     MAP_METALNESS
-(define-constant +map-diffuse+ +map-albedo+)
-(define-constant +map-specular+ +map-metalness+)
+;;    SHADER_ATTRIB_FLOAT = 0,        // Shader attribute type: float
+;;    SHADER_ATTRIB_VEC2,             // Shader attribute type: vec2 (2 float)
+;;    SHADER_ATTRIB_VEC3,             // Shader attribute type: vec3 (3 float)
+;;    SHADER_ATTRIB_VEC4              // Shader attribute type: vec4 (4 float)
+;;} ShaderAttributeDataType;
+(define-constant +shader-attrib-float+ 0)
+(define-constant +shader-attrib-vec2+ 1)
+(define-constant +shader-attrib-vec3+ 2)
+(define-constant +shader-attrib-vec4+ 3)
 
 ;;// Pixel formats
 ;;// NOTE: Support depends on OpenGL version and platform
 ;;typedef enum {
-;;    UNCOMPRESSED_GRAYSCALE = 1,     // 8 bit per pixel (no alpha)
-;;    UNCOMPRESSED_GRAY_ALPHA,        // 8*2 bpp (2 channels)
-;;    UNCOMPRESSED_R5G6B5,            // 16 bpp
-;;    UNCOMPRESSED_R8G8B8,            // 24 bpp
-;;    UNCOMPRESSED_R5G5B5A1,          // 16 bpp (1 bit alpha)
-;;    UNCOMPRESSED_R4G4B4A4,          // 16 bpp (4 bit alpha)
-;;    UNCOMPRESSED_R8G8B8A8,          // 32 bpp
-;;    UNCOMPRESSED_R32,               // 32 bpp (1 channel - float)
-;;    UNCOMPRESSED_R32G32B32,         // 32*3 bpp (3 channels - float)
-;;    UNCOMPRESSED_R32G32B32A32,      // 32*4 bpp (4 channels - float)
-;;    COMPRESSED_DXT1_RGB,            // 4 bpp (no alpha)
-;;    COMPRESSED_DXT1_RGBA,           // 4 bpp (1 bit alpha)
-;;    COMPRESSED_DXT3_RGBA,           // 8 bpp
-;;    COMPRESSED_DXT5_RGBA,           // 8 bpp
-;;    COMPRESSED_ETC1_RGB,            // 4 bpp
-;;    COMPRESSED_ETC2_RGB,            // 4 bpp
-;;    COMPRESSED_ETC2_EAC_RGBA,       // 8 bpp
-;;    COMPRESSED_PVRT_RGB,            // 4 bpp
-;;    COMPRESSED_PVRT_RGBA,           // 4 bpp
-;;    COMPRESSED_ASTC_4x4_RGBA,       // 8 bpp
-;;    COMPRESSED_ASTC_8x8_RGBA        // 2 bpp
+;;    PIXELFORMAT_UNCOMPRESSED_GRAYSCALE = 1, // 8 bit per pixel (no alpha)
+;;    PIXELFORMAT_UNCOMPRESSED_GRAY_ALPHA,    // 8*2 bpp (2 channels)
+;;    PIXELFORMAT_UNCOMPRESSED_R5G6B5,        // 16 bpp
+;;    PIXELFORMAT_UNCOMPRESSED_R8G8B8,        // 24 bpp
+;;    PIXELFORMAT_UNCOMPRESSED_R5G5B5A1,      // 16 bpp (1 bit alpha)
+;;    PIXELFORMAT_UNCOMPRESSED_R4G4B4A4,      // 16 bpp (4 bit alpha)
+;;    PIXELFORMAT_UNCOMPRESSED_R8G8B8A8,      // 32 bpp
+;;    PIXELFORMAT_UNCOMPRESSED_R32,           // 32 bpp (1 channel - float)
+;;    PIXELFORMAT_UNCOMPRESSED_R32G32B32,     // 32*3 bpp (3 channels - float)
+;;    PIXELFORMAT_UNCOMPRESSED_R32G32B32A32,  // 32*4 bpp (4 channels - float)
+;;    PIXELFORMAT_COMPRESSED_DXT1_RGB,        // 4 bpp (no alpha)
+;;    PIXELFORMAT_COMPRESSED_DXT1_RGBA,       // 4 bpp (1 bit alpha)
+;;    PIXELFORMAT_COMPRESSED_DXT3_RGBA,       // 8 bpp
+;;    PIXELFORMAT_COMPRESSED_DXT5_RGBA,       // 8 bpp
+;;    PIXELFORMAT_COMPRESSED_ETC1_RGB,        // 4 bpp
+;;    PIXELFORMAT_COMPRESSED_ETC2_RGB,        // 4 bpp
+;;    PIXELFORMAT_COMPRESSED_ETC2_EAC_RGBA,   // 8 bpp
+;;    PIXELFORMAT_COMPRESSED_PVRT_RGB,        // 4 bpp
+;;    PIXELFORMAT_COMPRESSED_PVRT_RGBA,       // 4 bpp
+;;    PIXELFORMAT_COMPRESSED_ASTC_4x4_RGBA,   // 8 bpp
+;;    PIXELFORMAT_COMPRESSED_ASTC_8x8_RGBA    // 2 bpp
 ;;} PixelFormat;
-(define-constant +uncompressed-grayscale+ 1)
-(define-constant +uncompressed-gray-alpha+ 2)
-(define-constant +uncompressed-r5g6b5+ 3)
-(define-constant +uncompressed-r8g8b8+ 4)
-(define-constant +uncompressed-r5g5b5a1+ 5)
-(define-constant +uncompressed-r4g4b4a4+ 6)
-(define-constant +uncompressed-r8g8b8a8+ 7)
-(define-constant +uncompressed-r32+ 8)
-(define-constant +uncompressed-r32g32b32+ 9)
-(define-constant +uncompressed-r32g32b32a32+ 10)
-(define-constant +compressed-dxt1-rgb+ 11)
-(define-constant +compressed-dxt1-rgba+ 12)
-(define-constant +compressed-dxt3-rgba+ 13)
-(define-constant +compressed-dxt5-rgba+ 14)
-(define-constant +compressed-etc1-rgb+ 15)
-(define-constant +compressed-etc2-rgb+ 16)
-(define-constant +compressed-etc2-eac-rgba+ 17)
-(define-constant +compressed-pvrt-rgb+ 18)
-(define-constant +compressed-pvrt-rgba+ 19)
-(define-constant +compressed-astc-4x4-rgba+ 20)
-(define-constant +compressed-astc-8x8-rgba+ 21)
+(define-constant +pixelformat-uncompressed-grayscale+ 1)
+(define-constant +pixelformat-uncompressed-gray-alpha+ 2)
+(define-constant +pixelformat-uncompressed-r5g6b5+ 3)
+(define-constant +pixelformat-uncompressed-r8g8b8+ 4)
+(define-constant +pixelformat-uncompressed-r5g5b5a1+ 5)
+(define-constant +pixelformat-uncompressed-r4g4b4a4+ 6)
+(define-constant +pixelformat-uncompressed-r8g8b8a8+ 7)
+(define-constant +pixelformat-uncompressed-r32+ 8)
+(define-constant +pixelformat-uncompressed-r32g32b32+ 9)
+(define-constant +pixelformat-uncompressed-r32g32b32a32+ 10)
+(define-constant +pixelformat-compressed-dxt1-rgb+ 11)
+(define-constant +pixelformat-compressed-dxt1-rgba+ 12)
+(define-constant +pixelformat-compressed-dxt3-rgba+ 13)
+(define-constant +pixelformat-compressed-dxt5-rgba+ 14)
+(define-constant +pixelformat-compressed-etc1-rgb+ 15)
+(define-constant +pixelformat-compressed-etc2-rgb+ 16)
+(define-constant +pixelformat-compressed-etc2-eac-rgba+ 17)
+(define-constant +pixelformat-compressed-pvrt-rgb+ 18)
+(define-constant +pixelformat-compressed-pvrt-rgba+ 19)
+(define-constant +pixelformat-compressed-astc-4x4-rgba+ 20)
+(define-constant +pixelformat-compressed-astc-8x8-rgba+ 21)
 
 ;;// Texture parameters: filter mode
 ;;// NOTE 1: Filtering considers mipmaps if available in the texture
 ;;// NOTE 2: Filter is accordingly set for minification and magnification
 ;;typedef enum {
-;;    FILTER_POINT = 0,               // No filter, just pixel aproximation
-;;    FILTER_BILINEAR,                // Linear filtering
-;;    FILTER_TRILINEAR,               // Trilinear filtering (linear with mipmaps)
-;;    FILTER_ANISOTROPIC_4X,          // Anisotropic filtering 4x
-;;    FILTER_ANISOTROPIC_8X,          // Anisotropic filtering 8x
-;;    FILTER_ANISOTROPIC_16X,         // Anisotropic filtering 16x
-;;} TextureFilterMode;
-(define-constant +filter-point+ 0)
-(define-constant +filter-bilinear+ 1)
-(define-constant +filter-trilinear+ 2)
-(define-constant +filter-anisotropic-4x+ 3)
-(define-constant +filter-anisotropic-8x+ 4)
-(define-constant +filter-anisotropic-16x+ 5)
-
-;;// Cubemap layout type
-;;typedef enum {
-;;    CUBEMAP_AUTO_DETECT = 0,        // Automatically detect layout type
-;;    CUBEMAP_LINE_VERTICAL,          // Layout is defined by a vertical line with faces
-;;    CUBEMAP_LINE_HORIZONTAL,        // Layout is defined by an horizontal line with faces
-;;    CUBEMAP_CROSS_THREE_BY_FOUR,    // Layout is defined by a 3x4 cross with cubemap faces
-;;    CUBEMAP_CROSS_FOUR_BY_THREE,    // Layout is defined by a 4x3 cross with cubemap faces
-;;    CUBEMAP_PANORAMA                // Layout is defined by a panorama image (equirectangular map)
-;;} CubemapLayoutType;
-(define-constant +cubemap-auto-detect+ 0)
-(define-constant +cubemap-line-vertical+ 1)
-(define-constant +cubemap-line-horizontal+ 2)
-(define-constant +cubemap-cross-three-by-four+ 3)
-(define-constant +cubemap-cross-four-by-three+ 4)
-(define-constant +cubemap-panorama+ 5)
+;;    TEXTURE_FILTER_POINT = 0,               // No filter, just pixel aproximation
+;;    TEXTURE_FILTER_BILINEAR,                // Linear filtering
+;;    TEXTURE_FILTER_TRILINEAR,               // Trilinear filtering (linear with mipmaps)
+;;    TEXTURE_FILTER_ANISOTROPIC_4X,          // Anisotropic filtering 4x
+;;    TEXTURE_FILTER_ANISOTROPIC_8X,          // Anisotropic filtering 8x
+;;    TEXTURE_FILTER_ANISOTROPIC_16X,         // Anisotropic filtering 16x
+;;} TextureFilter;
+(define-constant +texture-filter-point+ 0)
+(define-constant +texture-filter-bilinear+ 1)
+(define-constant +texture-filter-trilinear+ 2)
+(define-constant +texture-filter-anisotropic-4x+ 3)
+(define-constant +texture-filter-anisotropic-8x+ 4)
+(define-constant +texture-filter-anisotropic-16x+ 5)
 
 ;;// Texture parameters: wrap mode
 ;;typedef enum {
-;;    WRAP_REPEAT = 0,        // Repeats texture in tiled mode
-;;    WRAP_CLAMP,             // Clamps texture to edge pixel in tiled mode
-;;    WRAP_MIRROR_REPEAT,     // Mirrors and repeats the texture in tiled mode
-;;    WRAP_MIRROR_CLAMP       // Mirrors and clamps to border the texture in tiled mode
-;;} TextureWrapMode;
-(define-constant +cubemap-auto-detect+ 0)
-(define-constant +cubemap-line-vertical+ 1)
-(define-constant +cubemap-line-horizontal+ 2)
-(define-constant +cubemap-cross-three-by-four+ 3)
-(define-constant +cubemap-cross-four-by-three+ 4)
-(define-constant +cubemap-panorama+ 5)
+;;    TEXTURE_WRAP_REPEAT = 0,                // Repeats texture in tiled mode
+;;    TEXTURE_WRAP_CLAMP,                     // Clamps texture to edge pixel in tiled mode
+;;    TEXTURE_WRAP_MIRROR_REPEAT,             // Mirrors and repeats the texture in tiled mode
+;;    TEXTURE_WRAP_MIRROR_CLAMP               // Mirrors and clamps to border the texture in tiled mode
+;;} TextureWrap;
+(define-constant +texture-wrap-repeat+ 0)
+(define-constant +texture-wrap-clamp+ 1)
+(define-constant +texture-wrap-mirror-repeat+ 2)
+(define-constant +texture-wrap-mirror-clamp+ 3)
+
+;;// Cubemap layouts
+;;typedef enum {
+;;    CUBEMAP_LAYOUT_AUTO_DETECT = 0,         // Automatically detect layout type
+;;    CUBEMAP_LAYOUT_LINE_VERTICAL,           // Layout is defined by a vertical line with faces
+;;    CUBEMAP_LAYOUT_LINE_HORIZONTAL,         // Layout is defined by an horizontal line with faces
+;;    CUBEMAP_LAYOUT_CROSS_THREE_BY_FOUR,     // Layout is defined by a 3x4 cross with cubemap faces
+;;    CUBEMAP_LAYOUT_CROSS_FOUR_BY_THREE,     // Layout is defined by a 4x3 cross with cubemap faces
+;;    CUBEMAP_LAYOUT_PANORAMA                 // Layout is defined by a panorama image (equirectangular map)
+;;} CubemapLayout;
+(define-constant +cubemap-layout-auto-detect+ 0)
+(define-constant +cubemap-layout-line-vertical+ 1)
+(define-constant +cubemap-layout-line-horizontal+ 2)
+(define-constant +cubemap-layout-cross-three-by-four+ 3)
+(define-constant +cubemap-layout-cross-four-by-three+ 4)
+(define-constant +cubemap-layout-panorama+ 5)
 
 ;;// Font type, defines generation method
 ;;typedef enum {
-;;    FONT_DEFAULT = 0,       // Default font generation, anti-aliased
-;;    FONT_BITMAP,            // Bitmap font generation, no anti-aliasing
-;;    FONT_SDF                // SDF font generation, requires external shader
+;;    FONT_DEFAULT = 0,               // Default font generation, anti-aliased
+;;    FONT_BITMAP,                    // Bitmap font generation, no anti-aliasing
+;;    FONT_SDF                        // SDF font generation, requires external shader
 ;;} FontType;
 (define-constant +font-default+ 0)
 (define-constant +font-bitmap+ 1)
@@ -1737,29 +1795,35 @@
 
 ;;// Color blending modes (pre-defined)
 ;;typedef enum {
-;;    BLEND_ALPHA = 0,        // Blend textures considering alpha (default)
-;;    BLEND_ADDITIVE,         // Blend textures adding colors
-;;    BLEND_MULTIPLIED        // Blend textures multiplying colors
+;;    BLEND_ALPHA = 0,                // Blend textures considering alpha (default)
+;;    BLEND_ADDITIVE,                 // Blend textures adding colors
+;;    BLEND_MULTIPLIED,               // Blend textures multiplying colors
+;;    BLEND_ADD_COLORS,               // Blend textures adding colors (alternative)
+;;    BLEND_SUBTRACT_COLORS,          // Blend textures subtracting colors (alternative)
+;;    BLEND_CUSTOM                    // Belnd textures using custom src/dst factors (use rlSetBlendMode())
 ;;} BlendMode;
 (define-constant +blend-alpha+ 0)
 (define-constant +blend-additive+ 1)
 (define-constant +blend-multiplied+ 2)
+(define-constant +blend-add-colors+ 3)
+(define-constant +blend-subtract-colors+ 4)
+(define-constant +blend-custom+ 5)
 
-;;// Gestures type
+;;// Gesture
 ;;// NOTE: It could be used as flags to enable only some gestures
 ;;typedef enum {
-;;    GESTURE_NONE        = 0,
-;;    GESTURE_TAP         = 1,
-;;    GESTURE_DOUBLETAP   = 2,
-;;    GESTURE_HOLD        = 4,
-;;    GESTURE_DRAG        = 8,
-;;    GESTURE_SWIPE_RIGHT = 16,
-;;    GESTURE_SWIPE_LEFT  = 32,
-;;    GESTURE_SWIPE_UP    = 64,
-;;    GESTURE_SWIPE_DOWN  = 128,
-;;    GESTURE_PINCH_IN    = 256,
-;;    GESTURE_PINCH_OUT   = 512
-;;} GestureType;
+;;    GESTURE_NONE        = 0,        // No gesture
+;;    GESTURE_TAP         = 1,        // Tap gesture
+;;    GESTURE_DOUBLETAP   = 2,        // Double tap gesture
+;;    GESTURE_HOLD        = 4,        // Hold gesture
+;;    GESTURE_DRAG        = 8,        // Drag gesture
+;;    GESTURE_SWIPE_RIGHT = 16,       // Swipe right gesture
+;;    GESTURE_SWIPE_LEFT  = 32,       // Swipe left gesture
+;;    GESTURE_SWIPE_UP    = 64,       // Swipe up gesture
+;;    GESTURE_SWIPE_DOWN  = 128,      // Swipe down gesture
+;;    GESTURE_PINCH_IN    = 256,      // Pinch in gesture
+;;    GESTURE_PINCH_OUT   = 512       // Pinch out gesture
+;;} Gesture;
 (define-constant +gesture-none+ 0)
 (define-constant +gesture-tap+ 1)
 (define-constant +gesture-doubletap+ 2)
@@ -1774,11 +1838,11 @@
 
 ;;// Camera system modes
 ;;typedef enum {
-;;    CAMERA_CUSTOM = 0,
-;;    CAMERA_FREE,
-;;    CAMERA_ORBITAL,
-;;    CAMERA_FIRST_PERSON,
-;;    CAMERA_THIRD_PERSON
+;;    CAMERA_CUSTOM = 0,              // Custom camera
+;;    CAMERA_FREE,                    // Free camera
+;;    CAMERA_ORBITAL,                 // Orbital camera
+;;    CAMERA_FIRST_PERSON,            // First person camera
+;;    CAMERA_THIRD_PERSON             // Third person camera
 ;;} CameraMode;
 (define-constant +camera-custom+ 0)
 (define-constant +camera-free+ 1)
@@ -1786,30 +1850,31 @@
 (define-constant +camera-first_person+ 3)
 (define-constant +camera-third_person+ 4)
 
-;;// Camera projection modes
+;;// Camera projection
 ;;typedef enum {
-;;    CAMERA_PERSPECTIVE = 0,
-;;    CAMERA_ORTHOGRAPHIC
-;;} CameraType;
+;;    CAMERA_PERSPECTIVE = 0,         // Perspective projection
+;;    CAMERA_ORTHOGRAPHIC             // Orthographic projection
+;;} CameraProjection;
 (define-constant +camera-perspective+ 0)
 (define-constant +camera-orthographic+ 1)
 
-;;// Type of n-patch
+;;// N-patch layout
 ;;typedef enum {
-;;    NPT_9PATCH = 0,         // Npatch defined by 3x3 tiles
-;;    NPT_3PATCH_VERTICAL,    // Npatch defined by 1x3 tiles
-;;    NPT_3PATCH_HORIZONTAL   // Npatch defined by 3x1 tiles
-;;} NPatchType;
-(define-constant +npt-9patch+ 0)
-(define-constant +npt-3patch-vertical+ 1)
-(define-constant +npt-3patch-horizontal+ 2)
+;;    NPATCH_NINE_PATCH = 0,          // Npatch layout: 3x3 tiles
+;;    NPATCH_THREE_PATCH_VERTICAL,    // Npatch layout: 1x3 tiles
+;;    NPATCH_THREE_PATCH_HORIZONTAL   // Npatch layout: 3x1 tiles
+;;} NPatchLayout;
+(define-constant +npatch-nine-patch+ 0)
+(define-constant +npatch-three-patch-vertical+ 1)
+(define-constant +npatch-three-patch-horizontal+ 2)
 
-;;// Callbacks to be implemented by users
-;;typedef void (*TraceLogCallback)(int logType, const char *text, va_list args);
-;;
-;;#if defined(__cplusplus)
-;;extern "C" {            // Prevents name mangling of functions
-;;#endif
+;;// Callbacks to hook some internal functions
+;;// WARNING: This callbacks are intended for advance users
+;;typedef void (*TraceLogCallback)(int logLevel, const char *text, va_list args);  // Logging: Redirect trace log messages
+;;typedef unsigned char *(*LoadFileDataCallback)(const char *fileName, unsigned int *bytesRead);      // FileIO: Load binary data
+;;typedef bool (*SaveFileDataCallback)(const char *fileName, void *data, unsigned int bytesToWrite);  // FileIO: Save binary data
+;;typedef char *(*LoadFileTextCallback)(const char *fileName);       // FileIO: Load text data
+;;typedef bool (*SaveFileTextCallback)(const char *fileName, char *text);     // FileIO: Save text data
 ;;
 ;;//------------------------------------------------------------------------------------
 ;;// Global Variables Definition
@@ -1819,6 +1884,10 @@
 ;;//------------------------------------------------------------------------------------
 ;;// Window and Graphics Device Functions (Module: core)
 ;;//------------------------------------------------------------------------------------
+;;
+;;#if defined(__cplusplus)
+;;extern "C" {            // Prevents name mangling of functions
+;;#endif
 ;;
 ;;// Window-related functions
 ;;RLAPI void InitWindow(int width, int height, const char *title);  // Initialize window and OpenGL context
@@ -1840,33 +1909,57 @@
 (defcfun "IsWindowReady" :boolean
  "Check if window has been initialized successfully")
 
-;;RLAPI bool IsWindowMinimized(void);                               // Check if window has been minimized (or lost focus)
-(defcfun "IsWindowMinimized" :boolean
- "Check if window has been minimized (or lost focus)")
-
-;;RLAPI bool IsWindowResized(void);                                 // Check if window has been resized
-(defcfun "IsWindowResized" :boolean
- "Check if window has been resized")
-
-;;RLAPI bool IsWindowHidden(void);                                  // Check if window is currently hidden
-(defcfun "IsWindowHidden" :boolean
- "Check if window is currently hidden")
- 
 ;;RLAPI bool IsWindowFullscreen(void);                              // Check if window is currently fullscreen
 (defcfun "IsWindowFullscreen" :boolean
  "Check if window is currently fullscreen")
+
+;;RLAPI bool IsWindowHidden(void);                                  // Check if window is currently hidden (only PLATFORM_DESKTOP)
+(defcfun "IsWindowHidden" :boolean
+ "Check if window is currently hidden")
  
-;;RLAPI void ToggleFullscreen(void);                                // Toggle fullscreen mode (only PLATFORM_DESKTOP)
+;;RLAPI bool IsWindowMinimized(void);                               // Check if window is currently minimized (only PLATFORM_DESKTOP)
+(defcfun "IsWindowMinimized" :boolean
+ "Check if window is currently minimized")
+
+;;RLAPI bool IsWindowMaximized(void);                               // Check if window is currently maximized (only PLATFORM_DESKTOP)
+(defcfun "IsWindowMaximized" :boolean
+   "Check if window is currently maximized")
+
+;;RLAPI bool IsWindowFocused(void);                                 // Check if window is currently focused (only PLATFORM_DESKTOP)
+(defcfun "IsWindowFocused" :boolean
+ "Check if window is currently focused")
+
+;;RLAPI bool IsWindowResized(void);                                 // Check if window has been resized last frame
+(defcfun "IsWindowResized" :boolean
+ "Check if window has been resized last frame")
+
+;;RLAPI bool IsWindowState(unsigned int flag);                      // Check if one specific window flag is enabled
+(defcfun "IsWindowState" :boolean
+  (flag :unsigned-int))
+
+;;RLAPI void SetWindowState(unsigned int flags);                    // Set window configuration state using flags
+(defcfun "SetWindowState" :void
+  (flags :unsigned-int))
+
+;;RLAPI void ClearWindowState(unsigned int flags);                  // Clear window configuration state flags
+(defcfun "ClearWindowState" :void
+  (flags :unsigned-int))
+ 
+;;RLAPI void ToggleFullscreen(void);                                // Toggle window state: fullscreen/windowed (only PLATFORM_DESKTOP)
 (defcfun "ToggleFullscreen" :void
- "Toggle fullscreen mode (only PLATFORM_DESKTOP)")
+ "Toggle window state: fullscreen/windowed")
 
-;;RLAPI void UnhideWindow(void);                                    // Show the window
-(defcfun "UnhideWindow" :void
- "Show the window")
+;;RLAPI void MaximizeWindow(void);                                  // Set window state: maximized, if resizable (only PLATFORM_DESKTOP)
+(defcfun "MaximizeWindow" :void
+  "Set window state: maximized, if resizable")
 
-;;RLAPI void HideWindow(void);                                      // Hide the window
-(defcfun "HideWindow" :void
- "Hide the window")
+;;RLAPI void MinimizeWindow(void);                                  // Set window state: minimized, if resizable (only PLATFORM_DESKTOP)
+(defcfun "MinimizeWindow" :void
+  "Set window state: minimized, if resizable")
+
+;;RLAPI void RestoreWindow(void);                                   // Set window state: not minimized/maximized (only PLATFORM_DESKTOP)
+(defcfun "RestoreWindow" :void
+  "Set window state: not minimized/maximized")
 
 ;;RLAPI void SetWindowIcon(Image image);                            // Set icon for window (only PLATFORM_DESKTOP)
 (defcfun "SetWindowIcon" :void
@@ -1917,43 +2010,78 @@
 (defcfun "GetMonitorCount" :int
  "Get number of connected monitors")
 
-;;RLAPI int GetMonitorWidth(int monitor);                           // Get primary monitor width
+;;RLAPI int GetCurrentMonitor(void);                                // Get current connected monitor
+(defcfun "GetCurrentMonitor" :int
+  "Get current connected monitor")
+
+;;RLAPI Vector2 GetMonitorPosition(int monitor);                    // Get specified monitor position
+(defcfun "GetMonitorPosition" (:struct %vector2)
+  "Get specified monitor position"
+  (monitor :int))
+
+;;RLAPI int GetMonitorWidth(int monitor);                           // Get specified monitor width (max available by monitor)
 (defcfun "GetMonitorWidth" :int
- "Get primary monitor width"
+ "Get specified monitor width"
  (monitor :int))
 
-;;RLAPI int GetMonitorHeight(int monitor);                          // Get primary monitor height
+;;RLAPI int GetMonitorHeight(int monitor);                          // Get specified monitor height (max available by monitor)
 (defcfun "GetMonitorHeight" :int
- "Get primary monitor height"
+ "Get specified monitor height"
  (monitor :int))
 
-;;RLAPI int GetMonitorPhysicalWidth(int monitor);                   // Get primary monitor physical width in millimetres
+;;RLAPI int GetMonitorPhysicalWidth(int monitor);                   // Get specified monitor physical width in millimetres
 (defcfun "GetMonitorPhysicalWidth" :int
- "Get primary monitor physical width in millimetres"
+ "Get specified monitor physical width in millimetres"
  (monitor :int))
 
-;;RLAPI int GetMonitorPhysicalHeight(int monitor);                  // Get primary monitor physical height in millimetres
+;;RLAPI int GetMonitorPhysicalHeight(int monitor);                  // Get specified monitor physical height in millimetres
 (defcfun "GetMonitorPhysicalHeight" :int
- "Get primary monitor physical height in millimetres"
+ "Get specified monitor physical height in millimetres"
  (monitor :int))
+
+;;RLAPI int GetMonitorRefreshRate(int monitor);                     // Get specified monitor refresh rate
+(defcfun "GetMonitorRefreshRate" :int
+  "Get specified monitor refresh rate"
+  (monitor :int))
  
 ;;RLAPI Vector2 GetWindowPosition(void);                            // Get window position XY on monitor
 (defcfun "GetWindowPosition" (:struct %vector2)
  "Get window position XY on monitor")
+
+;;RLAPI Vector2 GetWindowScaleDPI(void);                            // Get window scale DPI factor
+(defcfun "GetWindowScaleDPI" (:struct %vector2)
+  "Get window scale DPI factor")
 
 ;;RLAPI const char *GetMonitorName(int monitor);                    // Get the human-readable, UTF-8 encoded name of the primary monitor
 (defcfun "GetMonitorName" :string
  "Get the human-readable, UTF-8 encoded name of the primary monitor"
  (monitor :int))
 
-;;RLAPI const char *GetClipboardText(void);                         // Get clipboard text content
-(defcfun "GetClipboardText" :string
- "Get clipboard text content")
-
 ;;RLAPI void SetClipboardText(const char *text);                    // Set clipboard text content
 (defcfun "SetClipboardText" :void
  "Set clipboard text content"
  (text :string))
+
+;;RLAPI const char *GetClipboardText(void);                         // Get clipboard text content
+(defcfun "GetClipboardText" :string
+ "Get clipboard text content")
+
+;;// Custom frame control functions
+;;// NOTE: Those functions are intended for advance users that want full control over the frame processing
+;;// By default EndDrawing() does this job: draws everything + SwapScreenBuffer() + manage frame timming + PollInputEvents()
+;;// To avoid that behaviour and control frame processes manually, enable in config.h: SUPPORT_CUSTOM_FRAME_CONTROL
+;;RLAPI void SwapScreenBuffer(void);                                // Swap back buffer with front buffer (screen drawing)
+(defcfun "SwapScreenBuffer" :void
+  "Swap back buffer with front buffer")
+
+;;RLAPI void PollInputEvents(void);                                 // Register all input events
+(defcfun "PollInputEvents" :void
+  "Register all input events")
+
+;;RLAPI void WaitTime(float ms);                                    // Wait for some milliseconds (halt program execution)
+(defcfun "WaitTime" :void
+  "Wait for some milliseconds"
+  (ms :float))
 
 ;;// Cursor-related functions
 ;;RLAPI void ShowCursor(void);                                      // Shows cursor
@@ -1976,6 +2104,10 @@
 (defcfun "DisableCursor" :void
  "Disables cursor (lock cursor)")
 
+;;RLAPI bool IsCursorOnScreen(void);                                // Check if cursor is on the screen
+(defcfun "IsCursorOnScreen" :boolean
+  "Check if cursor is on the screen")
+
 ;;// Drawing-related functions
 ;;RLAPI void ClearBackground(Color color);                          // Set background color (framebuffer clear color)
 (defcfun "ClearBackground" :void
@@ -1990,7 +2122,7 @@
 (defcfun "EndDrawing" :void
  "End canvas drawing and swap buffers (double buffering)")
 
-;;RLAPI void BeginMode2D(Camera2D camera);                          // Initialize 2D mode with custom camera (2D)
+;;RLAPI void BeginMode2D(Camera2D camera);                          // Begin 2D mode with custom camera (2D)
 (defcfun "BeginMode2D" :void
  "Initialize 2D mode with custom camera (2D)"
  (camera (:struct %camera2d)))
@@ -1999,7 +2131,7 @@
 (defcfun "EndMode2D" :void
  "Ends 2D mode with custom camera")
 
-;;RLAPI void BeginMode3D(Camera3D camera);                          // Initializes 3D mode with custom camera (3D)
+;;RLAPI void BeginMode3D(Camera3D camera);                          // Begin 3D mode with custom camera (3D)
 (defcfun "BeginMode3D" :void
  "Initializes 3D mode with custom camera (3D)"
  (camera (:struct %camera3d)))
@@ -2008,7 +2140,7 @@
 (defcfun "EndMode3D" :void
  "Ends 3D mode and returns to default 2D orthographic mode")
 
-;;RLAPI void BeginTextureMode(RenderTexture2D target);              // Initializes render texture for drawing
+;;RLAPI void BeginTextureMode(RenderTexture2D target);              // Begin drawing to render texture
 (defcfun "BeginTextureMode" :void
  "Initializes render texture for drawing"
  (target (:struct %render-texture)))
@@ -2016,7 +2148,25 @@
 ;;RLAPI void EndTextureMode(void);                                  // Ends drawing to render texture
 (defcfun "EndTextureMode" :void
  "Ends drawing to render texture")
+
+;;RLAPI void BeginShaderMode(Shader shader);                        // Begin custom shader drawing
+(defcfun "BeginShaderMode" :void
+  "Begin custom shader drawing"
+  (shader (:struct %shader)))
+
+;;RLAPI void EndShaderMode(void);                                   // End custom shader drawing (use default shader)
+(defcfun "EndShaderMode" :void
+  "End custom shader drawing (use default shader)")
  
+;;RLAPI void BeginBlendMode(int mode);                              // Begin blending mode (alpha, additive, multiplied, subtract, custom)
+(defcfun "BeginBlendMode" :void
+  "Begin blending mode"
+  (mode :int))
+
+;;RLAPI void EndBlendMode(void);                                    // End blending mode (reset to default: alpha blending)
+(defcfun "EndBlendMode" :void
+  "End blending mode")
+
 ;;RLAPI void BeginScissorMode(int x, int y, int width, int height); // Begin scissor mode (define screen area for following drawing)
 (defcfun "BeginScissorMode" :void
  "Begin scissor mode (define screen area for following drawing)"
@@ -2029,32 +2179,108 @@
 (defcfun "EndScissorMode" :void
  "End scissor mode")
 
+;;RLAPI void BeginVrStereoMode(VrStereoConfig config);              // Begin stereo rendering (requires VR simulator)
+(defcfun "BeginVrStereoMode" :void
+  "Begin stereo rendering (requires VR simulator)"
+  (config (:struct %vr-stereo-config)))
+
+;;RLAPI void EndVrStereoMode(void);                                 // End stereo rendering (requires VR simulator)
+(defcfun "EndVrStereoMode" :void
+  "End stereo rendering (requires VR simulator)")
+
+;;// VR stereo config functions for VR simulator
+;;RLAPI VrStereoConfig LoadVrStereoConfig(VrDeviceInfo device);     // Load VR stereo config for VR simulator device parameters
+(defcfun "LoadVrStereoConfig" (:struct %vr-stereo-config)
+  "Load VR stereo config for VR simulator device parameters"
+  (device (:struct %vr-device-info)))
+
+;;RLAPI void UnloadVrStereoConfig(VrStereoConfig config);           // Unload VR stereo config
+(defcfun "UnloadVrStereoConfig" :void
+  "Unload VR stereo config"
+  (config (:struct %vr-stereo-config)))
+
+;;// Shader management functions
+;;// NOTE: Shader functionality is not available on OpenGL 1.1
+;;RLAPI Shader LoadShader(const char *vsFileName, const char *fsFileName);   // Load shader from files and bind default locations
+(defcfun "LoadShader" (:struct %shader)
+  (vs-file-name :string)
+  (fs-file-name :string))
+
+;;RLAPI Shader LoadShaderFromMemory(const char *vsCode, const char *fsCode); // Load shader from code strings and bind default locations
+(defcfun "LoadShaderFromMemory" (:struct %shader)
+ "Load shader from code strings and bind default locations"
+ (vs-code :string)
+ (fs-code :string))
+
+;;RLAPI int GetShaderLocation(Shader shader, const char *uniformName);       // Get shader uniform location
+(defcfun "GetShaderLocation" :int
+  "Get shader uniform location"
+  (shader (:struct %shader))
+  (uniform-name :string))
+
+;;RLAPI int GetShaderLocationAttrib(Shader shader, const char *attribName);  // Get shader attribute location
+(defcfun "GetShaderLocationAttrib" :int
+  "Get shader attribute location"
+  (shader (:struct %shader))
+  (attrib-name :string))
+
+;;RLAPI void SetShaderValue(Shader shader, int locIndex, const void *value, int uniformType);               // Set shader uniform value
+(defcfun "SetShaderValue" :void
+  (shader (:struct %shader))
+  (loc-index :int)
+  (value :pointer)
+  (uniform-type :int))
+
+;;RLAPI void SetShaderValueV(Shader shader, int locIndex, const void *value, int uniformType, int count);   // Set shader uniform value vector
+(defcfun "SetShaderValueV" :void
+  (shader (:struct %shader))
+  (loc-index :int)
+  (value :pointer)
+  (uniform-type :int)
+  (count :int))
+
+;;RLAPI void SetShaderValueMatrix(Shader shader, int locIndex, Matrix mat);         // Set shader uniform value (matrix 4x4)
+(defcfun "SetShaderValueMatrix" :void
+  (shader (:struct %shader))
+  (loc-index :int)
+  (mat (:struct %matrix)))
+
+;;RLAPI void SetShaderValueTexture(Shader shader, int locIndex, Texture2D texture); // Set shader uniform value for texture (sampler2d)
+(defcfun "SetShaderValueTexture" :void
+  (shader (:struct %shader))
+  (loc-index :int)
+  (texture (:struct %texture)))
+
+;;RLAPI void UnloadShader(Shader shader);                                    // Unload shader from GPU memory (VRAM)
+(defcfun "UnloadShader" :void
+  (shader (:struct %shader)))
+
 ;;// Screen-space-related functions
-;;RLAPI Ray GetMouseRay(Vector2 mousePosition, Camera camera);      // Returns a ray trace from mouse position
+;;RLAPI Ray GetMouseRay(Vector2 mousePosition, Camera camera);      // Get a ray trace from mouse position
 (defcfun "GetMouseRay" (:struct %ray)
- "Returns a ray trace from mouse position"
+ "Get a ray trace from mouse position"
  (mouse-position (:struct %vector2))
  (camera (:struct %camera3d)))
  
-;;RLAPI Matrix GetCameraMatrix(Camera camera);                      // Returns camera transform matrix (view matrix)
+;;RLAPI Matrix GetCameraMatrix(Camera camera);                      // Get camera transform matrix (view matrix)
 (defcfun "GetCameraMatrix" (:struct %matrix)
- "Returns camera transform matrix (view matrix)"
+ "Get camera transform matrix (view matrix)"
  (camera (:struct %camera3d)))
 
-;;RLAPI Matrix GetCameraMatrix2D(Camera2D camera);                  // Returns camera 2d transform matrix
+;;RLAPI Matrix GetCameraMatrix2D(Camera2D camera);                  // Get camera 2d transform matrix
 (defcfun "GetCameraMatrix2D" (:struct %matrix)
- "Returns camera 2d transform matrix"
+ "Get camera 2d transform matrix"
  (camera (:struct %camera2d)))
 
-;;RLAPI Vector2 GetWorldToScreen(Vector3 position, Camera camera);  // Returns the screen space position for a 3d world space position
+;;RLAPI Vector2 GetWorldToScreen(Vector3 position, Camera camera);  // Get the screen space position for a 3d world space position
 (defcfun "GetWorldToScreen" (:struct %vector2)
- "Returns the screen space position for a 3d world space position"
+ "Get the screen space position for a 3d world space position"
  (position (:struct %vector3))
  (camera (:struct %camera3d)))
  
-;;RLAPI Vector2 GetWorldToScreenEx(Vector3 position, Camera camera, int width, int height); // Returns size position for a 3d world space position
-;;RLAPI Vector2 GetWorldToScreen2D(Vector2 position, Camera2D camera); // Returns the screen space position for a 2d camera world space position
-;;RLAPI Vector2 GetScreenToWorld2D(Vector2 position, Camera2D camera); // Returns the world space position for a 2d camera screen space position
+;;RLAPI Vector2 GetWorldToScreenEx(Vector3 position, Camera camera, int width, int height); // Get size position for a 3d world space position
+;;RLAPI Vector2 GetWorldToScreen2D(Vector2 position, Camera2D camera); // Get the screen space position for a 2d camera world space position
+;;RLAPI Vector2 GetScreenToWorld2D(Vector2 position, Camera2D camera); // Get the world space position for a 2d camera screen space position
 ;;
 ;;// Timing-related functions
 ;;RLAPI void SetTargetFPS(int fps);                                 // Set target FPS (maximum)
@@ -2062,54 +2288,17 @@
  "Set target FPS (maximum)"
  (fps :int))
 
-;;RLAPI int GetFPS(void);                                           // Returns current FPS
+;;RLAPI int GetFPS(void);                                           // Get current FPS
 (defcfun "GetFPS" :int
- "Returns current FPS")
+ "Get current FPS")
 
-;;RLAPI float GetFrameTime(void);                                   // Returns time in seconds for last frame drawn
+;;RLAPI float GetFrameTime(void);                                   // Get time in seconds for last frame drawn (delta time)
 (defcfun "GetFrameTime" :float
- "Returns time in seconds for last frame drawn")
+ "Get time in seconds for last frame drawn")
 
-;;RLAPI double GetTime(void);                                       // Returns elapsed time in seconds since InitWindow()
+;;RLAPI double GetTime(void);                                       // Get elapsed time in seconds since InitWindow()
 (defcfun "GetTime" :double
- "Returns elapsed time in seconds since InitWindow()")
-
-;;// Color-related functions
-;;RLAPI int ColorToInt(Color color);                                // Returns hexadecimal value for a Color
-(defcfun "ColorToInt" :int
- "Returns hexadecimal value for a Color"
- (color (:struct %color)))
-
-;;RLAPI Vector4 ColorNormalize(Color color);                        // Returns color normalized as float [0..1]
-(defcfun "ColorNormalize" (:struct %vector4)
- "Returns color normalized as float [0..1]"
- (color (:struct %color)))
- 
-;;RLAPI Color ColorFromNormalized(Vector4 normalized);              // Returns color from normalized values [0..1]
-(defcfun "ColorFromNormalized" (:struct %color)
- "Returns color from normalized values [0..1]"
- (normalized (:struct %vector4)))
-
-;;RLAPI Vector3 ColorToHSV(Color color);                            // Returns HSV values for a Color
-(defcfun "ColorToHSV" (:struct %vector3)
- "Returns HSV values for a Color"
- (color (:struct %color)))
-
-;;RLAPI Color ColorFromHSV(Vector3 hsv);                            // Returns a Color from HSV values
-(defcfun "ColorFromHSV" (:struct %color)
- "Returns a Color from HSV values"
- (hsv (:struct %vector3)))
-
-;;RLAPI Color GetColor(int hexValue);                               // Returns a Color struct from hexadecimal value
-(defcfun "GetColor" (:struct %color)
- "Returns a Color struct from hexadecimal value"
- (hex-value :unsigned-int))
-
-;;RLAPI Color Fade(Color color, float alpha);                       // Color fade-in or fade-out, alpha goes from 0.0f to 1.0f
-(defcfun "Fade" (:struct %color)
- "Color fade-in or fade-out, alpha goes from 0.0f to 1.0f"
- (color (:struct %color))
- (alpha :float))
+ "Get elapsed time in seconds since InitWindow()")
 
 ;;// Misc. functions
 ;;RLAPI void SetConfigFlags(unsigned int flags);                    // Setup window configuration flags (view FLAGS)
@@ -2140,7 +2329,7 @@
  "Takes a screenshot of current screen (saved a .png)"
  (file-name :string))
 
-;;RLAPI int GetRandomValue(int min, int max);                       // Returns a random value between min and max (both included)
+;;RLAPI int GetRandomValue(int min, int max);                       // Get a random value between min and max (both included)
 (defcfun "GetRandomValue" :int
  "Returns a random value between min and max (both included)"
  (min :int)
@@ -2225,7 +2414,7 @@
 (defcfun "ClearDirectoryFiles" :void
  "Clear directory files paths buffers (free memory)")
 
-;;RLAPI bool ChangeDirectory(const char *dir);                      // Change working directory, returns true if success
+;;RLAPI bool ChangeDirectory(const char *dir);                      // Change working directory, return true on success
 (defcfun "ChangeDirectory" :bool
  "Change working directory, returns true if success"
  (dir :string))
@@ -2248,22 +2437,23 @@
  "Get file modification time (last write time)"
  (file-name :string))
 
-;;RLAPI unsigned char *CompressData(unsigned char *data, int dataLength, int *compDataLength);        // Compress data (DEFLATE algorythm)
+;;// Compression/Encoding functionality
+;;RLAPI unsigned char *CompressData(unsigned char *data, int dataLength, int *compDataLength);        // Compress data (DEFLATE algorithm)
 (defcfun "CompressData" (:pointer :unsigned-char)
- "Compress data (DEFLATE algorythm)"
+ "Compress data (DEFLATE algorithm)"
  (data (:pointer :unsigned-char))
  (data-length :int)
  (comp-data-length (:pointer :int)))
 
-;;RLAPI unsigned char *DecompressData(unsigned char *compData, int compDataLength, int *dataLength);  // Decompress data (DEFLATE algorythm)
+;;RLAPI unsigned char *DecompressData(unsigned char *compData, int compDataLength, int *dataLength);  // Decompress data (DEFLATE algorithm)
 (defcfun "DecompressData" (:pointer :unsigned-char)
- "Decompress data (DEFLATE algorythm)"
+ "Decompress data (DEFLATE algorithm)"
  (comp-data (:pointer :unsigned-char))
  (comp-data-length :int)
  (data-length (:pointer :int)))
 
 ;;// Persistent storage management
-;;RLAPI void SaveStorageValue(unsigned int position, int value);    // Save integer value to storage file (to defined position)
+;;RLAPI bool SaveStorageValue(unsigned int position, int value);    // Save integer value to storage file (to defined position), returns true on success
 (defcfun "SaveStorageValue" :void
  "Save integer value to storage file (to defined position)"
  (position :unsigned-int)
@@ -2284,22 +2474,22 @@
 ;;//------------------------------------------------------------------------------------
 ;;
 ;;// Input-related functions: keyboard
-;;RLAPI bool IsKeyPressed(int key);                             // Detect if a key has been pressed once
+;;RLAPI bool IsKeyPressed(int key);                             // Check if a key has been pressed once
 (defcfun "IsKeyPressed" :bool
- "Detect if a key has been pressed once"
+ "Check if a key has been pressed once"
  (key :int))
 
-;;RLAPI bool IsKeyDown(int key);                                // Detect if a key is being pressed
+;;RLAPI bool IsKeyDown(int key);                                // Check if a key is being pressed
 (defcfun "IsKeyDown" :bool
- "Detect if a key is being pressed"
+ "Check if a key is being pressed"
  (key :int))
 
-;;RLAPI bool IsKeyReleased(int key);                            // Detect if a key has been released once
+;;RLAPI bool IsKeyReleased(int key);                            // Check if a key has been released once
 (defcfun "IsKeyReleased" :bool
- "Detect if a key has been released once"
+ "Check if a key has been released once"
  (key :int))
 
-;;RLAPI bool IsKeyUp(int key);                                  // Detect if a key is NOT being pressed
+;;RLAPI bool IsKeyUp(int key);                                  // Check if a key is NOT being pressed
 (defcfun "IsKeyUp" :bool
  "Detect if a key is NOT being pressed"
  (key :int))
@@ -2309,14 +2499,19 @@
  "Set a custom key to exit program (default is ESC)"
  (key :int))
 
-;;RLAPI int GetKeyPressed(void);                                // Get key pressed, call it multiple times for chars queued
+;;RLAPI int GetKeyPressed(void);                                // Get key pressed (keycode), call it multiple times for keys queued, returns 0 when the queue is empty
 (defcfun "GetKeyPressed" :int
  "Get key pressed, call it multiple times for chars queued")
+
+;;RLAPI int GetCharPressed(void);                               // Get char pressed (unicode), call it multiple times for chars queued, returns 0 when the queue is empty
+(defcfun "GetCharPressed" :int
+  "Get char pressed (unicode), call it multiple times for chars queued, returns 0 when the queue is empty")
+
 ;;
 ;;// Input-related functions: gamepads
-;;RLAPI bool IsGamepadAvailable(int gamepad);                   // Detect if a gamepad is available
+;;RLAPI bool IsGamepadAvailable(int gamepad);                   // Check if a gamepad is available
 (defcfun "IsGamepadAvailable" :boolean
- "Detect if a gamepad is available"
+ "Check if a gamepad is available"
  (gamepad :int))
 
 ;;RLAPI bool IsGamepadName(int gamepad, const char *name);      // Check gamepad name (if available)
@@ -2325,32 +2520,32 @@
  (gamepad :int)
  (name :string))
 
-;;RLAPI const char *GetGamepadName(int gamepad);                // Return gamepad internal name id
+;;RLAPI const char *GetGamepadName(int gamepad);                // Get gamepad internal name id
 (defcfun "GetGamepadName" :string
- "Return gamepad internal name id"
+ "Get gamepad internal name id"
  (gamepad :int))
 
-;;RLAPI bool IsGamepadButtonPressed(int gamepad, int button);   // Detect if a gamepad button has been pressed once
+;;RLAPI bool IsGamepadButtonPressed(int gamepad, int button);   // Check if a gamepad button has been pressed once
 (defcfun "IsGamepadButtonPressed" :boolean
- "Detect if a gamepad button has been pressed once"
+ "Check if a gamepad button has been pressed once"
  (gamepad :int)
  (button :int))
 
-;;RLAPI bool IsGamepadButtonDown(int gamepad, int button);      // Detect if a gamepad button is being pressed
+;;RLAPI bool IsGamepadButtonDown(int gamepad, int button);      // Check if a gamepad button is being pressed
 (defcfun "IsGamepadButtonDown" :boolean
- "Detect if a gamepad button is being pressed"
+ "Check if a gamepad button is being pressed"
  (gamepad :int)
  (button :int))
 
-;;RLAPI bool IsGamepadButtonReleased(int gamepad, int button);  // Detect if a gamepad button has been released once
+;;RLAPI bool IsGamepadButtonReleased(int gamepad, int button);  // Check if a gamepad button has been released once
 (defcfun "IsGamepadButtonReleased" :boolean
- "Detect if a gamepad button has been released once"
+ "Check if a gamepad button has been released once"
  (gamepad :int)
  (button :int))
 
-;;RLAPI bool IsGamepadButtonUp(int gamepad, int button);        // Detect if a gamepad button is NOT being pressed
+;;RLAPI bool IsGamepadButtonUp(int gamepad, int button);        // Check if a gamepad button is NOT being pressed
 (defcfun "IsGamepadButtonUp" :boolean
- "Detect if a gamepad button is NOT being pressed"
+ "Check if a gamepad button is NOT being pressed"
  (gamepad :int)
  (button :int))
 
@@ -2358,49 +2553,49 @@
 (defcfun "GetGamepadButtonPressed" :int
  "Get the last gamepad button pressed")
 
-;;RLAPI int GetGamepadAxisCount(int gamepad);                   // Return gamepad axis count for a gamepad
+;;RLAPI int GetGamepadAxisCount(int gamepad);                   // Get gamepad axis count for a gamepad
 (defcfun "GetGamepadAxisCount" :int
- "Return gamepad axis count for a gamepad"
+ "Get gamepad axis count for a gamepad"
  (gamepad :int))
 
-;;RLAPI float GetGamepadAxisMovement(int gamepad, int axis);    // Return axis movement value for a gamepad axis
+;;RLAPI float GetGamepadAxisMovement(int gamepad, int axis);    // Get axis movement value for a gamepad axis
 (defcfun "GetGamepadAxisMovement" :float
- "Return axis movement value for a gamepad axis"
+ "Get axis movement value for a gamepad axis"
  (gamepad :int)
  (axis :int))
 
 ;;// Input-related functions: mouse
-;;RLAPI bool IsMouseButtonPressed(int button);                  // Detect if a mouse button has been pressed once
+;;RLAPI bool IsMouseButtonPressed(int button);                  // Check if a mouse button has been pressed once
 (defcfun "IsMouseButtonPressed" :boolean
- "Detect if a mouse button has been pressed once"
+ "Check if a mouse button has been pressed once"
  (button :int))
 
-;;RLAPI bool IsMouseButtonDown(int button);                     // Detect if a mouse button is being pressed
+;;RLAPI bool IsMouseButtonDown(int button);                     // Check if a mouse button is being pressed
 (defcfun "IsMouseButtonDown" :boolean
- "Detect if a mouse button is being pressed"
+ "Check if a mouse button is being pressed"
  (button :int))
 
-;;RLAPI bool IsMouseButtonReleased(int button);                 // Detect if a mouse button has been released once
+;;RLAPI bool IsMouseButtonReleased(int button);                 // Check if a mouse button has been released once
 (defcfun "IsMouseButtonReleased" :boolean
- "Detect if a mouse button has been released once"
+ "Check if a mouse button has been released once"
  (button :int))
 
-;;RLAPI bool IsMouseButtonUp(int button);                       // Detect if a mouse button is NOT being pressed
+;;RLAPI bool IsMouseButtonUp(int button);                       // Check if a mouse button is NOT being pressed
 (defcfun "IsMouseButtonUp" :boolean
- "Detect if a mouse button is NOT being pressed"
+ "Check if a mouse button is NOT being pressed"
  (button :int))
 
-;;RLAPI int GetMouseX(void);                                    // Returns mouse position X
+;;RLAPI int GetMouseX(void);                                    // Get mouse position X
 (defcfun "GetMouseX" :int
- "Returns mouse position X")
+ "Get mouse position X")
 
-;;RLAPI int GetMouseY(void);                                    // Returns mouse position Y
+;;RLAPI int GetMouseY(void);                                    // Get mouse position Y
 (defcfun "GetMouseY" :int
- "Returns mouse position Y")
+ "Get mouse position Y")
 
-;;RLAPI Vector2 GetMousePosition(void);                         // Returns mouse position XY
+;;RLAPI Vector2 GetMousePosition(void);                         // Get mouse position XY
 (defcfun "GetMousePosition" (:struct %vector2)
- "Returns mouse position XY")
+ "Get mouse position XY")
 
 ;;RLAPI void SetMousePosition(int x, int y);                    // Set mouse position XY
 (defcfun "SetMousePosition" :void
@@ -2420,75 +2615,76 @@
  (scale-x :float)
  (scale-y :float))
 
-;;RLAPI int GetMouseWheelMove(void);                            // Returns mouse wheel movement Y
-(defcfun "GetMouseWheelMove" :int
- "Returns mouse wheel movement Y")
+;;RLAPI float GetMouseWheelMove(void);                          // Get mouse wheel movement Y
+(defcfun "GetMouseWheelMove" :float
+  "Get mouse wheel movement Y")
+
+;;RLAPI void SetMouseCursor(int cursor);                        // Set mouse cursor
+(defcfun "SetMouseCursor" :void
+  "Set mouse cursor"
+  (cursor :int))
 
 ;;// Input-related functions: touch
-;;RLAPI int GetTouchX(void);                                    // Returns touch position X for touch point 0 (relative to screen size)
+;;RLAPI int GetTouchX(void);                                    // Get touch position X for touch point 0 (relative to screen size)
 (defcfun "GetTouchX" :int
- "Returns touch position X for touch point 0 (relative to screen size)")
+ "Get touch position X for touch point 0 (relative to screen size)")
 
-;;RLAPI int GetTouchY(void);                                    // Returns touch position Y for touch point 0 (relative to screen size)
+;;RLAPI int GetTouchY(void);                                    // Get touch position Y for touch point 0 (relative to screen size)
 (defcfun "GetTouchY" :int
- "Returns touch position Y for touch point 0 (relative to screen size)")
+ "Get touch position Y for touch point 0 (relative to screen size)")
 
-;;RLAPI Vector2 GetTouchPosition(int index);                    // Returns touch position XY for a touch point index (relative to screen size)
+;;RLAPI Vector2 GetTouchPosition(int index);                    // Get touch position XY for a touch point index (relative to screen size)
 (defcfun "GetTouchPosition" (:struct %vector2)
- "Returns touch position XY for a touch point index (relative to screen size)"
+ "Get touch position XY for a touch point index (relative to screen size)"
  (index :int))
 
 ;;//------------------------------------------------------------------------------------
 ;;// Gestures and Touch Handling Functions (Module: gestures)
 ;;//------------------------------------------------------------------------------------
-;;RLAPI void SetGesturesEnabled(unsigned int gestureFlags);     // Enable a set of gestures using flags
+;;RLAPI void SetGesturesEnabled(unsigned int flags);      // Enable a set of gestures using flags
 (defcfun "SetGesturesEnabled" :void
  "Enable a set of gestures using flags"
- (gesture-flags :unsigned-int))
+ (flags :unsigned-int))
 
-;;RLAPI bool IsGestureDetected(int gesture);                    // Check if a gesture have been detected
+;;RLAPI bool IsGestureDetected(int gesture);              // Check if a gesture have been detected
 (defcfun "IsGestureDetected" :boolean
  "Check if a gesture have been detected"
  (gesture :int))
 
-;;RLAPI int GetGestureDetected(void);                           // Get latest detected gesture
+;;RLAPI int GetGestureDetected(void);                     // Get latest detected gesture
 (defcfun "GetGestureDetected" :int
  "Get latest detected gesture")
 
-;;RLAPI int GetTouchPointsCount(void);                          // Get touch points count
-(defcfun "GetTouchPointsCount" :int
- "Get touch points count")
-
-;;RLAPI float GetGestureHoldDuration(void);                     // Get gesture hold time in milliseconds
+;;RLAPI float GetGestureHoldDuration(void);               // Get gesture hold time in milliseconds
 (defcfun "GetGestureHoldDuration" :float
  "Get gesture hold time in milliseconds")
 
-;;RLAPI Vector2 GetGestureDragVector(void);                     // Get gesture drag vector
+;;RLAPI Vector2 GetGestureDragVector(void);               // Get gesture drag vector
 (defcfun "GetGestureDragVector" (:struct %vector2)
  "Get gesture drag vector")
 
-;;RLAPI float GetGestureDragAngle(void);                        // Get gesture drag angle
+;;RLAPI float GetGestureDragAngle(void);                  // Get gesture drag angle
 (defcfun "GetGestureDragAngle" :float
  "Get gesture drag angle")
 
-;;RLAPI Vector2 GetGesturePinchVector(void);                    // Get gesture pinch delta
+;;RLAPI Vector2 GetGesturePinchVector(void);              // Get gesture pinch delta
 (defcfun "GetGesturePinchVector" (:struct %vector2)
  "Get gesture pinch delta")
 
-;;RLAPI float GetGesturePinchAngle(void);                       // Get gesture pinch angle
+;;RLAPI float GetGesturePinchAngle(void);                 // Get gesture pinch angle
 (defcfun "GetGesturePinchAngle" :float
  "Get gesture pinch angle")
 
 ;;//------------------------------------------------------------------------------------
-;;// Camera System Functions (Module: camera)
+;;// Camera System Functions (Module: rcamera)
 ;;//------------------------------------------------------------------------------------
-;;RLAPI void SetCameraMode(Camera camera, int mode);                // Set camera mode (multiple camera modes available)
+;;RLAPI void SetCameraMode(Camera camera, int mode);      // Set camera mode (multiple camera modes available)
 (defcfun "SetCameraMode" :void
  "Set camera mode (multiple camera modes available)"
  (camera (:struct %camera3d))
  (mode :int))
 
-;;RLAPI void UpdateCamera(Camera *camera);                          // Update camera position for selected mode
+;;RLAPI void UpdateCamera(Camera *camera);                // Update camera position for selected mode
 (defcfun ("UpdateCamera" %update-camera) :void
   (camera (:pointer (:struct %camera3d))))
 
@@ -2499,20 +2695,20 @@
        (%update-camera ,foreign-camera)
        (update-camera3d-from-foreign ,camera ,foreign-camera))))
 
-;;RLAPI void SetCameraPanControl(int panKey);                       // Set camera pan key to combine with mouse movement (free camera)
+;;RLAPI void SetCameraPanControl(int keyPan);             // Set camera pan key to combine with mouse movement (free camera)
 (defcfun "SetCameraPanControl" :void
- (pan-key :int))
+ (key-pan :int))
 
-;;RLAPI void SetCameraAltControl(int altKey);                       // Set camera alt key to combine with mouse movement (free camera)
+;;RLAPI void SetCameraAltControl(int keyAlt);             // Set camera alt key to combine with mouse movement (free camera)
 (defcfun "SetCameraAltControl" :void
- (alt-key :int))
+ (key-alt :int))
 
-;;RLAPI void SetCameraSmoothZoomControl(int szKey);                 // Set camera smooth zoom key to combine with mouse (free camera)
+;;RLAPI void SetCameraSmoothZoomControl(int keySmoothZoom); // Set camera smooth zoom key to combine with mouse (free camera)
 (defcfun "SetCameraSmoothZoomControl" :void
  "Set camera smooth zoom key to combine with mouse (free camera)"
- (sz-key :int))
+ (key-smooth-zoom :int))
 
-;;RLAPI void SetCameraMoveControls(int frontKey, int backKey, int rightKey, int leftKey, int upKey, int downKey); // Set camera move controls (1st person and 3rd person cameras)
+;;RLAPI void SetCameraMoveControls(int keyFront, int keyBack, int keyRight, int keyLeft, int keyUp, int keyDown); // Set camera move controls (1st person and 3rd person cameras)
 (defcfun "SetCameraMoveControls" :void
  "Set camera move controls (1st person and 3rd person cameras)"
  (front-key :int)
@@ -3248,11 +3444,11 @@
  (scale :float)
  (tint (:struct %color)))
 
-;;RLAPI void DrawTextureRec(Texture2D texture, Rectangle sourceRec, Vector2 position, Color tint);         // Draw a part of a texture defined by a rectangle
+;;RLAPI void DrawTextureRec(Texture2D texture, Rectangle source, Vector2 position, Color tint);            // Draw a part of a texture defined by a rectangle
 (defcfun "DrawTextureRec" :void
  "Draw a part of a texture defined by a rectangle"
  (texture (:struct %texture))
- (source-rec (:struct %rectangle))
+ (source (:struct %rectangle))
  (position (:struct %vector2))
  (tint (:struct %color)))
 
@@ -3265,17 +3461,17 @@
  (quad (:struct %rectangle))
  (tint (:struct %color)))
 
-;;RLAPI void DrawTexturePro(Texture2D texture, Rectangle sourceRec, Rectangle destRec, Vector2 origin, float rotation, Color tint);       // Draw a part of a texture defined by a rectangle with 'pro' parameters
+;;RLAPI void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest, Vector2 origin, float rotation, Color tint);           // Draw a part of a texture defined by a rectangle with 'pro' parameters
 (defcfun "DrawTexturePro" :void
  "Draw a part of a texture defined by a rectangle with 'pro' parameters"
  (texture (:struct %texture))
- (source-rec (:struct %rectangle))
- (dest-rec (:struct %rectangle))
+ (source (:struct %rectangle))
+ (dest (:struct %rectangle))
  (origin (:struct %vector2))
  (rotation :float)
  (tint (:struct %color)))
 
-;;RLAPI void DrawTextureNPatch(Texture2D texture, NPatchInfo nPatchInfo, Rectangle destRec, Vector2 origin, float rotation, Color tint);  // Draws a texture (or part of it) that stretches or shrinks nicely
+;;RLAPI void DrawTextureNPatch(Texture2D texture, NPatchInfo nPatchInfo, Rectangle dest, Vector2 origin, float rotation, Color tint);   // Draws a texture (or part of it) that stretches or shrinks nicely
 (defcfun "DrawTextureNPatch" :void
  "raws a texture (or part of it) that stretches or shrinks nicely"
  (texture (:struct %texture))
@@ -3285,8 +3481,71 @@
  (rotation :float)
  (tint (:struct %color)))
 
-;;// Image/Texture misc functions
-;;RLAPI int GetPixelDataSize(int width, int height, int format);                                           // Get pixel data size in bytes (image or texture)
+;;// Color/pixel related functions
+;;RLAPI Color Fade(Color color, float alpha);                                 // Get color with alpha applied, alpha goes from 0.0f to 1.0f
+(defcfun "Fade" (:struct %color)
+  "Get color with alpha applied, alpha goes from 0.0f to 1.0f"
+  (color (:struct %color))
+  (alpha :float))
+
+;;RLAPI int ColorToInt(Color color);                                          // Get hexadecimal value for a Color
+(defcfun "ColorToInt" :int
+ "Get hexadecimal value for a Color"
+ (color (:struct %color)))
+
+;;RLAPI Vector4 ColorNormalize(Color color);                                  // Get Color normalized as float [0..1]
+(defcfun "ColorNormalize" (:struct %vector4)
+ "Get color normalized as float [0..1]"
+ (color (:struct %color)))
+ 
+;;RLAPI Color ColorFromNormalized(Vector4 normalized);                        // Get Color from normalized values [0..1]
+(defcfun "ColorFromNormalized" (:struct %color)
+ "Get color from normalized values [0..1]"
+ (normalized (:struct %vector4)))
+
+;;RLAPI Vector3 ColorToHSV(Color color);                                      // Get HSV values for a Color, hue [0..360], saturation/value [0..1]
+(defcfun "ColorToHSV" (:struct %vector3)
+ "Get HSV values for a Color"
+ (color (:struct %color)))
+
+;;RLAPI Color ColorFromHSV(float hue, float saturation, float value);         // Get a Color from HSV values, hue [0..360], saturation/value [0..1]
+(defcfun "ColorFromHSV" (:struct %color)
+  (hue :float)
+  (saturation :float)
+  (value :float))
+
+;;RLAPI Color ColorAlpha(Color color, float alpha);                           // Get color with alpha applied, alpha goes from 0.0f to 1.0f
+(defcfun "ColorAlpha" (:struct %color)
+  (color (:struct %color))
+  (alpha :float))
+
+;;RLAPI Color ColorAlphaBlend(Color dst, Color src, Color tint);              // Get src alpha-blended into dst color with tint
+(defcfun "ColorAlphaBlend" (:struct %color)
+  (dst (:struct %color))
+  (src (:struct %color))
+  (tint (:struct %color)))
+
+;;RLAPI Color GetColor(unsigned int hexValue);                                // Get Color structure from hexadecimal value
+(defcfun "GetColor" (:struct %color)
+ "Get a Color struct from hexadecimal value"
+ (hex-value :unsigned-int))
+
+;;RLAPI Color GetPixelColor(void *srcPtr, int format);                        // Get Color from a source pixel pointer of certain format
+(defcfun "GetPixelColor" (:struct %color)
+  (src-ptr :pointer)
+  (format :int))
+
+;;RLAPI void SetPixelColor(void *dstPtr, Color color, int format);            // Set color formatted into destination pixel pointer
+(defcfun "SetPixelColor" :void
+  (dst-ptr :pointer)
+  (color (:struct %color))
+  (format :int))
+
+;;RLAPI int GetPixelDataSize(int width, int height, int format);              // Get pixel data size in bytes for certain format
+(defcfun "GetPixelDataSize" :int
+  (width :int)
+  (height :int)
+  (format :int))
 ;;
 ;;//------------------------------------------------------------------------------------
 ;;// Font Loading and Text Drawing Functions (Module: text)
@@ -3302,13 +3561,12 @@
  "Load font from file into GPU memory (VRAM)"
  (file-name :string))
 
-;;RLAPI Font LoadFontEx(const char *fileName, int fontSize, int *fontChars, int charsCount);  // Load font from file with extended parameters
+;;RLAPI Font LoadFontEx(const char *fileName, int fontSize, int *fontChars, int glyphCount);  // Load font from file with extended parameters
 (defcfun "LoadFontEx" (:struct %font)
- "Load font from file with extended parameters"
- (file-name :string)
- (font-size :int)
- (font-chars (:pointer (:int)))
- (chars-count :int))
+  (file-name :string)
+  (font-size :int)
+  (font-chars (:pointer :int))
+  (glyph-count :int))
 
 ;;RLAPI Font LoadFontFromImage(Image image, Color key, int firstChar);                        // Load font from Image (XNA style)
 (defcfun "LoadFontFromImage" (:struct %font)
@@ -3674,18 +3932,18 @@
 ;;// Model 3d Loading and Drawing Functions (Module: models)
 ;;//------------------------------------------------------------------------------------
 ;;
-;;// Model loading/unloading functions
-;;RLAPI Model LoadModel(const char *fileName);                                                            // Load model from files (meshes and materials)
+;;// Model management functions
+;;RLAPI Model LoadModel(const char *fileName);                                                // Load model from files (meshes and materials)
 (defcfun "LoadModel" (:struct %model)
  "Load model from files (meshes and materials)"
  (file-name :string))
 
-;;RLAPI Model LoadModelFromMesh(Mesh mesh);                                                               // Load model from generated mesh (default material)
+;;RLAPI Model LoadModelFromMesh(Mesh mesh);                                                   // Load model from generated mesh (default material)
 (defcfun "LoadModelFromMesh" (:struct %model)
  "Load model from generated mesh (default material)"
  (mesh (:struct %mesh)))
 
-;;RLAPI void UnloadModel(Model model);                                                                    // Unload model from memory (RAM and/or VRAM)
+;;RLAPI void UnloadModel(Model model);                                                        // Unload model (including meshes) from memory (RAM and/or VRAM)
 (defcfun "UnloadModel" :void
  (model (:struct %model)))
 
@@ -3707,149 +3965,8 @@
  "Unload mesh from memory (RAM and/or VRAM)"
  (mesh (:struct %mesh)))
 
-;;// Material loading/unloading functions
-;;RLAPI Material *LoadMaterials(const char *fileName, int *materialCount);                                // Load materials from model file
-(defcfun "LoadMaterials" (:struct %material)
- "Load materials from model file"
- (file-name :string)
- (material-count (:pointer :int)))
-
-;;RLAPI Material LoadMaterialDefault(void);                                                               // Load default material (Supports: DIFFUSE, SPECULAR, NORMAL maps)
-(defcfun "LoadMaterialDefault" (:struct %material)
- "Load default material (Supports: DIFFUSE, SPECULAR, NORMAL maps)")
-
-;;RLAPI void UnloadMaterial(Material material);                                                           // Unload material from GPU memory (VRAM)
-(defcfun "UnloadMaterial" :void
- "Unload material from GPU memory (VRAM)"
- (material (:struct %material)))
-
-;;RLAPI void SetMaterialTexture(Material *material, int mapType, Texture2D texture);                      // Set texture for a material map type (MAP_DIFFUSE, MAP_SPECULAR...)
-(defcfun "SetMaterialTexture" :void
- "Set texture for a material map type (MAP_DIFFUSE, MAP_SPECULAR...)"
- (material (:struct %material))
- (map-type :int)
- (texture (:struct %texture)))
-
-;;RLAPI void SetModelMeshMaterial(Model *model, int meshId, int materialId);                              // Set material for a mesh
-(defcfun "SetModelMeshMaterial" :void
- "Set material for a mesh"
- (model (:struct %model))
- (mesh-id :int)
- (material-id :int))
-
 ;;
-;;// Model animations loading/unloading functions
-;;RLAPI ModelAnimation *LoadModelAnimations(const char *fileName, int *animsCount);                       // Load model animations from file
-(defcfun "LoadModelAnimations" (:struct %model-animation)
- "Load model animations from file"
- (file-name :string)
- (animation-count (:pointer :int)))
 
-;;RLAPI void UpdateModelAnimation(Model model, ModelAnimation anim, int frame);                           // Update model animation pose
-(defcfun "UpdateModelAnimation" :void
- "Update model animation pose"
- (model (:struct %model))
- (anim (:struct %model-animation))
- (frame :int))
-
-;;RLAPI void UnloadModelAnimation(ModelAnimation anim);                                                   // Unload animation data
-(defcfun "UnloadModelAnimation" :void
- "Unload animation data"
- (anim (:struct %model-animation)))
-
-;;RLAPI bool IsModelAnimationValid(Model model, ModelAnimation anim);                                     // Check model animation skeleton match
-(defcfun "IsModelAnimationValid" :bool
- "Check model animation skeleton match"
- (model (:struct %model))
- (anim (:struct %model-animation)))
-
-;;
-;;// Mesh generation functions
-;;RLAPI Mesh GenMeshPoly(int sides, float radius);                                                        // Generate polygonal mesh
-(defcfun "GenMeshPoly" (:struct %mesh)
- "Generate polygonal mesh"
- (sides :int)
- (radius :float))
-
-;;RLAPI Mesh GenMeshPlane(float width, float length, int resX, int resZ);                                 // Generate plane mesh (with subdivisions)
-(defcfun "GenMeshPlane" (:struct %mesh)
- "Generate plane mesh (with subdivisions)"
- (width :float)
- (length :float)
- (res-x :int)
- (res-z :int))
-
-;;RLAPI Mesh GenMeshCube(float width, float height, float length);                                        // Generate cuboid mesh
-(defcfun "GenMeshCube" (:struct %mesh)
- "Generate cuboid mesh"
- (width :float)
- (height :float)
- (length :float))
-
-;;RLAPI Mesh GenMeshSphere(float radius, int rings, int slices);                                          // Generate sphere mesh (standard sphere)
-(defcfun "GenMeshSphere" (:struct %mesh)
- "Generate sphere mesh (standard sphere)"
- (radius :float)
- (rings :int)
- (slices :int))
-
-;;RLAPI Mesh GenMeshHemiSphere(float radius, int rings, int slices);                                      // Generate half-sphere mesh (no bottom cap)
-(defcfun "GenMeshHemiSphere" (:struct %mesh)
- "Generate half-sphere mesh (no bottom cap)"
- (radius :float)
- (rings :int)
- (slices :int))
-
-;;RLAPI Mesh GenMeshCylinder(float radius, float height, int slices);                                     // Generate cylinder mesh
-(defcfun "GenMeshCylinder" (:struct %mesh)
- "Generate cylinder mesh"
- (radius :float)
- (height :float)
- (slices :int))
-
-;;RLAPI Mesh GenMeshTorus(float radius, float size, int radSeg, int sides);                               // Generate torus mesh
-(defcfun "GenMeshTorus" (:struct %mesh)
- "Generate torus mesh"
- (radius :float)
- (size :float)
- (rad-seg :int)
- (sides :int))
-
-;;RLAPI Mesh GenMeshKnot(float radius, float size, int radSeg, int sides);                                // Generate trefoil knot mesh
-(defcfun "GenMeshKnot" (:struct %mesh)
- "Generate trefoil knot mesh"
- (radius :float)
- (size :float)
- (rad-seg :int)
- (sides :int))
-
-;;RLAPI Mesh GenMeshHeightmap(Image heightmap, Vector3 size);                                             // Generate heightmap mesh from image data
-(defcfun "GenMeshHeightmap" (:struct %mesh)
- "Generate heightmap mesh from image data"
- (heightmap (:struct %image))
- (size (:struct %vector3)))
-
-;;RLAPI Mesh GenMeshCubicmap(Image cubicmap, Vector3 cubeSize);                                           // Generate cubes-based map mesh from image data
-(defcfun "GenMeshCubicmap" (:struct %mesh)
- "Generate cubes-based map mesh from image data"
- (cubicmap (:struct %image))
- (cube-size (:struct %vector3)))
-
-;;// Mesh manipulation functions
-;;RLAPI BoundingBox MeshBoundingBox(Mesh mesh);                                                           // Compute mesh bounding box limits
-(defcfun "MeshBoundingBox" (:struct %bounding-box)
- "Compute mesh bounding box limits"
- (mesh (:struct %mesh)))
-
-;;RLAPI void MeshTangents(Mesh *mesh);                                                                    // Compute mesh tangents
-(defcfun "MeshTangents" :void
- "Compute mesh tangents"
- (mesh :pointer))
-
-;;RLAPI void MeshBinormals(Mesh *mesh);                                                                   // Compute mesh binormals
-(defcfun "MeshBinormals" :void
- "Compute mesh binormals"
- (mesh :pointer))
 
 ;;// Model drawing functions
 ;;RLAPI void DrawModel(Model model, Vector3 position, float scale, Color tint);                           // Draw a model (with texture if set)
@@ -3889,258 +4006,192 @@
   (box (:struct %bounding-box))
   (color (:struct %color)))
 
-;;RLAPI void DrawBillboard(Camera camera, Texture2D texture, Vector3 center, float size, Color tint);     // Draw a billboard texture
+;;RLAPI void DrawBillboard(Camera camera, Texture2D texture, Vector3 position, float size, Color tint);   // Draw a billboard texture
 (defcfun "DrawBillboard" :void
   (camera (:struct %camera3d))
   (texture (:struct %texture))
-  (center (:struct %vector3))
+  (position (:struct %vector3))
   (size :float)
   (tint (:struct %color)))
 
-;;RLAPI void DrawBillboardRec(Camera camera, Texture2D texture, Rectangle sourceRec, Vector3 center, float size, Color tint); // Draw a billboard texture defined by sourceRec
+;;RLAPI void DrawBillboardRec(Camera camera, Texture2D texture, Rectangle source, Vector3 position, Vector2 size, Color tint); // Draw a billboard texture defined by source
 (defcfun "DrawBillboardRec" :void
   (camera (:struct %camera3d))
   (texture (:struct %texture))
-  (source-rec (:struct %rectangle))
-  (center (:struct %vector3))
-  (size :float)
+  (source (:struct %rectangle))
+  (position (:struct %vector3))
+  (size (:struct %vector2))
   (tint (:struct %color)))
 
+
+
+;;
+;;// Mesh generation functions
+;;RLAPI Mesh GenMeshPoly(int sides, float radius);                                            // Generate polygonal mesh
+(defcfun "GenMeshPoly" (:struct %mesh)
+ "Generate polygonal mesh"
+ (sides :int)
+ (radius :float))
+
+;;RLAPI Mesh GenMeshPlane(float width, float length, int resX, int resZ);                     // Generate plane mesh (with subdivisions)
+(defcfun "GenMeshPlane" (:struct %mesh)
+ "Generate plane mesh (with subdivisions)"
+ (width :float)
+ (length :float)
+ (res-x :int)
+ (res-z :int))
+
+;;RLAPI Mesh GenMeshCube(float width, float height, float length);                            // Generate cuboid mesh
+(defcfun "GenMeshCube" (:struct %mesh)
+ "Generate cuboid mesh"
+ (width :float)
+ (height :float)
+ (length :float))
+
+;;RLAPI Mesh GenMeshSphere(float radius, int rings, int slices);                              // Generate sphere mesh (standard sphere)
+(defcfun "GenMeshSphere" (:struct %mesh)
+ "Generate sphere mesh (standard sphere)"
+ (radius :float)
+ (rings :int)
+ (slices :int))
+
+;;RLAPI Mesh GenMeshHemiSphere(float radius, int rings, int slices);                          // Generate half-sphere mesh (no bottom cap)
+(defcfun "GenMeshHemiSphere" (:struct %mesh)
+ "Generate half-sphere mesh (no bottom cap)"
+ (radius :float)
+ (rings :int)
+ (slices :int))
+
+;;RLAPI Mesh GenMeshCylinder(float radius, float height, int slices);                         // Generate cylinder mesh
+(defcfun "GenMeshCylinder" (:struct %mesh)
+ "Generate cylinder mesh"
+ (radius :float)
+ (height :float)
+ (slices :int))
+
+;;RLAPI Mesh GenMeshTorus(float radius, float size, int radSeg, int sides);                   // Generate torus mesh
+(defcfun "GenMeshTorus" (:struct %mesh)
+ "Generate torus mesh"
+ (radius :float)
+ (size :float)
+ (rad-seg :int)
+ (sides :int))
+
+;;RLAPI Mesh GenMeshKnot(float radius, float size, int radSeg, int sides);                    // Generate trefoil knot mesh
+(defcfun "GenMeshKnot" (:struct %mesh)
+ "Generate trefoil knot mesh"
+ (radius :float)
+ (size :float)
+ (rad-seg :int)
+ (sides :int))
+
+;;RLAPI Mesh GenMeshHeightmap(Image heightmap, Vector3 size);                                 // Generate heightmap mesh from image data
+(defcfun "GenMeshHeightmap" (:struct %mesh)
+ "Generate heightmap mesh from image data"
+ (heightmap (:struct %image))
+ (size (:struct %vector3)))
+
+;;RLAPI Mesh GenMeshCubicmap(Image cubicmap, Vector3 cubeSize);                               // Generate cubes-based map mesh from image data
+(defcfun "GenMeshCubicmap" (:struct %mesh)
+ "Generate cubes-based map mesh from image data"
+ (cubicmap (:struct %image))
+ (cube-size (:struct %vector3)))
+
+;;// Material loading/unloading functions
+;;RLAPI Material *LoadMaterials(const char *fileName, int *materialCount);                    // Load materials from model file
+(defcfun "LoadMaterials" (:struct %material)
+ "Load materials from model file"
+ (file-name :string)
+ (material-count (:pointer :int)))
+
+;;RLAPI Material LoadMaterialDefault(void);                                                   // Load default material (Supports: DIFFUSE, SPECULAR, NORMAL maps)
+(defcfun "LoadMaterialDefault" (:struct %material)
+ "Load default material (Supports: DIFFUSE, SPECULAR, NORMAL maps)")
+
+;;RLAPI void UnloadMaterial(Material material);                                               // Unload material from GPU memory (VRAM)
+(defcfun "UnloadMaterial" :void
+ "Unload material from GPU memory (VRAM)"
+ (material (:struct %material)))
+
+;;RLAPI void SetMaterialTexture(Material *material, int mapType, Texture2D texture);          // Set texture for a material map type (MATERIAL_MAP_DIFFUSE, MATERIAL_MAP_SPECULAR...)
+(defcfun "SetMaterialTexture" :void
+ "Set texture for a material map type (MAP_DIFFUSE, MAP_SPECULAR...)"
+ (material (:struct %material))
+ (map-type :int)
+ (texture (:struct %texture)))
+
+;;RLAPI void SetModelMeshMaterial(Model *model, int meshId, int materialId);                  // Set material for a mesh
+(defcfun "SetModelMeshMaterial" :void
+ "Set material for a mesh"
+ (model (:struct %model))
+ (mesh-id :int)
+ (material-id :int))
+
+;;// Model animations loading/unloading functions
+;;RLAPI ModelAnimation *LoadModelAnimations(const char *fileName, unsigned int *animCount);   // Load model animations from file
+(defcfun "LoadModelAnimations" (:struct %model-animation)
+ "Load model animations from file"
+ (file-name :string)
+ (animation-count (:pointer :unsigned-int)))
+
+;;RLAPI void UpdateModelAnimation(Model model, ModelAnimation anim, int frame);               // Update model animation pose
+(defcfun "UpdateModelAnimation" :void
+ "Update model animation pose"
+ (model (:struct %model))
+ (anim (:struct %model-animation))
+ (frame :int))
+
+;;RLAPI void UnloadModelAnimation(ModelAnimation anim);                                       // Unload animation data
+(defcfun "UnloadModelAnimation" :void
+ "Unload animation data"
+ (anim (:struct %model-animation)))
+
+;;RLAPI bool IsModelAnimationValid(Model model, ModelAnimation anim);                         // Check model animation skeleton match
+(defcfun "IsModelAnimationValid" :bool
+ "Check model animation skeleton match"
+ (model (:struct %model))
+ (anim (:struct %model-animation)))
+
 ;;// Collision detection functions
-;;RLAPI bool CheckCollisionSpheres(Vector3 centerA, float radiusA, Vector3 centerB, float radiusB);       // Detect collision between two spheres
+;;RLAPI bool CheckCollisionSpheres(Vector3 center1, float radius1, Vector3 center2, float radius2);       // Check collision between two spheres
 (defcfun "CheckCollisionSpheres" :bool
   (center-a (:struct %vector3))
   (radius-a :float)
   (center-b (:struct %vector3))
   (radius-b :float))
 
-;;RLAPI bool CheckCollisionBoxes(BoundingBox box1, BoundingBox box2);                                     // Detect collision between two bounding boxes
+;;RLAPI bool CheckCollisionBoxes(BoundingBox box1, BoundingBox box2);                                     // Check collision between two bounding boxes
 (defcfun "CheckCollisionBoxes" :bool
   (box1 (:struct %bounding-box))
   (box2 (:struct %bounding-box)))
 
-;;RLAPI bool CheckCollisionBoxSphere(BoundingBox box, Vector3 center, float radius);                      // Detect collision between box and sphere
+;;RLAPI bool CheckCollisionBoxSphere(BoundingBox box, Vector3 center, float radius);                      // Check collision between box and sphere
 (defcfun "CheckCollisionBoxSphere" :bool
   (box (:struct %bounding-box))
   (center (:struct %vector3))
   (radius :float))
-;;RLAPI bool CheckCollisionRaySphere(Ray ray, Vector3 center, float radius);                              // Detect collision between ray and sphere
-(defcfun "CheckCollisionRaySphere" :bool
- "Detect collision between ray and sphere"
-  (ray (:struct %ray))
-  (center (:struct %vector3))
-  (radius :float))
 
-;;RLAPI bool CheckCollisionRaySphereEx(Ray ray, Vector3 center, float radius, Vector3 *collisionPoint);   // Detect collision between ray and sphere, returns collision point
-(defcfun "CheckCollisionRaySphereEx" :bool
-  (ray (:struct %ray))
-  (center (:struct %vector3))
-  (radius :float)
-  (collision-point (:pointer (:struct %vector3))))
-
-;;RLAPI bool CheckCollisionRayBox(Ray ray, BoundingBox box);                                              // Detect collision between ray and box
-(defcfun "CheckCollisionRayBox" :bool
-  (ray (:struct %ray))
-  (box (:struct %bounding-box)))
-
-;;RLAPI RayHitInfo GetCollisionRayModel(Ray ray, Model model);                                            // Get collision info between ray and model
-(defcfun "GetCollisionRayModel" (:struct %ray-hit-info)
+;;RLAPI RayCollision GetRayCollisionModel(Ray ray, Model model);                                          // Get collision info between ray and model
+(defcfun "GetRayCollisionModel" (:struct %ray-collision)
  "Get collision info between ray and model"
  (ray (:struct %ray))
  (model (:struct %model)))
 
-;;RLAPI RayHitInfo GetCollisionRayTriangle(Ray ray, Vector3 p1, Vector3 p2, Vector3 p3);                  // Get collision info between ray and triangle
-(defcfun "GetCollisionRayTriangle" (:struct %ray-hit-info)
+;;RLAPI RayCollision GetRayCollisionTriangle(Ray ray, Vector3 p1, Vector3 p2, Vector3 p3);                // Get collision info between ray and triangle
+(defcfun "GetRayCollisionTriangle" (:struct %ray-collision)
  "Get collision info between ray and triangle"
  (ray (:struct %ray))
  (p1 (:struct %vector3))
  (p2 (:struct %vector3))
  (p3 (:struct %vector3)))
 
-;;RLAPI RayHitInfo GetCollisionRayGround(Ray ray, float groundHeight);                                    // Get collision info between ray and ground plane (Y-normal plane)
-(defcfun "GetCollisionRayGround" (:struct %ray-hit-info)
- "Get collision info between ray and ground plane (Y-normal plane)"
- (ray (:struct %ray))
- (ground-height :float))
-
-;;//------------------------------------------------------------------------------------
-;;// Shaders System Functions (Module: rlgl)
-;;// NOTE: This functions are useless when using OpenGL 1.1
-;;//------------------------------------------------------------------------------------
-;;
-;;// Shader loading/unloading functions
-;;RLAPI Shader LoadShader(const char *vsFileName, const char *fsFileName);  // Load shader from files and bind default locations
-(defcfun "LoadShader" (:struct %shader)
-  (vs-file-name :string)
-  (fs-file-name :string))
-
-;;RLAPI Shader LoadShaderCode(const char *vsCode, const char *fsCode);      // Load shader from code strings and bind default locations
-(defcfun "LoadShaderCode" (:struct %shader)
- "Load shader from code strings and bind default locations"
- (vs-code :pointer)
- (fs-code :pointer))
-
-;;RLAPI void UnloadShader(Shader shader);                                   // Unload shader from GPU memory (VRAM)
-(defcfun "UnloadShader" :void
-  (shader (:struct %shader)))
-
-;;RLAPI Shader GetShaderDefault(void);                                      // Get default shader
-(defcfun "GetShaderDefault" (:struct %shader))
-
-;;RLAPI Texture2D GetTextureDefault(void);                                  // Get default texture
-(defcfun "GetTextureDefault" (:struct %texture))
-
-;;RLAPI Texture2D GetShapesTexture(void);                                   // Get texture to draw shapes
-(defcfun "GetShapesTexture" (:struct %texture)
- "Get texture to draw shapes")
-
-;;RLAPI Rectangle GetShapesTextureRec(void);                                // Get texture rectangle to draw shapes
-(defcfun "GetShapesTextureRec" (:struct %rectangle)
- "Get texture rectangle to draw shapes")
-
-;;RLAPI void SetShapesTexture(Texture2D texture, Rectangle source);         // Define default texture used to draw shapes
-(defcfun "SetShapesTexture" :void
- "Define default texture used to draw shapes"
- (texture (:struct %texture))
- (source (:struct %rectangle)))
-
-;;// Shader configuration functions
-;;RLAPI int GetShaderLocation(Shader shader, const char *uniformName);      // Get shader uniform location
-(defcfun "GetShaderLocation" :int
- "Get shader uniform location"
- (shader (:struct %shader))
- (uniform-name :string))
-
-;;RLAPI void SetShaderValue(Shader shader, int uniformLoc, const void *value, int uniformType);               // Set shader uniform value
-(defcfun "SetShaderValue" :void
- "Set shader uniform value"
- (shader (:struct %shader))
- (uniform-loc :int)
- (value :pointer)
- (uniform-type :int))
-
-;;RLAPI void SetShaderValueV(Shader shader, int uniformLoc, const void *value, int uniformType, int count);   // Set shader uniform value vector
-(defcfun "SetShaderValueV" :void
- "Set shader uniform value vector"
- (shader (:struct %shader))
- (uniform-loc :int)
- (value :pointer)
- (uniform-type :int)
- (count :int))
-
-;;RLAPI void SetShaderValueMatrix(Shader shader, int uniformLoc, Matrix mat);         // Set shader uniform value (matrix 4x4)
-(defcfun "SetShaderValueMatrix" :void
- "Set shader uniform value (matrix 4x4)"
- (shader (:struct %shader))
- (uniform-loc :int)
- (mat (:struct %matrix)))
-
-;;RLAPI void SetShaderValueTexture(Shader shader, int uniformLoc, Texture2D texture); // Set shader uniform value for texture
-(defcfun "SetShaderValueTexture" :void
- "Set shader uniform value for texture"
- (shader (:struct %shader))
- (uniform-loc :int)
- (texture (:struct %texture)))
-
-;;RLAPI void SetMatrixProjection(Matrix proj);                              // Set a custom projection matrix (replaces internal projection matrix)
-(defcfun "SetMatrixProjection" :void
-  (proj (:struct %matrix)))
-
-;;RLAPI void SetMatrixModelview(Matrix view);                               // Set a custom modelview matrix (replaces internal modelview matrix)
-(defcfun "SetMatrixModelview" :void
-  (view (:struct %matrix)))
-
-;;RLAPI Matrix GetMatrixModelview(void);                                    // Get internal modelview matrix
-(defcfun "GetMatrixModelview" (:struct %matrix)
- "Get internal modelview matrix")
- 
-;;RLAPI Matrix GetMatrixProjection(void);                                   // Get internal projection matrix
-(defcfun "GetMatrixProjection" (:struct %matrix)
- "Get internal projection matrix")
-
-;;// Texture maps generation (PBR)
-;;// NOTE: Required shaders should be provided
-;;RLAPI Texture2D GenTextureCubemap(Shader shader, Texture2D map, int size);          // Generate cubemap texture from 2D texture
-(defcfun "GenTextureCubemap" (:struct %texture)
- "Generate cubemap texture from HDR texture"
- (shader (:struct %shader))
- (map (:struct %texture))
- (size :int))
- 
-;;RLAPI Texture2D GenTextureIrradiance(Shader shader, Texture2D cubemap, int size);   // Generate irradiance texture using cubemap data
-(defcfun "GenTextureIrradiance" (:struct %texture)
- "Generate irradiance texture using cubemap data"
- (shader (:struct %shader))
- (cubemap (:struct %texture))
- (size :int))
-
-;;RLAPI Texture2D GenTexturePrefilter(Shader shader, Texture2D cubemap, int size);    // Generate prefilter texture using cubemap data
-(defcfun "GenTexturePrefilter" (:struct %texture)
- "Generate prefilter texture using cubemap data"
- (shader (:struct %shader))
- (cubemap (:struct %texture))
- (size :int))
-
-;;RLAPI Texture2D GenTextureBRDF(Shader shader, int size);                  // Generate BRDF texture
-(defcfun "GenTextureBRDF" (:struct %texture)
- "Generate BRDF texture"
- (shader (:struct %shader))
- (size :int))
-
-;;// Shading begin/end functions
-;;RLAPI void BeginShaderMode(Shader shader);                                // Begin custom shader drawing
-(defcfun "BeginShaderMode" :void
- "Begin custom shader drawing"
- (shader (:struct %shader)))
-
-;;RLAPI void EndShaderMode(void);                                           // End custom shader drawing (use default shader)
-(defcfun "EndShaderMode" :void
- "End custom shader drawing (use default shader)")
-
-;;RLAPI void BeginBlendMode(int mode);                                      // Begin blending mode (alpha, additive, multiplied)
-(defcfun "BeginBlendMode" :void
- "Begin blending mode (alpha, additive, multiplied)"
- (mode :int))
-
-;;RLAPI void EndBlendMode(void);                                            // End blending mode (reset to default: alpha blending)
-(defcfun "EndBlendMode" :void
- "End blending mode (reset to default: alpha blending)")
-
-;;// VR control functions
-;;RLAPI void InitVrSimulator(void);                       // Init VR simulator for selected device parameters
-(defcfun "InitVrSimulator" :void
- "Init VR simulator for selected device parameters")
-
-;;RLAPI void CloseVrSimulator(void);                      // Close VR simulator for current device
-(defcfun "CloseVrSimulator" :void
- "Close VR simulator for current device")
-
-;;RLAPI void UpdateVrTracking(Camera *camera);            // Update VR tracking (position and orientation) and camera
-(defcfun "UpdateVrTracking" :void
- "Update VR tracking (position and orientation) and camera"
- (camera :pointer))
-
-;;RLAPI void SetVrConfiguration(VrDeviceInfo info, Shader distortion);      // Set stereo rendering configuration parameters 
-(defcfun "SetVrConfiguration" :void
- "Set stereo rendering configuration parameters"
- (info (:struct %vr-device-info))
- (distortion (:struct %shader)))
-
-;;RLAPI bool IsVrSimulatorReady(void);                    // Detect if VR simulator is ready
-(defcfun "IsVrSimulatorReady" :bool
- "Detect if VR simulator is ready")
-
-;;RLAPI void ToggleVrMode(void);                          // Enable/Disable VR experience
-(defcfun "ToggleVrMode" :void
- "Enable/Disable VR experience")
-
-;;RLAPI void BeginVrDrawing(void);                        // Begin VR simulator stereo rendering
-(defcfun "BeginVrDrawing" :void
- "Begin VR simulator stereo rendering")
-
-;;RLAPI void EndVrDrawing(void);                          // End VR simulator stereo rendering
-(defcfun "EndVrDrawing" :void
- "End VR simulator stereo rendering")
+;;RLAPI RayCollision GetRayCollisionQuad(Ray ray, Vector3 p1, Vector3 p2, Vector3 p3, Vector3 p4);        // Get collision info between ray and quad
+(defcfun "GetRayCollisionQuad" (:struct %ray-collision)
+  (ray (:struct %ray))
+  (p1 (:struct %vector3))
+  (p2 (:struct %vector3))
+  (p3 (:struct %vector3))
+  (p4 (:struct %vector3)))
 
 ;;//------------------------------------------------------------------------------------
 ;;// Audio Loading and Playing Functions (Module: audio)
@@ -4170,6 +4221,12 @@
  "Load wave data from file"
   (file-name :string))
 
+;;RLAPI Wave LoadWaveFromMemory(const char *fileType, const unsigned char *fileData, int dataSize); // Load wave from memory buffer, fileType refers to extension: i.e. '.wav'
+(defcfun "LoadWaveFromMemory" (:struct %wave)
+  (file-type :string)
+  (file-data :pointer)
+  (data-size :int))
+
 ;;RLAPI Sound LoadSound(const char *fileName);                          // Load sound from file
 (defcfun "LoadSound" (:struct %sound)
  "Load sound from file"
@@ -4180,12 +4237,12 @@
  "Load sound from wave data"
   (wave (:struct %wave)))
 
-;;RLAPI void UpdateSound(Sound sound, const void *data, int samplesCount);// Update sound buffer with new data
+;;RLAPI void UpdateSound(Sound sound, const void *data, int sampleCount); // Update sound buffer with new data
 (defcfun "UpdateSound" :void
  "Update sound buffer with new data"
   (sound (:struct %sound))
   (data :pointer)
-  (samples-count :int))
+  (sample-count :int))
 
 ;;RLAPI void UnloadWave(Wave wave);                                     // Unload wave data
 (defcfun "UnloadWave" :void
@@ -4197,15 +4254,15 @@
  "Unload sound"
  (sound (:struct %sound)))
 
-;;RLAPI void ExportWave(Wave wave, const char *fileName);               // Export wave data to file
-(defcfun "ExportWave" :void
- "Export wave data to file"
+;;RLAPI bool ExportWave(Wave wave, const char *fileName);               // Export wave data to file, returns true on success
+(defcfun "ExportWave" :bool
+ "Export wave data to file, return true on success"
  (wave (:struct %wave))
  (file-name :string))
 
-;;RLAPI void ExportWaveAsCode(Wave wave, const char *fileName);         // Export wave sample data to code (.h)
-(defcfun "ExportWaveAsCode" :void
- "Export wave sample data to code (.h)"
+;;RLAPI bool ExportWaveAsCode(Wave wave, const char *fileName);         // Export wave sample data to code (.h), returns true on success
+(defcfun "ExportWaveAsCode" :bool
+ "Export wave sample data to code (.h), return true on success"
  (wave (:struct %wave))
  (file-name :string))
 
@@ -4280,16 +4337,27 @@
  (init-sample :int)
  (final-sample :int))
 
-;;RLAPI float *GetWaveData(Wave wave);                                  // Get samples data from wave as a floats array
-(defcfun "GetWaveData" (:pointer :float)
- "Get samples data from wave as a floats array"
+;;RLAPI float *LoadWaveSamples(Wave wave);                              // Load samples data from wave as a floats array
+(defcfun "GetWaveSamples" (:pointer :float)
+ "Load samples data from wave as a floats array"
  (wave (:struct %wave)))
+
+;;RLAPI void UnloadWaveSamples(float *samples);                         // Unload samples data loaded with LoadWaveSamples()
+(defcfun "UnloadWaveSamples" :void
+  (samples (:pointer :float)))
 
 ;;// Music management functions
 ;;RLAPI Music LoadMusicStream(const char *fileName);                    // Load music stream from file
 (defcfun "LoadMusicStream" (:struct %music)
  "Load music stream from file"
  (file-name :string))
+
+;;RLAPI Music LoadMusicStreamFromMemory(const char *fileType, unsigned char *data, int dataSize); // Load music stream from data
+(defcfun "LoadMusicStreamFromMemory" (:struct %music)
+  "Load music stream from data"
+  (file-type :string)
+  (data :pointer)
+  (data-size :int))
 
 ;;RLAPI void UnloadMusicStream(Music music);                            // Unload music stream
 (defcfun "UnloadMusicStream" :void
@@ -4300,6 +4368,11 @@
 (defcfun "PlayMusicStream" :void
  "Start music playing"
  (music (:struct %music)))
+
+;;RLAPI bool IsMusicStreamPlaying(Music music);                         // Check if music is playing
+(defcfun "IsMusicStreamPlaying" :bool
+  "Check if music is playing"
+  (music (:struct %music)))
 
 ;;RLAPI void UpdateMusicStream(Music music);                            // Updates buffers for music streaming
 (defcfun "UpdateMusicStream" :void
@@ -4321,10 +4394,11 @@
  "Resume playing paused music"
  (music (:struct %music)))
 
-;;RLAPI bool IsMusicPlaying(Music music);                               // Check if music is playing
-(defcfun "IsMusicPlaying" :bool
- "Check if music is playing"
- (music (:struct %music)))
+;;RLAPI void SeekMusicStream(Music music, float position);              // Seek music to a position (in seconds)
+(defcfun "SeekMusicStream" :void
+  "Seek music to a position (in seconds)"
+  (music (:struct %music))
+  (position :float))
 
 ;;RLAPI void SetMusicVolume(Music music, float volume);                 // Set volume for music (1.0 is max level)
 (defcfun "SetMusicVolume" :void
@@ -4338,12 +4412,6 @@
  (music (:struct %music))
  (pitch :float))
 
-;;RLAPI void SetMusicLoopCount(Music music, int count);                 // Set music loop count (loop repeats)
-(defcfun "SetMusicLoopCount" :void
- "Set music loop count (loop repeats)"
- (music (:struct %music))
- (count :int))
-
 ;;RLAPI float GetMusicTimeLength(Music music);                          // Get music time length (in seconds)
 (defcfun "GetMusicTimeLength" :float
  "Get music time length (in seconds)"
@@ -4355,24 +4423,24 @@
  (music (:struct %music)))
 
 ;;// AudioStream management functions
-;;RLAPI AudioStream InitAudioStream(unsigned int sampleRate, unsigned int sampleSize, unsigned int channels); // Init audio stream (to stream raw audio pcm data)
-(defcfun "InitAudioStream" (:struct %audio-stream)
- "Init audio stream (to stream raw audio pcm data)"
- (sample-rate :unsigned-int)
- (sample-size :unsigned-int)
- (channels :unsigned-int))
+;;RLAPI AudioStream LoadAudioStream(unsigned int sampleRate, unsigned int sampleSize, unsigned int channels); // Load audio stream (to stream raw audio pcm data)
+(defcfun "LoadAudioStream" (:struct %audio-stream)
+  "Init audio stream (to stream raw audio pcm data)"
+  (sample-rate :unsigned-int)
+  (sample-size :unsigned-int)
+  (channels :unsigned-int))
 
-;;RLAPI void UpdateAudioStream(AudioStream stream, const void *data, int samplesCount); // Update audio stream buffers with data
+;;RLAPI void UnloadAudioStream(AudioStream stream);                      // Unload audio stream and free memory
+(defcfun "UnloadAudioStream" :void
+ "Close audio stream and free memory"
+ (stream (:struct %audio-stream)))
+
+;;RLAPI void UpdateAudioStream(AudioStream stream, const void *data, int frameCount); // Update audio stream buffers with data
 (defcfun "UpdateAudioStream" :void
  "Update audio stream buffers with data"
  (stream (:struct %audio-stream))
  (data :pointer)
- (samples-count :int))
-
-;;RLAPI void CloseAudioStream(AudioStream stream);                      // Close audio stream and free memory
-(defcfun "CloseAudioStream" :void
- "Close audio stream and free memory"
- (stream (:struct %audio-stream)))
+ (frame-count :int))
 
 ;;RLAPI bool IsAudioStreamProcessed(AudioStream stream);                // Check if any audio stream buffers requires refill
 (defcfun "IsAudioStreamProcessed" :bool
@@ -4420,12 +4488,6 @@
 (defcfun "SetAudioStreamBufferSizeDefault" :void
  "Default size for new audio streams"
  (size :int))
-
-;;//------------------------------------------------------------------------------------
-;;// Network (Module: network)
-;;//------------------------------------------------------------------------------------
-;;
-;;// IN PROGRESS: Check rnet.h for reference
 ;;
 ;;#if defined(__cplusplus)
 ;;}

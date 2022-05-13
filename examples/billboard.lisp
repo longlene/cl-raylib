@@ -16,7 +16,7 @@
                                 :target camera-target
                                 :up camera-up
                                 :fovy 45.0
-                                :type +camera-perspective+))
+                                :projection +camera-perspective+))
          (bill-position (make-vector3 :x 0.0 :y 2.0 :z 0.0)))
     (with-window (screen-width screen-height title)
       (set-camera-mode camera +camera-orbital+)

@@ -2,7 +2,7 @@
   (:nicknames #:raylib)
   (:use #:cl #:cffi #:alexandria)
   (:export
-   ;; Basic Colors
+    ;; Basic Colors
     #:+lightgray+
     #:+gray+
     #:+darkgray+
@@ -194,9 +194,15 @@
     #:+key-grave+
 
 
-    #:+mouse-left-button+
-    #:+mouse-right-button+
-    #:+mouse-middle-button+
+    #:+mouse-button-left+
+    #:+mouse-button-right+
+    #:+mouse-button-middle+
+    #:+mouse-button-side+
+    #:+mouse-button-extra+
+    #:+mouse-button-forward+
+    #:+mouse-button-back+
+
+
 
     #:+camera-custom+
     #:+camera-free+
@@ -637,4 +643,5 @@
     #:with-vr-simulator
     #:with-vr-drawing
     #:with-audio-device
-    #:with-audio-stream))
+    #:with-audio-stream
+    #:with-sound))

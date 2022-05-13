@@ -12,7 +12,7 @@
          (camera-pos (make-vector3 :x 0.0 :y 10.0 :z 10.0))
          (camera-target (make-vector3 :x 0.0 :y 0.0 :z 0.0))
          (camera-up (make-vector3 :x 0.0 :y 1.0 :z 0.0))
-         (camera (make-camera3d :position camera-pos :target camera-target :up camera-up :fovy 45.0 :type +camera-perspective+))
+         (camera (make-camera3d :position camera-pos :target camera-target :up camera-up :fovy 45.0 :projection +camera-perspective+))
          (cube-pos (make-vector3 :x 0.0 :y 0.0 :z 0.0)))
     (with-window (screen-width screen-height title)
                  (set-target-fps 60) ; Set our game to run at 60 FPS
