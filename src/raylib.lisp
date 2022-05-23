@@ -1847,8 +1847,8 @@
 (define-constant +camera-custom+ 0)
 (define-constant +camera-free+ 1)
 (define-constant +camera-orbital+ 2)
-(define-constant +camera-first_person+ 3)
-(define-constant +camera-third_person+ 4)
+(define-constant +camera-first-person+ 3)
+(define-constant +camera-third-person+ 4)
 
 ;;// Camera projection
 ;;typedef enum {
