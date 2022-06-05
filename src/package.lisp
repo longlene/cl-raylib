@@ -354,6 +354,8 @@
     #:draw-line-v
     #:draw-line-ex
     #:draw-line-bezier
+    #:draw-line-bezier-quad
+    #:draw-line-bezier-cubic
     #:draw-line-strip
     #:draw-circle
     #:draw-circle-sector
