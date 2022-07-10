@@ -2729,6 +2729,23 @@
  (thick :float)
  (color (:struct %color)))
 
+;;RLAPI void DrawLineBezierQuad(Vector2 startPos, Vector2 endPos, Vector2 controlPos, float thick, Color color); // Draw line using quadratic bezier curves with a control point
+(defcfun "DrawLineBezierQuad" :void
+  (start-pos (:struct %vector2))
+  (end-pos (:struct %vector2))
+  (control-pos (:struct %vector2))
+  (thick :float)
+  (color (:struct %color)))
+
+;;RLAPI void DrawLineBezierCubic(Vector2 startPos, Vector2 endPos, Vector2 startControlPos, Vector2 endControlPos, float thick, Color color); // Draw line using cubic bezier curves with 2 control points
+(defcfun "DrawLineBezierCubic" :void
+  (start-pos (:struct %vector2))
+  (end-pos (:struct %vector2))
+  (start-control-pos (:struct %vector2))
+  (end-control-pos (:struct %vector2))
+  (thick :float)
+  (color (:struct %color)))
+
 ;;RLAPI void DrawLineStrip(Vector2 *points, int numPoints, Color color);                                   // Draw lines sequence
 (defcfun "DrawLineStrip" :void
   "Draw lines sequence"
