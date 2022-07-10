@@ -475,19 +475,7 @@
 
 (defmethod translate-from-foreign (pointer (type render-texture-type))
   (with-foreign-slots ((id texture depth) pointer (:struct %render-texture))
-                      (let* ((tid (foreign-slot-value texture '(:struct %texture) 'id))
-                             (twidth (foreign-slot-value texture '(:struct %texture) 'width))
-                             (theight (foreign-slot-value texture '(:struct %texture) 'height))
-                             (tmipmaps (foreign-slot-value texture '(:struct %texture) 'mipmaps))
-                             (tformat (foreign-slot-value texture '(:struct %texture) 'format))
-                             (did (foreign-slot-value depth '(:struct %texture) 'id))
-                             (dwidth (foreign-slot-value depth '(:struct %texture) 'width))
-                             (dheight (foreign-slot-value depth '(:struct %texture) 'height))
-                             (dmipmaps (foreign-slot-value depth '(:struct %texture) 'mipmaps))
-                             (dformat (foreign-slot-value depth '(:struct %texture) 'format)))
-                        (make-render-texture :id id
-                                             :texture (make-texture :id tid :width twidth :height theight :mipmaps tmipmaps :format tformat)
-                                             :depth (make-texture :id did :width dwidth :height dheight :mipmaps dmipmaps :format dformat)))))
+    (make-render-texture :id id :texture texture :depth depth)))
 ;;
 ;;// NPatchInfo, n-patch layout info
 ;;typedef struct NPatchInfo {
@@ -521,11 +509,7 @@
 
 (defmethod translate-from-foreign (pointer (type patch-info-type))
   (with-foreign-slots ((source left top right bottom layout) pointer (:struct %patch-info))
-   (let ((rx (foreign-slot-value source '(:struct %rectangle) 'x))
-         (ry (foreign-slot-value source '(:struct %rectangle) 'y))
-         (rwidth (foreign-slot-value source '(:struct %rectangle) 'width))
-         (rheight (foreign-slot-value source '(:struct %rectangle) 'height)))
-     (make-patch-info :source (make-rectangle :x rx :y ry :width rwidth :height :rheight) :left left :top top :right right :bottom bottom :layout layout))))
+    (make-patch-info :source source :left left :top top :right right :bottom bottom :layout layout)))
 
 ;;// GlyphInfo, font characters glyphs info
 ;;typedef struct GlyphInfo {
@@ -556,16 +540,11 @@
 
 (defmethod translate-from-foreign (pointer (type glyph-info-type))
   (with-foreign-slots ((value offset-x offset-y advance-x image) pointer (:struct %glyph-info))
-   (let ((image-data (foreign-slot-value image '(:struct %image) 'data))
-         (image-width (foreign-slot-value image '(:struct %image) 'width))
-         (image-height (foreign-slot-value image '(:struct %image) 'height))
-         (image-maps (foreign-slot-value image '(:struct %image) 'maps))
-         (image-ft (foreign-slot-value image '(:struct %image) 'ft)))
-     (make-glyph-info :value value
+    (make-glyph-info :value value
                      :offset-x offset-x
                      :offset-y offset-y
                      :advance-x advance-x
-                     :image (make-image :data image-data :width image-width :height image-height :maps image-maps :ft image-ft)))))
+                     :image image)))
  
 ;;
 ;;// Font, font texture and GlyphInfo array data
@@ -600,17 +579,12 @@
 
 (defmethod translate-from-foreign (pointer (type font-type))
   (with-foreign-slots ((base-size glyph-count glyph-padding texture recs glyphs) pointer (:struct %font))
-                      (let ((tid (foreign-slot-value texture '(:struct %texture) 'id))
-                            (twidth (foreign-slot-value texture '(:struct %texture) 'width))
-                            (theight (foreign-slot-value texture '(:struct %texture) 'height))
-                            (tmipmaps (foreign-slot-value texture '(:struct %texture) 'mipmaps))
-                            (tformat (foreign-slot-value texture '(:struct %texture) 'format)))
-                        (make-font :base-size base-size
-                                   :glyph-count glyph-count
-                                   :glyph-padding glyph-padding
-                                   :texture (make-texture :id tid :width twidth :height theight :mipmaps tmipmaps :format tformat)
-                                   :recs recs
-                                   :glyphs glyphs))))
+    (make-font :base-size base-size
+               :glyph-count glyph-count
+               :glyph-padding glyph-padding
+               :texture texture
+               :recs recs
+               :glyphs glyphs)))
 
 ;;// Camera, defines position/orientation in 3d space
 ;;typedef struct Camera3D {
@@ -643,20 +617,11 @@
 
 (defmethod translate-from-foreign (pointer (type camera3d-type))
   (with-foreign-slots ((position target up fovy projection) pointer (:struct %camera3d))
-    (let ((px (foreign-slot-value position '(:struct %vector3) 'x))
-          (py (foreign-slot-value position '(:struct %vector3) 'y))
-          (pz (foreign-slot-value position '(:struct %vector3) 'z))
-          (tx (foreign-slot-value target '(:struct %vector3) 'x))
-          (ty (foreign-slot-value target '(:struct %vector3) 'y))
-          (tz (foreign-slot-value target '(:struct %vector3) 'z))
-          (ux (foreign-slot-value up '(:struct %vector3) 'x))
-          (uy (foreign-slot-value up '(:struct %vector3) 'y))
-          (uz (foreign-slot-value up '(:struct %vector3) 'z)))
-      (make-camera3d :position (make-vector3 :x px :y py :z pz)
-                     :target (make-vector3 :x tx :y ty :z tz)
-                     :up (make-vector3 :x ux :y uy :z uz)
-                     :fovy fovy
-                     :projection projection))))
+    (make-camera3d :position position
+                   :target target
+                   :up up
+                   :fovy fovy
+                   :projection projection)))
 
 (defmacro update-camera3d-from-foreign (lisp-var ptr)
   `(cffi:with-foreign-slots ((position target up fovy projection) ,ptr (:struct %camera3d))
@@ -692,14 +657,10 @@
 
 (defmethod translate-from-foreign (pointer (type camera2d-type))
   (with-foreign-slots ((offset target rotation zoom) pointer (:struct %camera2d))
-                      (let ((ox (foreign-slot-value offset '(:struct %vector2) 'x))
-                            (oy (foreign-slot-value offset '(:struct %vector2) 'y))
-                            (tx (foreign-slot-value target '(:struct %vector2) 'x))
-                            (ty (foreign-slot-value target '(:struct %vector2) 'y)))
-                        (make-camera2d :offset (make-vector2 :x ox :y oy)
-                                       :target (make-vector2 :x tx :y ty)
-                                       :rotation rotation
-                                       :zoom zoom))))
+    (make-camera2d :offset offset
+                   :target target
+                   :rotation rotation
+                   :zoom zoom)))
 
 ;;// Mesh, vertex data and vao/vbo
 ;;typedef struct Mesh {
@@ -781,8 +742,8 @@
                       (setf locs (nth 1 object))))
 
 (defmethod translate-from-foreign (pointer (type shader-type))
- (with-foreign-slots ((id locs) pointer (:struct %shader))
- (list id locs)))
+  (with-foreign-slots ((id locs) pointer (:struct %shader))
+    (list id locs)))
 
 ;;// MaterialMap
 ;;typedef struct MaterialMap {
@@ -803,8 +764,8 @@
                       (setf value (coerce (nth 2 object) 'float))))
 
 (defmethod translate-from-foreign (pointer (type material-map-type))
- (with-foreign-slots ((texture color value) pointer (:struct %material-map))
- (list texture color value)))
+  (with-foreign-slots ((texture color value) pointer (:struct %material-map))
+    (list texture color value)))
 ;;
 ;;// Material, includes shader and maps
 ;;typedef struct Material {
