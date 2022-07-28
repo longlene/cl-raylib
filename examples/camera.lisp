@@ -1,7 +1,7 @@
 (require :cl-raylib)
 
 (defpackage :raylib-user
-  (:use :cl :raylib))
+  (:use :cl :raylib :3d-vectors))
 
 (in-package :raylib-user)
 
@@ -9,11 +9,11 @@
   (let* ((screen-width 800)
          (screen-height 450)
          (title "raylib [core] example - 3d camera mode")
-         (camera-pos (make-vector3 :x 0.0 :y 10.0 :z 10.0))
-         (camera-target (make-vector3 :x 0.0 :y 0.0 :z 0.0))
-         (camera-up (make-vector3 :x 0.0 :y 1.0 :z 0.0))
+         (camera-pos (vec 0.0 0.0 10.0))
+         (camera-target (vec 0.0 0.0 0.0))
+         (camera-up (vec 0.0 1.0 0.0))
          (camera (make-camera3d :position camera-pos :target camera-target :up camera-up :fovy 45.0 :projection +camera-perspective+))
-         (cube-pos (make-vector3 :x 0.0 :y 0.0 :z 0.0)))
+         (cube-pos (vec 0.0 0.0 0.0)))
     (with-window (screen-width screen-height title)
                  (set-target-fps 60) ; Set our game to run at 60 FPS
                  (loop

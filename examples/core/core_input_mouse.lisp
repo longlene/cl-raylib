@@ -1,14 +1,14 @@
 (require :cl-raylib)
 
 (defpackage :raylib-user
-  (:use :cl :raylib))
+  (:use :cl :raylib :3d-vectors))
 
 (in-package :raylib-user)
 
 (defun main ()
   (let* ((screen-width 800)
          (screen-height 450)
-         (ball-position (make-vector2 :x -100.0 :y -100.0))
+         (ball-position (vec -100.0 -100.0))
          (ball-color +darkblue+))
     (with-window (screen-width screen-height "raylib [core] example - mouse input")
       (set-target-fps 60) ; Set our game to run at 60 FPS

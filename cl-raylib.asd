@@ -18,7 +18,9 @@
   :license "MIT"
   :description "Common Lisp bindings of libraylib"
   :depends-on (#:cffi-libffi
-	       #:alexandria)
+               #:alexandria
+               #:3d-vectors
+               #:3d-matrices)
   :serial t
   :pathname "src"
   :components
