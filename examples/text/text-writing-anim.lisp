@@ -1,41 +1,31 @@
 (require :cl-raylib)
 
 (defpackage :raylib-user
-  (:use :cl :raylib :3d-vectors))
+  (:use :cl :raylib))
 
 (in-package :raylib-user)
 
 (defun main ()
-  (let* ((screen-width 800)
-         (screen-height 450)         (title "raylib [core] example - 3d camera free")
-
-         (camera (make-camera3d
-		  :position (vec 10.0 10.0 10.0)
-		  :target (vec 0.0 0.0 0.0)
-		  :up (vec 0.0 1.0 0.0)
-		  :fovy 45.0
-		  :projection +camera-perspective+))
-         (cube-pos (vec 0.0 0.0 0.0))
-         (cube-screen-pos (vec 0.0 0.0)))
-    (with-window (screen-width screen-height title)
-      (set-camera-mode camera +camera-free+)
+  (let ((screen-width 800)
+        (screen-height 450)
+	(frame-counter 0)
+	(message (format nil "This sample illustrates a text writing~%animation effect! Check it out!")))
+    (with-window (screen-width screen-height "raylib [text] example - text writing anim")
       (set-target-fps 60) ; Set our game to run at 60 FPS
       (loop
         until (window-should-close) ; dectect window close button or ESC key
-        do (update-camera camera)
-           (setf cube-screen-pos (get-world-to-screen (v+ cube-pos (vec 0 2.5 0)) camera))
-           (with-drawing
+        do
+	   (setf frame-counter
+		 (cond
+		   ((is-key-down +KEY-SPACE+) (+ frame-counter 8))
+		   ((is-key-down +KEY-ENTER+) 0)
+		   (t (1+ frame-counter))))
+	   (with-drawing
+	     (incf frame-counter)
              (clear-background +raywhite+)
-             (with-mode-3d (camera)
-               (draw-cube cube-pos 2.0 2.0 2.0 +red+)
-               (draw-cube-wires cube-pos 2.0 2.0 2.0 +maroon+)
-               (draw-grid 10 1.0))
-	       
-	     (draw-text (format nil "~a " (measure-text "Enemy 100/100" 20)) 20 20 20 +black+)
-
-;;	     (draw-text "Enemy: 100/100" (floor (vx cube-screen-pos)) (floor (vy cube-screen-pos)) 20 +black+)
-	     (draw-text "Enemy: 100/100" (- (floor (vx cube-screen-pos)) (floor (measure-text "Enemy: 100/100" 20) 2))
-			(floor (vy cube-screen-pos) ) 20 +black+)
-             (draw-text "Text is always on top of the cube" (floor (- screen-width (measure-text "Text is always on top of the cube" 20)) 2) 25 20 +gray+))))))
+             (draw-text
+	      (text-subtext message 0 (floor frame-counter 10))
+	      ;;message
+	      210 160 20 +MAROON+))))))
 
 (main)
