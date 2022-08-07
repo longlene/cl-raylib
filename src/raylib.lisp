@@ -146,92 +146,115 @@
 ;;
 ;;// Some Basic Colors
 ;;// NOTE: Custom raylib color palette for amazing visuals on WHITE background
-(eval-when (:compile-toplevel :load-toplevel :execute))
-(defun make-rgba (r g b &optional (a #xFF))
-  (logior
-   r
-   (ash g 8)
-   (ash b 16)
-   (ash a 24))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun make-rgba (r g b &optional (a #xFF))
+    (logior
+     r
+     (ash g 8)
+     (ash b 16)
+     (ash a 24)))
 
   ;;#define LIGHTGRAY  CLITERAL(Color){ 200, 200, 200, 255 }   // Light Gray
-
-
   (define-constant +lightgray+ (make-rgba 200 200 200 255) :test #'equal)
-  ;;#define GRAY       CLITERAL(Color){ 130, 130, 130, 255 }   // Gray
+    ;;#define GRAY       CLITERAL(Color){ 130, 130, 130, 255 }   // Gray
+
 
   (define-constant +gray+ (make-rgba 130 130 130 255) :test #'equal)
-  ;;#define DARKGRAY   CLITERAL(Color){ 80, 80, 80, 255 }      // Dark Gray
+    ;;#define DARKGRAY   CLITERAL(Color){ 80, 80, 80, 255 }      // Dark Gray
+
 
   (define-constant +darkgray+ (make-rgba 80 80 80 255) :test #'equal)
-  ;;#define YELLOW     CLITERAL(Color){ 253, 249, 0, 255 }     // Yellow
+    ;;#define YELLOW     CLITERAL(Color){ 253, 249, 0, 255 }     // Yellow
 
+    
   (define-constant +yellow+ (make-rgba 253 249 0 255) :test #'equal)
-  ;;#define GOLD       CLITERAL(Color){ 255, 203, 0, 255 }     // Gold
+    ;;#define GOLD       CLITERAL(Color){ 255, 203, 0, 255 }     // Gold
+
 
   (define-constant +gold+ (make-rgba 255 203 0 255) :test #'equal)
-  ;;#define ORANGE     CLITERAL(Color){ 255, 161, 0, 255 }     // Orange
+    ;;#define ORANGE     CLITERAL(Color){ 255, 161, 0, 255 }     // Orange
+
 
   (define-constant +orange+     (make-rgba 255 161 0 255 ) :test #'equal)
-  ;;#define PINK       CLITERAL(Color){ 255, 109, 194, 255 }   // Pink
+    ;;#define PINK       CLITERAL(Color){ 255, 109, 194, 255 }   // Pink
+
 
   (define-constant +pink+       (make-rgba 255 109 194 255) :test #'equal)
-  ;;#define RED        CLITERAL(Color){ 230, 41, 55, 255 }     // Red
+    ;;#define RED        CLITERAL(Color){ 230, 41, 55, 255 }     // Red
+
 
   (define-constant +red+        (make-rgba  230 41 55 255 ) :test #'equal)     
-  ;;#define MAROON     CLITERAL(Color){ 190, 33, 55, 255 }     // Maroon
+    ;;#define MAROON     CLITERAL(Color){ 190, 33, 55, 255 }     // Maroon
+
 
   (define-constant +maroon+      (make-rgba 190 33 55 255) :test #'equal) 
-  ;;#define GREEN      CLITERAL(Color){ 0, 228, 48, 255 }      // Green
+    ;;#define GREEN      CLITERAL(Color){ 0, 228, 48, 255 }      // Green
+
 
   (define-constant +green+       (make-rgba 0 228 48 255) :test #'equal) 
-  ;;#define LIME       CLITERAL(Color){ 0, 158, 47, 255 }      // Lime
+    ;;#define LIME       CLITERAL(Color){ 0, 158, 47, 255 }      // Lime
+
 
   (define-constant +lime+        (make-rgba 0 158 47 255) :test #'equal) 
-  ;;#define DARKGREEN  CLITERAL(Color){ 0, 117, 44, 255 }      // Dark Green
+    ;;#define DARKGREEN  CLITERAL(Color){ 0, 117, 44, 255 }      // Dark Green
+
 
   (define-constant +darkgreen+   (make-rgba 0 117 44 255) :test #'equal) 
-  ;;#define SKYBLUE    CLITERAL(Color){ 102, 191, 255, 255 }   // Sky Blue
+    ;;#define SKYBLUE    CLITERAL(Color){ 102, 191, 255, 255 }   // Sky Blue
+
 
   (define-constant +skyblue+     (make-rgba 102 191 255 255) :test #'equal) 
-  ;;#define BLUE       CLITERAL(Color){ 0, 121, 241, 255 }     // Blue
+    ;;#define BLUE       CLITERAL(Color){ 0, 121, 241, 255 }     // Blue
+
 
   (define-constant +blue+        (make-rgba 0 121 241 255) :test #'equal) 
-  ;;#define DARKBLUE   CLITERAL(Color){ 0, 82, 172, 255 }      // Dark Blue
+    ;;#define DARKBLUE   CLITERAL(Color){ 0, 82, 172, 255 }      // Dark Blue
+
 
   (define-constant +darkblue+    (make-rgba 0 82 172 255) :test #'equal) 
-  ;;#define PURPLE     CLITERAL(Color){ 200, 122, 255, 255 }   // Purple
+    ;;#define PURPLE     CLITERAL(Color){ 200, 122, 255, 255 }   // Purple
+
 
   (define-constant +purple+      (make-rgba 200 122 255 255) :test #'equal) 
-  ;;#define VIOLET     CLITERAL(Color){ 135, 60, 190, 255 }    // Violet
+    ;;#define VIOLET     CLITERAL(Color){ 135, 60, 190, 255 }    // Violet
+
 
   (define-constant +violet+      (make-rgba 135 60 190 255) :test #'equal) 
-  ;;#define DARKPURPLE CLITERAL(Color){ 112, 31, 126, 255 }    // Dark Purple
+    ;;#define DARKPURPLE CLITERAL(Color){ 112, 31, 126, 255 }    // Dark Purple
+
 
   (define-constant +darkpurple+  (make-rgba 112 31 126 255) :test #'equal) 
-  ;;#define BEIGE      CLITERAL(Color){ 211, 176, 131, 255 }   // Beige
+    ;;#define BEIGE      CLITERAL(Color){ 211, 176, 131, 255 }   // Beige
+
 
   (define-constant +beige+       (make-rgba 211 176 131 255) :test #'equal) 
-  ;;#define BROWN      CLITERAL(Color){ 127, 106, 79, 255 }    // Brown
+    ;;#define BROWN      CLITERAL(Color){ 127, 106, 79, 255 }    // Brown
+
 
   (define-constant +brown+       (make-rgba 127 106 79 255) :test #'equal) 
-  ;;#define DARKBROWN  CLITERAL(Color){ 76, 63, 47, 255 }      // Dark Brown
+    ;;#define DARKBROWN  CLITERAL(Color){ 76, 63, 47, 255 }      // Dark Brown
+
 
   (define-constant +darkbrown+   (make-rgba 76 63 47 255) :test #'equal) 
-  ;;
-  ;;#define WHITE      CLITERAL(Color){ 255, 255, 255, 255 }   // White
+    ;;
+    ;;#define WHITE      CLITERAL(Color){ 255, 255, 255, 255 }   // White
+
 
   (define-constant +white+       (make-rgba 255 255 255 255) :test #'equal) 
-  ;;#define BLACK      CLITERAL(Color){ 0, 0, 0, 255 }         // Black
+    ;;#define BLACK      CLITERAL(Color){ 0, 0, 0, 255 }         // Black
+
 
   (define-constant +black+       (make-rgba 0 0 0 255) :test #'equal) 
-  ;;#define BLANK      CLITERAL(Color){ 0, 0, 0, 0 }           // Blank (Transparent)
+    ;;#define BLANK      CLITERAL(Color){ 0, 0, 0, 0 }           // Blank (Transparent)
+
 
   (define-constant +blank+       (make-rgba 0 0 0 0) :test #'equal) 
-  ;;#define MAGENTA    CLITERAL(Color){ 255, 0, 255, 255 }     // Magenta
+    ;;#define MAGENTA    CLITERAL(Color){ 255, 0, 255, 255 }     // Magenta
 
+    
   (define-constant +magenta+     (make-rgba 255 0 255 255) :test #'equal) 
-  ;;#define RAYWHITE   CLITERAL(Color){ 245, 245, 245, 255 }   // My own White (raylib logo)
+    ;;#define RAYWHITE   CLITERAL(Color){ 245, 245, 245, 255 }   // My own White (raylib logo)
+
 
   (define-constant +raywhite+    (make-rgba 245 245 245 255) :test #'equal))
 
