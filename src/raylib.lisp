@@ -166,7 +166,7 @@
   (define-constant +darkgray+ (make-rgba 80 80 80 255) :test #'equal)
     ;;#define YELLOW     CLITERAL(Color){ 253, 249, 0, 255 }     // Yellow
 
-    
+     
   (define-constant +yellow+ (make-rgba 253 249 0 255) :test #'equal)
     ;;#define GOLD       CLITERAL(Color){ 255, 203, 0, 255 }     // Gold
 
