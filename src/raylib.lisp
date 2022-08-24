@@ -2973,11 +2973,11 @@
  (height :int)
  (color :uint))
  
-;;RLAPI void DrawRectangleLinesEx(Rectangle rec, int lineThick, Color color);                              // Draw rectangle outline with extended parameters
+;;RLAPI void DrawRectangleLinesEx(Rectangle rec, float lineThick, Color color);                              // Draw rectangle outline with extended parameters
 (defcfun "DrawRectangleLinesEx" :void
  "Draw rectangle outline with extended parameters"
  (rec (:struct %rectangle))
- (line-thick :int)
+ (line-thick :float)
  (color :uint))
 
 ;;RLAPI void DrawRectangleRounded(Rectangle rec, float roundness, int segments, Color color);              // Draw rectangle with rounded edges
@@ -2988,13 +2988,13 @@
  (segments :int)
  (color :uint))
 
-;;RLAPI void DrawRectangleRoundedLines(Rectangle rec, float roundness, int segments, int lineThick, Color color); // Draw rectangle with rounded edges outline
+;;RLAPI void DrawRectangleRoundedLines(Rectangle rec, float roundness, int segments, float lineThick, Color color); // Draw rectangle with rounded edges outline
 (defcfun "DrawRectangleRoundedLines" :void
  "Draw rectangle with rounded edges outline"
  (rec (:struct %rectangle))
  (roundness :float)
  (segments :int)
- (line-thick :int)
+ (line-thick :float)
  (color :uint))
 
 ;;RLAPI void DrawTriangle(Vector2 v1, Vector2 v2, Vector2 v3, Color color);                                // Draw a color-filled triangle
