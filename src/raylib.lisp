@@ -1269,7 +1269,26 @@
 ;;    LOG_FATAL,          // Fatal logging, used to abort program: exit(EXIT_FAILURE)
 ;;    LOG_NONE            // Disable logging
 ;;} TraceLogLevel;
-;;
+
+(cffi:defcenum TraceLogLevel
+  "Trace log level"
+  ;; Display all logs
+  (:log-all 0)
+  ;; Trace logging, intended for internal use only
+  (:log-trace 1)
+  ;; Debug logging, used for internal debugging, it should be disabled on release builds
+  (:log-debug 2)
+  ;; Info logging, used for program execution info
+  (:log-info 3)
+  ;; Warning logging, used on recoverable failures
+  (:log-warning 4)
+  ;; Error logging, used on unrecoverable failures
+  (:log-error 5)
+  ;; Fatal logging, used to abort program: exit(EXIT_FAILURE)
+  (:log-fatal 6)
+  ;; Disable logging
+  (:log-none 7))
+
 ;;// Keyboard keys (US keyboard layout)
 ;;// NOTE: Use GetKeyPressed() to allow redefining
 ;;// required keys for alternative layouts
@@ -2346,7 +2365,7 @@
 ;;RLAPI void SetTraceLogLevel(int logType);                         // Set the current threshold (minimum) log level
 (defcfun "SetTraceLogLevel" :void
  "Set the current threshold (minimum) log level"
- (log-type :int))
+ (log-type TraceLogLevel))
 
 ;;RLAPI void SetTraceLogExit(int logType);                          // Set the exit threshold (minimum) log level
 (defcfun "SetTraceLogExit" :void
