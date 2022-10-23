@@ -973,9 +973,9 @@
  (direction (:struct %vector3)))
 
 (defmethod translate-into-foreign-memory (object (type ray-type) pointer)
- (with-foreign-slots ((position direction) pointer (:struct %ray))
-                      (setf position (nth 0 object))
-                      (setf direction (nth 1 object))))
+ (with-foreign-slots (() pointer (:struct %ray))
+   (convert-into-foreign-memory (nth 0 object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %ray) 'position))
+   (convert-into-foreign-memory (nth 1 object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %ray) 'direction))))
 
 (defmethod translate-from-foreign (pointer (type ray-type))
  (with-foreign-slots ((position direction) pointer (:struct %ray))
