@@ -423,7 +423,7 @@
                       (setf width (image-width object))
                       (setf height (image-height object))
                       (setf maps (image-maps object))
-                      (setf ft (image-format object))))
+                      (setf ft (image-ft object))))
 
 (defmethod translate-from-foreign (pointer (type image-type))
   (with-foreign-slots ((data width height maps ft) pointer (:struct %image))
