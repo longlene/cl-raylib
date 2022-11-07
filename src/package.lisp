@@ -512,7 +512,7 @@
     #:export-mesh
     #:unload-mesh
     #:load-materials
-    #:load-material-defaults
+    #:load-material-default
     #:unload-material
     #:set-material-texture
     #:set-model-mesh-material
