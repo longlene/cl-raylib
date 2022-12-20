@@ -631,7 +631,7 @@
     #:stop-audio-stream
     #:set-audio-stream-volume
     #:set-audio-stream-pitch
-    #:set-audio-stream-buffer-size
+    #:set-audio-stream-buffer-size-default
 
 
     ;; high level api

@@ -233,12 +233,12 @@
  (x :float)
  (y :float))
 
-(defmethod cffi:translate-into-foreign-memory ((object 3d-vectors:vec2) (type vector2-type) pointer)
+(define-conversion-into-foreign-memory ((object 3d-vectors:vec2) (type vector2-type) pointer)
   (cffi:with-foreign-slots ((x y) pointer (:struct %vector2))
     (setf x (3d-vectors:vx object))
     (setf y (3d-vectors:vy object))))
 
-(defmethod cffi:translate-from-foreign (pointer (type vector2-type))
+(define-conversion-from-foreign (pointer (type vector2-type))
   (cffi:with-foreign-slots ((x y) pointer (:struct %vector2))
     (3d-vectors:vec x y)))
 
@@ -255,13 +255,13 @@
  (y :float)
  (z :float))
 
-(defmethod cffi:translate-into-foreign-memory ((object 3d-vectors:vec3) (type vector3-type) pointer)
+(define-conversion-into-foreign-memory ((object 3d-vectors:vec3) (type vector3-type) pointer)
   (cffi:with-foreign-slots ((x y z) pointer (:struct %vector3))
     (setf x (3d-vectors:vx object))
     (setf y (3d-vectors:vy object))
     (setf z (3d-vectors:vz object))))
 
-(defmethod cffi:translate-from-foreign (pointer (type vector3-type))
+(define-conversion-from-foreign (pointer (type vector3-type))
   (cffi:with-foreign-slots ((x y z) pointer (:struct %vector3))
     (3d-vectors:vec x y z)))
 
@@ -280,14 +280,14 @@
  (z :float)
  (w :float))
 
-(defmethod cffi:translate-into-foreign-memory ((object 3d-vectors:vec4) (type vector4-type) pointer)
+(define-conversion-into-foreign-memory ((object 3d-vectors:vec4) (type vector4-type) pointer)
   (cffi:with-foreign-slots ((x y z w) pointer (:struct %vector4))
     (setf x (3d-vectors:vx object))
     (setf y (3d-vectors:vy object))
     (setf z (3d-vectors:vz object))
     (setf w (3d-vectors:vw object))))
 
-(defmethod cffi:translate-from-foreign (pointer (type vector4-type))
+(define-conversion-from-foreign (pointer (type vector4-type))
   (cffi:with-foreign-slots ((x y z w) pointer (:struct %vector4))
     (3d-vectors:vec x y z w)))
 
@@ -309,7 +309,7 @@
   (m2 :float) (m6 :float) (m10 :float) (m14 :float)
   (m3 :float) (m7 :float) (m11 :float) (m15 :float))
 
-(defmethod translate-into-foreign-memory ((object 3d-matrices:mat4) (type matrix-type) pointer)
+(define-conversion-into-foreign-memory ((object 3d-matrices:mat4) (type matrix-type) pointer)
   (with-foreign-slots ((m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15) pointer (:struct %matrix))
     (setf
      ;; row 1
@@ -333,7 +333,7 @@
      m11 (3d-matrices:miref4 object 14)
      m15 (3d-matrices:miref4 object 15))))
 
-(defmethod translate-from-foreign (pointer (type matrix-type))
+(define-conversion-from-foreign (pointer (type matrix-type))
   (with-foreign-slots ((m0 m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13 m14 m15) pointer (:struct %matrix))
     (3d-matrices:mat m0 m4 m8 m12
                      m1 m5 m9 m13
@@ -348,7 +348,6 @@
 ;;    unsigned char b;        // Color blue value
 ;;    unsigned char a;        // Color alpha value
 ;;} Color;
-#||
 (defcstruct (%color :class color-type)
   "Color type, RGBA (32bit)"
   (r :unsigned-char)
@@ -356,17 +355,16 @@
   (b :unsigned-char)
   (a :unsigned-char))
 
-(defmethod translate-into-foreign-memory (object (type color-type) pointer)
+(define-conversion-into-foreign-memory (object (type color-type) pointer)
   (with-foreign-slots ((r g b a) pointer (:struct %color))
                       (setf r (nth 0 object))
                       (setf g (nth 1 object))
                       (setf b (nth 2 object))
                       (setf a (nth 3 object))))
 
-(defmethod translate-from-foreign (pointer (type color-type))
+(define-conversion-from-foreign (pointer (type color-type))
   (with-foreign-slots ((r g b a) pointer (:struct %color))
    (list r g b a)))
-||#
 
 ;;
 ;;// Rectangle, 4 components
@@ -386,14 +384,14 @@
 (defstruct rectangle
  x y width height)
 
-(defmethod translate-into-foreign-memory (object (type rectangle-type) pointer)
+(define-conversion-into-foreign-memory (object (type rectangle-type) pointer)
   (with-foreign-slots ((x y width height) pointer (:struct %rectangle))
                       (setf x (coerce (rectangle-x object) 'float))
                       (setf y (coerce (rectangle-y object) 'float))
                       (setf width (coerce (rectangle-width object) 'float))
                       (setf height (coerce (rectangle-height object) 'float))))
 
-(defmethod translate-from-foreign (pointer (type rectangle-type))
+(define-conversion-from-foreign (pointer (type rectangle-type))
   (with-foreign-slots ((x y width height) pointer (:struct %rectangle))
                       (make-rectangle :x x :y y :width width :height height)))
 
@@ -417,7 +415,7 @@
 (defstruct image
  data width height maps ft)
 
-(defmethod translate-into-foreign-memory (object (type image-type) pointer)
+(define-conversion-into-foreign-memory (object (type image-type) pointer)
   (with-foreign-slots ((data width height maps ft) pointer (:struct %image))
                       (setf data (image-data object))
                       (setf width (image-width object))
@@ -425,7 +423,7 @@
                       (setf maps (image-maps object))
                       (setf ft (image-ft object))))
 
-(defmethod translate-from-foreign (pointer (type image-type))
+(define-conversion-from-foreign (pointer (type image-type))
   (with-foreign-slots ((data width height maps ft) pointer (:struct %image))
 		      (make-image :data data :width width :height height :maps maps :ft ft)))
 
@@ -453,7 +451,7 @@
 (defstruct texture
  id width height mipmaps format)
 
-(defmethod translate-into-foreign-memory (object (type texture-type) pointer)
+(define-conversion-into-foreign-memory (object (type texture-type) pointer)
   (with-foreign-slots ((id width height mipmaps format) pointer (:struct %texture))
                       (setf id (texture-id object))
                       (setf width (texture-width object))
@@ -461,7 +459,7 @@
                       (setf mipmaps (texture-mipmaps object))
                       (setf format (texture-format object))))
 
-(defmethod translate-from-foreign (pointer (type texture-type))
+(define-conversion-from-foreign (pointer (type texture-type))
   (with-foreign-slots ((id width height mipmaps format) pointer (:struct %texture))
                       (make-texture :id id :width width :height height :mipmaps mipmaps :format format)))
 
@@ -488,13 +486,13 @@
 (defstruct render-texture
  id texture depth)
 
-(defmethod translate-into-foreign-memory (object (type render-texture-type) pointer)
+(define-conversion-into-foreign-memory (object (type render-texture-type) pointer)
   (with-foreign-slots ((id) pointer (:struct %render-texture))
                       (convert-into-foreign-memory (render-texture-texture object) '(:struct %texture) (foreign-slot-pointer pointer '(:struct %render-texture) 'texture))
                       (convert-into-foreign-memory (render-texture-depth object) '(:struct %texture) (foreign-slot-pointer pointer '(:struct %render-texture) 'depth))
                       (setf id (render-texture-id object))))
 
-(defmethod translate-from-foreign (pointer (type render-texture-type))
+(define-conversion-from-foreign (pointer (type render-texture-type))
   (with-foreign-slots ((id texture depth) pointer (:struct %render-texture))
     (make-render-texture :id id :texture texture :depth depth)))
 ;;
@@ -519,7 +517,7 @@
 (defstruct patch-info
  source left top right bottom layout)
 
-(defmethod translate-into-foreign-memory (object (type patch-info-type) pointer)
+(define-conversion-into-foreign-memory (object (type patch-info-type) pointer)
   (with-foreign-slots ((left top right bottom layout) pointer (:struct %patch-info))
                       (convert-into-foreign-memory (patch-info-source object) '(:struct %rectangle) (foreign-slot-pointer pointer '(:struct %patch-info) 'source))
                       (setf left (patch-info-left object))
@@ -528,7 +526,7 @@
                       (setf bottom (patch-info-bottom object))
                       (setf layout (patch-info-layout object))))
 
-(defmethod translate-from-foreign (pointer (type patch-info-type))
+(define-conversion-from-foreign (pointer (type patch-info-type))
   (with-foreign-slots ((source left top right bottom layout) pointer (:struct %patch-info))
     (make-patch-info :source source :left left :top top :right right :bottom bottom :layout layout)))
 
@@ -552,7 +550,7 @@
 (defstruct glyph-info
  value offset-x offset-y advance-x image)
 
-(defmethod translate-into-foreign-memory (object (type glyph-info-type) pointer)
+(define-conversion-into-foreign-memory (object (type glyph-info-type) pointer)
   (with-foreign-slots ((value offset-x offset-y advance-x) pointer (:struct %glyph-info))
                       (convert-into-foreign-memory (glyph-info-image object) '(:struct %image) (foreign-slot-pointer pointer '(:struct %glyph-info) 'image))
                       (setf value (glyph-info-value object))
@@ -560,7 +558,7 @@
                       (setf offset-y (glyph-info-offset-y object))
                       (setf advance-x (glyph-info-advance-x object))))
 
-(defmethod translate-from-foreign (pointer (type glyph-info-type))
+(define-conversion-from-foreign (pointer (type glyph-info-type))
   (with-foreign-slots ((value offset-x offset-y advance-x image) pointer (:struct %glyph-info))
     (make-glyph-info :value value
                      :offset-x offset-x
@@ -590,7 +588,7 @@
 (defstruct font
   base-size glyph-count glyph-padding texture recs glyphs)
 
-(defmethod translate-into-foreign-memory (object (type font-type) pointer)
+(define-conversion-into-foreign-memory (object (type font-type) pointer)
   (with-foreign-slots ((base-size glyph-count glyph-padding recs glyphs) pointer (:struct %font))
                       (convert-into-foreign-memory (font-texture object) '(:struct %texture) (foreign-slot-pointer pointer '(:struct %font) 'texture))
                       (setf base-size (font-base-size object))
@@ -599,7 +597,7 @@
                       (setf recs (font-recs object))
                       (setf glyphs (font-glyphs object))))
 
-(defmethod translate-from-foreign (pointer (type font-type))
+(define-conversion-from-foreign (pointer (type font-type))
   (with-foreign-slots ((base-size glyph-count glyph-padding texture recs glyphs) pointer (:struct %font))
     (make-font :base-size base-size
                :glyph-count glyph-count
@@ -630,7 +628,7 @@
 (defstruct camera3d
   position target up fovy projection)
 
-(defmethod translate-into-foreign-memory (object (type camera3d-type) pointer)
+(define-conversion-into-foreign-memory (object (type camera3d-type) pointer)
   (with-foreign-slots ((fovy projection) pointer (:struct %camera3d))
     (convert-into-foreign-memory (camera3d-position object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'position))
     (convert-into-foreign-memory (camera3d-target object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'target))
@@ -638,7 +636,7 @@
     (setf fovy (coerce (camera3d-fovy object) 'float)
           projection (camera3d-projection object))))
 
-(defmethod translate-from-foreign (pointer (type camera3d-type))
+(define-conversion-from-foreign (pointer (type camera3d-type))
   (with-foreign-slots ((position target up fovy projection) pointer (:struct %camera3d))
     (make-camera3d :position position
                    :target target
@@ -672,14 +670,14 @@
 (defstruct camera2d
  offset target rotation zoom)
 
-(defmethod translate-into-foreign-memory (object (type camera2d-type) pointer)
+(define-conversion-into-foreign-memory (object (type camera2d-type) pointer)
   (with-foreign-slots ((rotation zoom) pointer (:struct %camera2d))
                       (convert-into-foreign-memory (camera2d-offset object) '(:struct %vector2) (foreign-slot-pointer pointer '(:struct %camera2d) 'offset))
                       (convert-into-foreign-memory (camera2d-target object) '(:struct %vector2) (foreign-slot-pointer pointer '(:struct %camera2d) 'target))
                       (setf rotation (coerce (camera2d-rotation object) 'float))
                       (setf zoom (coerce (camera2d-zoom object) 'float))))
 
-(defmethod translate-from-foreign (pointer (type camera2d-type))
+(define-conversion-from-foreign (pointer (type camera2d-type))
   (with-foreign-slots ((offset target rotation zoom) pointer (:struct %camera2d))
     (make-camera2d :offset offset
                    :target target
@@ -729,7 +727,7 @@
   (vao-id :unsigned-int)
   (vbo-id (:pointer :unsigned-int)))
 
-(defmethod translate-into-foreign-memory (object (type mesh-type) pointer)
+(define-conversion-into-foreign-memory (object (type mesh-type) pointer)
   (with-foreign-slots ((vertex-count triangle-count vertices texcoords texcoords2 normals tangents colors indices anim-vertices anim-normals bone-ids bone-weights vao-id vbo-id) pointer (:struct %mesh))
                       (setf vertex-count (nth 0 object))
                       (setf triangle-count (nth 1 object))
@@ -747,7 +745,7 @@
                       (setf vao-id (nth 13 object))
                       (setf vbo-id (nth 14 object))))
 
-(defmethod translate-from-foreign (pointer (type mesh-type))
+(define-conversion-from-foreign (pointer (type mesh-type))
   (with-foreign-slots ((vertex-count triangle-count vertices texcoords texcoords2 normals tangents colors indices anim-vertices anim-normals bone-ids bone-weights vao-id vbo-id) pointer (:struct %mesh))
                       (list vertex-count triangle-count vertices texcoords texcoords2 normals tangents colors indices anim-vertices anim-normals bone-ids bone-weights vao-id vbo-id)))
 
@@ -762,12 +760,12 @@
  (id :unsigned-int)
  (locs (:pointer :int)))
  
- (defmethod translate-into-foreign-memory (object (type shader-type) pointer)
+ (define-conversion-into-foreign-memory (object (type shader-type) pointer)
  (with-foreign-slots ((id locs) pointer (:struct %shader))
                       (setf id (nth 0 object))
                       (setf locs (nth 1 object))))
 
-(defmethod translate-from-foreign (pointer (type shader-type))
+(define-conversion-from-foreign (pointer (type shader-type))
   (with-foreign-slots ((id locs) pointer (:struct %shader))
     (list id locs)))
 
@@ -784,13 +782,13 @@
  (color :uint)
  (value :float))
  
-(defmethod translate-into-foreign-memory (object (type material-map-type) pointer)
+(define-conversion-into-foreign-memory (object (type material-map-type) pointer)
  (with-foreign-slots ((texture color value) pointer (:struct %material-map))
                       (setf texture (nth 0 object))
                       (setf color (nth 1 object))
                       (setf value (coerce (nth 2 object) 'float))))
 
-(defmethod translate-from-foreign (pointer (type material-map-type))
+(define-conversion-from-foreign (pointer (type material-map-type))
   (with-foreign-slots ((texture color value) pointer (:struct %material-map))
     (list texture color value)))
 ;;
@@ -806,13 +804,13 @@
  (maps (:pointer (:struct %material-map)))
  (params (:pointer :float)))
 
-(defmethod translate-into-foreign-memory (object (type material-type) pointer)
+(define-conversion-into-foreign-memory (object (type material-type) pointer)
  (with-foreign-slots ((shader maps params) pointer (:struct %material))
                       (setf shader (nth 0 object))
                       (setf maps (nth 1 object))
                       (setf params (nth 2 object))))
 
-(defmethod translate-from-foreign (pointer (type material-type))
+(define-conversion-from-foreign (pointer (type material-type))
   (with-foreign-slots ((shader maps params) pointer (:struct %material))
                       (list shader maps params)))
 
@@ -829,13 +827,13 @@
  (rotation (:struct %vector4))
  (scale (:struct %vector3)))
 
-(defmethod translate-into-foreign-memory (object (type transform-type) pointer)
+(define-conversion-into-foreign-memory (object (type transform-type) pointer)
  (with-foreign-slots ((translation rotation scale) pointer (:struct %transform))
                       (setf translation (nth 0 object))
                       (setf rotation (nth 1 object))
                       (setf scale (nth 2 object))))
 
-(defmethod translate-from-foreign (pointer (type transform-type))
+(define-conversion-from-foreign (pointer (type transform-type))
  (with-foreign-slots ((translation rotation scale) pointer (:struct %transform))
                      (list translation rotation scale)))
 
@@ -850,12 +848,12 @@
  (name :string)
  (parent :int))
 
-(defmethod translate-into-foreign-memory (object (type bone-info-type) pointer)
+(define-conversion-into-foreign-memory (object (type bone-info-type) pointer)
  (with-foreign-slots ((name parent) pointer (:struct %bone-info))
                       (setf name (nth 0 object))
                       (setf parent (nth 1 object))))
 
-(defmethod translate-from-foreign (pointer (type bone-info-type))
+(define-conversion-from-foreign (pointer (type bone-info-type))
  (with-foreign-slots ((name parent) pointer (:struct %bone-info))
                      (list name parent)))
 
@@ -887,7 +885,7 @@
  (bones (:struct %bone-info))
  (bind-pose (:struct %transform)))
 
-(defmethod translate-into-foreign-memory (object (type model-type) pointer)
+(define-conversion-into-foreign-memory (object (type model-type) pointer)
  (with-foreign-slots ((transform mesh-count material-count meshes materials mesh-material bone-count bones bind-pose) pointer (:struct %model))
                       (setf transform (nth 0 object))
                       (setf mesh-count (nth 1 object))
@@ -899,7 +897,7 @@
                       (setf bones (nth 7 object))
                       (setf bind-pose (nth 8 object))))
 
-(defmethod translate-from-foreign (pointer (type model-type))
+(define-conversion-from-foreign (pointer (type model-type))
  (with-foreign-slots ((transform mesh-count material-count meshes materials mesh-material bone-count bones bind-pose) pointer (:struct %model))
                      (list transform mesh-count material-count meshes materials mesh-material bone-count bones bind-pose)))
 ;;
@@ -917,14 +915,14 @@
  (bones (:pointer (:struct %bone-info)))
  (frame-poses (:pointer)))
 
-(defmethod translate-into-foreign-memory (object (type model-animation-type) pointer)
+(define-conversion-into-foreign-memory (object (type model-animation-type) pointer)
  (with-foreign-slots ((bone-count frame-count bones frame-poses) pointer (:struct %model-animation))
                       (setf bone-count (nth 0 object))
                       (setf frame-count (nth 1 object))
                       (setf bones (nth 2 object))
                       (setf frame-poses (nth 3 object))))
 
-(defmethod translate-from-foreign (pointer (type model-animation-type))
+(define-conversion-from-foreign (pointer (type model-animation-type))
  (with-foreign-slots ((bone-count frame-count bones frame-poses) pointer (:struct %model-animation))
                      (list bone-count frame-count bones frame-poses)))
 
@@ -939,12 +937,12 @@
  (position (:struct %vector3))
  (direction (:struct %vector3)))
 
-(defmethod translate-into-foreign-memory (object (type ray-type) pointer)
+(define-conversion-into-foreign-memory (object (type ray-type) pointer)
  (with-foreign-slots (() pointer (:struct %ray))
    (convert-into-foreign-memory (nth 0 object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %ray) 'position))
    (convert-into-foreign-memory (nth 1 object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %ray) 'direction))))
 
-(defmethod translate-from-foreign (pointer (type ray-type))
+(define-conversion-from-foreign (pointer (type ray-type))
  (with-foreign-slots ((position direction) pointer (:struct %ray))
                       (list position direction)))
 
@@ -963,14 +961,14 @@
  (point (:struct %vector3))
  (normal (:struct %vector3)))
 
-(defmethod translate-into-foreign-memory (object (type ray-collision-type) pointer)
+(define-conversion-into-foreign-memory (object (type ray-collision-type) pointer)
  (with-foreign-slots ((hit distance point normal) pointer (:struct %ray-collision))
                       (setf hit (nth 0 object))
                       (setf distance (nth 1 object))
                       (setf point (nth 2 object))
                       (setf normal (nth 3 object))))
 
-(defmethod translate-from-foreign (pointer (type ray-collision-type))
+(define-conversion-from-foreign (pointer (type ray-collision-type))
  (with-foreign-slots ((hit distance point normal) pointer (:struct %ray-collision))
                      (list hit distance point normal)))
 
@@ -985,12 +983,12 @@
  (min (:struct %vector3))
  (max (:struct %vector3)))
 
-(defmethod translate-into-foreign-memory (object (type bounding-box-type) pointer)
+(define-conversion-into-foreign-memory (object (type bounding-box-type) pointer)
  (with-foreign-slots ((min max) pointer (:struct %bounding-box))
                       (setf min (nth 0 object))
                       (setf max (nth 1 object))))
 
-(defmethod translate-from-foreign (pointer (type bounding-box-type))
+(define-conversion-from-foreign (pointer (type bounding-box-type))
  (with-foreign-slots ((min max) pointer (:struct %bounding-box))
   (list min max)))
 
@@ -1011,7 +1009,7 @@
  (channels :unsigned-int)
  (data :pointer))
 
-(defmethod translate-into-foreign-memory (object (type wave-type) pointer)
+(define-conversion-into-foreign-memory (object (type wave-type) pointer)
  (with-foreign-slots ((frame-count sample-rate sample-size channels data) pointer (:struct %wave))
                       (setf frame-count (nth 0 object))
                       (setf sample-rate (nth 1 object))
@@ -1019,7 +1017,7 @@
                       (setf channels (nth 3 object))
                       (setf data (nth 4 object))))
 
-(defmethod translate-from-foreign (pointer (type wave-type))
+(define-conversion-from-foreign (pointer (type wave-type))
  (with-foreign-slots ((frame-count sample-rate sample-size channels data) pointer (:struct %wave))
 		     (list frame-count sample-rate sample-size channels data)))
 ;;
@@ -1045,7 +1043,7 @@
   (sample-size :unsigned-int)
   (channels :unsigned-int))
 
-(defmethod translate-into-foreign-memory (object (type audio-stream-type) pointer)
+(define-conversion-into-foreign-memory (object (type audio-stream-type) pointer)
  (with-foreign-slots ((buffer processor sample-rate sample-size channels) pointer (:struct %audio-stream))
                       (setf buffer (nth 0 object))
                       (setf processor (nth 1 object))
@@ -1053,7 +1051,7 @@
                       (setf sample-size (nth 3 object))
                       (setf channels (nth 4 object))))
 
-(defmethod translate-from-foreign (pointer (type audio-stream-type))
+(define-conversion-from-foreign (pointer (type audio-stream-type))
   (with-foreign-slots ((buffer processor sample-rate sample-size channels) pointer (:struct %audio-stream))
           (list buffer processor sample-rate sample-size channels)))
 
@@ -1068,14 +1066,14 @@
  (stream (:struct %audio-stream))
  (frame-count :unsigned-int))
 
-(defmethod translate-into-foreign-memory (object (type sound-type) pointer)
+(define-conversion-into-foreign-memory (object (type sound-type) pointer)
  (with-foreign-slots ((stream frame-count) pointer (:struct %sound))
                       (convert-into-foreign-memory (nth 0 object)
                                                    '(:struct %audio-stream)
                                                    (foreign-slot-pointer pointer '(:struct %sound) 'stream))
                       (setf frame-count (nth 1 object))))
 
-(defmethod translate-from-foreign (pointer (type sound-type))
+(define-conversion-from-foreign (pointer (type sound-type))
   (with-foreign-slots ((stream frame-count) pointer (:struct %sound))
                       (list stream frame-count)))
 ;;
@@ -1096,7 +1094,7 @@
  (ctx-type :int)
  (ctx-data :pointer))
 
-(defmethod translate-into-foreign-memory (object (type music-type) pointer)
+(define-conversion-into-foreign-memory (object (type music-type) pointer)
  (with-foreign-slots ((stream frame-count looping ctx-type ctx-data) pointer (:struct %music))
                       (convert-into-foreign-memory (nth 0 object)
                                                    '(:struct %audio-stream)
@@ -1106,7 +1104,7 @@
                       (setf ctx-type (nth 3 object))
                       (setf ctx-data (nth 4 object))))
 
-(defmethod translate-from-foreign (pointer (type music-type))
+(define-conversion-from-foreign (pointer (type music-type))
   (with-foreign-slots ((stream frame-count looping ctx-type ctx-data) pointer (:struct %music))
                       (list stream frame-count looping ctx-type ctx-data)))
 
@@ -1137,7 +1135,7 @@
   (lens-distortion-values :float :count 4)
   (chroma-ab-correction :float :count 4))
 
-(defmethod translate-into-foreign-memory (object (type vr-device-info-type) pointer)
+(define-conversion-into-foreign-memory (object (type vr-device-info-type) pointer)
   (with-foreign-slots ((h-resolution v-resolution h-screen-size v-screen-size v-screen-center eye-to-screen-distance lens-separation-distance interpupillary-distance lens-distortion-values chroma-ab-correction) pointer (:struct %vr-device-info))
     (setf h-resolution (nth 0 object))
     (setf v-resolution (nth 1 object))
@@ -1150,7 +1148,7 @@
     (setf lens-distortion-values (nth 8 object))
     (setf chroma-ab-correction (nth 9 object))))
 
-(defmethod translate-from-foreign (pointer (type vr-device-info-type))
+(define-conversion-from-foreign (pointer (type vr-device-info-type))
   (with-foreign-slots ((h-resolution v-resolution h-screen-size v-screen-size v-screen-center eye-to-screen-distance lens-separation-distance interpupillary-distance lens-distortion-values chroma-ab-correction) pointer (:struct %vr-device-info))
     (list h-resolution v-resolution h-screen-size v-screen-size v-screen-center eye-to-screen-distance lens-separation-distance interpupillary-distance lens-distortion-values chroma-ab-correction)))
 
