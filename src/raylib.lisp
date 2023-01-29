@@ -303,7 +303,7 @@
 ;;    float m3, m7, m11, m15; // Matrix fourth row (4 components)
 ;;} Matrix;
 (defcstruct (%matrix :class matrix-type)
-  "Matrix type (OpenGL style 4x4"
+  "Matrix type (OpenGL style 4x4)"
   (m0 :float) (m4 :float) (m8 :float) (m12 :float)
   (m1 :float) (m5 :float) (m9 :float) (m13 :float)
   (m2 :float) (m6 :float) (m10 :float) (m14 :float)
@@ -2002,6 +2002,7 @@
 
 ;;RLAPI bool IsWindowState(unsigned int flag);                      // Check if one specific window flag is enabled
 (defcfun "IsWindowState" :boolean
+  "Check if one specific window flag is enabled"
   (flag :unsigned-int))
 
 ;;RLAPI void SetWindowState(unsigned int flags);                    // Set window configuration state using flags (only PLATFORM_DESKTOP)
@@ -2294,6 +2295,7 @@
 ;;// NOTE: Shader functionality is not available on OpenGL 1.1
 ;;RLAPI Shader LoadShader(const char *vsFileName, const char *fsFileName);   // Load shader from files and bind default locations
 (defcfun "LoadShader" (:struct %shader)
+  "Load shader from files and bind default locations"
   (vs-file-name :string)
   (fs-file-name :string))
 
@@ -2317,6 +2319,7 @@
 
 ;;RLAPI void SetShaderValue(Shader shader, int locIndex, const void *value, int uniformType);               // Set shader uniform value
 (defcfun "SetShaderValue" :void
+  "Set shader uniform value"
   (shader (:struct %shader))
   (loc-index :int)
   (value :pointer)
@@ -2324,6 +2327,7 @@
 
 ;;RLAPI void SetShaderValueV(Shader shader, int locIndex, const void *value, int uniformType, int count);   // Set shader uniform value vector
 (defcfun "SetShaderValueV" :void
+  "Set shader uniform value vector"
   (shader (:struct %shader))
   (loc-index :int)
   (value :pointer)
@@ -2338,12 +2342,14 @@
 
 ;;RLAPI void SetShaderValueTexture(Shader shader, int locIndex, Texture2D texture); // Set shader uniform value for texture (sampler2d)
 (defcfun "SetShaderValueTexture" :void
+  "Set shader uniform value for texture (sampler2d)"
   (shader (:struct %shader))
   (loc-index :int)
   (texture (:struct %texture)))
 
 ;;RLAPI void UnloadShader(Shader shader);                                    // Unload shader from GPU memory (VRAM)
 (defcfun "UnloadShader" :void
+  "Unload shader from GPU memory (VRAM)"
   (shader (:struct %shader)))
 
 ;;
@@ -2968,6 +2974,7 @@
 
 ;;RLAPI void DrawLineBezierQuad(Vector2 startPos, Vector2 endPos, Vector2 controlPos, float thick, Color color); // Draw line using quadratic bezier curves with a control point
 (defcfun "DrawLineBezierQuad" :void
+  "Draw line using quadratic bezier curves with a control point"
   (start-pos (:struct %vector2))
   (end-pos (:struct %vector2))
   (control-pos (:struct %vector2))
@@ -2976,6 +2983,7 @@
 
 ;;RLAPI void DrawLineBezierCubic(Vector2 startPos, Vector2 endPos, Vector2 startControlPos, Vector2 endControlPos, float thick, Color color); // Draw line using cubic bezier curves with 2 control points
 (defcfun "DrawLineBezierCubic" :void
+  "Draw line using cubic bezier curves with 2 control points"
   (start-pos (:struct %vector2))
   (end-pos (:struct %vector2))
   (start-control-pos (:struct %vector2))
@@ -3298,6 +3306,7 @@
 ;;// NOTE: This functions do not require GPU access
 ;;RLAPI Image LoadImage(const char *fileName);                                                             // Load image from file into CPU memory (RAM)
 (defcfun "LoadImage" (:struct %image)
+ "Load image from file into CPU memory (RAM)"
  (file-name :string))
 
 ;;RLAPI Image LoadImageRaw(const char *fileName, int width, int height, int format, int headerSize);       // Load image from RAW file data
@@ -3510,10 +3519,12 @@
  
 ;;RLAPI void ImageFlipVertical(Image *image);                                                              // Flip image vertically
 (defcfun "ImageFlipVertical" :void
+ "Flip image vertically"
  (image (:pointer (:struct %image))))
 
 ;;RLAPI void ImageFlipHorizontal(Image *image);                                                            // Flip image horizontally
 (defcfun "ImageFlipHorizontal" :void
+ "Flip image horizontally"
  (image (:pointer (:struct %image))))
 
 ;;RLAPI void ImageRotateCW(Image *image);                                                                  // Rotate image clockwise 90deg
@@ -3528,24 +3539,29 @@
 
 ;;RLAPI void ImageColorTint(Image *image, Color color);                                                    // Modify image color: tint
 (defcfun "ImageColorTint" :void
+ "Modify image color: tint"
  (image (:pointer (:struct %image)))
  (color :uint))
 
 ;;RLAPI void ImageColorInvert(Image *image);                                                               // Modify image color: invert
 (defcfun "ImageColorInvert" :void
+ "Modify image color: invert"
  (image (:pointer (:struct %image))))
 
 ;;RLAPI void ImageColorGrayscale(Image *image);                                                            // Modify image color: grayscale
 (defcfun "ImageColorGrayscale" :void
+ "Modify image color: grayscale"
  (image (:pointer (:struct %image))))
 
 ;;RLAPI void ImageColorContrast(Image *image, float contrast);                                             // Modify image color: contrast (-100 to 100)
 (defcfun "ImageColorContrast" :void
+ "Modify image color: contrast (-100 to 100)"
  (image (:pointer (:struct %image)))
  (contrast :float))
 
 ;;RLAPI void ImageColorBrightness(Image *image, int brightness);                                           // Modify image color: brightness (-255 to 255)
 (defcfun "ImageColorBrightness" :void
+ "Modify image color: brightness (-255 to 255)"
  (image (:pointer (:struct %image)))
  (brightness :int))
 
@@ -3760,15 +3776,18 @@
 ;;// Texture configuration functions
 ;;RLAPI void GenTextureMipmaps(Texture2D *texture);                                                        // Generate GPU mipmaps for a texture
 (defcfun "GenTextureMipmaps" :void
+ "Generate GPU mipmaps for a texture"
  (texture (:pointer (:struct %texture))))
 
 ;;RLAPI void SetTextureFilter(Texture2D texture, int filter);                                              // Set texture scaling filter mode
 (defcfun "SetTextureFilter" :void
+ "Set texture scaling filter mode"
  (texture (:struct %texture))
  (filter-mode :int))
 
 ;;RLAPI void SetTextureWrap(Texture2D texture, int wrap);                                                  // Set texture wrapping mode
 (defcfun "SetTextureWrap" :void
+ "Set texture wrapping mode"
  (texture (:struct %texture))
  (wrap-mode :int))
 
@@ -3776,6 +3795,7 @@
 ;;// Texture drawing functions
 ;;RLAPI void DrawTexture(Texture2D texture, int posX, int posY, Color tint);                               // Draw a Texture2D
 (defcfun "DrawTexture" :void
+ "Draw a Texture2D"
  (texture (:struct %texture))
  (pos-x :int)
  (pos-y :int)
@@ -3783,12 +3803,14 @@
 
 ;;RLAPI void DrawTextureV(Texture2D texture, Vector2 position, Color tint);                                // Draw a Texture2D with position defined as Vector2
 (defcfun "DrawTextureV" :void
+ "Draw a Texture2D with position defined as Vector2"
  (texture (:struct %texture))
  (position (:struct %vector2))
  (tint :uint))
 
 ;;RLAPI void DrawTextureEx(Texture2D texture, Vector2 position, float rotation, float scale, Color tint);  // Draw a Texture2D with extended parameters
 (defcfun "DrawTextureEx" :void
+ "Draw a Texture2D with extended parameters"
  (texture (:struct %texture))
  (position (:struct %vector2))
  (rotation :float)
@@ -4378,6 +4400,7 @@
 
 ;;RLAPI void DrawGrid(int slices, float spacing);                                                          // Draw a grid (centered at (0, 0, 0))
 (defcfun "DrawGrid" :void
+ "Draw a grid (centered at (0, 0, 0))"
  (slices :int)
  (spacing :float))
 
@@ -4404,6 +4427,7 @@
 
 ;;RLAPI void UnloadModel(Model model);                                                        // Unload model (including meshes) from memory (RAM and/or VRAM)
 (defcfun "UnloadModel" :void
+ "Unload model (including meshes) from memory (RAM and/or VRAM)"
  (model (:struct %model)))
 
 ;;RLAPI void UnloadModelKeepMeshes(Model model);                                              // Unload model (but not meshes) from memory (RAM and/or VRAM)
@@ -4433,6 +4457,7 @@
 
 ;;RLAPI void DrawModelWires(Model model, Vector3 position, float scale, Color tint);                      // Draw a model wires (with texture if set)
 (defcfun "DrawModelWires" :void
+  "Draw a model wires (with texture if set)"
   (model (:struct %model))
   (position (:struct %vector3))
   (scale (:struct %vector3))
@@ -4440,6 +4465,7 @@
 
 ;;RLAPI void DrawModelWiresEx(Model model, Vector3 position, Vector3 rotationAxis, float rotationAngle, Vector3 scale, Color tint); // Draw a model wires (with texture if set) with extended parameters
 (defcfun "DrawModelWiresEx" :void
+  "Draw a model wires (with texture if set) with extended parameters"
   (model (:struct %model))
   (position (:struct %vector3))
   (rotation-axis (:struct %vector3))
@@ -4449,11 +4475,13 @@
 
 ;;RLAPI void DrawBoundingBox(BoundingBox box, Color color);                                               // Draw bounding box (wires)
 (defcfun "DrawBoundingBox" :void
+  "Draw bounding box (wires)"
   (box (:struct %bounding-box))
   (color :uint))
 
 ;;RLAPI void DrawBillboard(Camera camera, Texture2D texture, Vector3 position, float size, Color tint);   // Draw a billboard texture
 (defcfun "DrawBillboard" :void
+  "Draw a billboard texture"
   (camera (:struct %camera3d))
   (texture (:struct %texture))
   (position (:struct %vector3))
@@ -4462,6 +4490,7 @@
 
 ;;RLAPI void DrawBillboardRec(Camera camera, Texture2D texture, Rectangle source, Vector3 position, Vector2 size, Color tint); // Draw a billboard texture defined by source
 (defcfun "DrawBillboardRec" :void
+  "Draw a billboard texture defined by source"
   (camera (:struct %camera3d))
   (texture (:struct %texture))
   (source (:struct %rectangle))
@@ -4678,6 +4707,7 @@
 ;;// Collision detection functions
 ;;RLAPI bool CheckCollisionSpheres(Vector3 center1, float radius1, Vector3 center2, float radius2);   // Check collision between two spheres
 (defcfun "CheckCollisionSpheres" :bool
+  "Check collision between two spheres"
   (center-a (:struct %vector3))
   (radius-a :float)
   (center-b (:struct %vector3))
@@ -4685,11 +4715,13 @@
 
 ;;RLAPI bool CheckCollisionBoxes(BoundingBox box1, BoundingBox box2);                                 // Check collision between two bounding boxes
 (defcfun "CheckCollisionBoxes" :bool
+  "Check collision between two bounding boxes"
   (box1 (:struct %bounding-box))
   (box2 (:struct %bounding-box)))
 
 ;;RLAPI bool CheckCollisionBoxSphere(BoundingBox box, Vector3 center, float radius);                  // Check collision between box and sphere
 (defcfun "CheckCollisionBoxSphere" :bool
+  "Check collision between box and sphere"
   (box (:struct %bounding-box))
   (center (:struct %vector3))
   (radius :float))
@@ -4721,6 +4753,7 @@
 
 ;;RLAPI RayCollision GetRayCollisionQuad(Ray ray, Vector3 p1, Vector3 p2, Vector3 p3, Vector3 p4);    // Get collision info between ray and quad
 (defcfun "GetRayCollisionQuad" (:struct %ray-collision)
+  "Get collision info between ray and quad"
   (ray (:struct %ray))
   (p1 (:struct %vector3))
   (p2 (:struct %vector3))
@@ -4760,6 +4793,7 @@
 
 ;;RLAPI Wave LoadWaveFromMemory(const char *fileType, const unsigned char *fileData, int dataSize); // Load wave from memory buffer, fileType refers to extension: i.e. '.wav'
 (defcfun "LoadWaveFromMemory" (:struct %wave)
+  "Load wave from memory buffer, fileType refers to extension: i.e. '.wav'"
   (file-type :string)
   (file-data :pointer)
   (data-size :int))
@@ -4887,6 +4921,7 @@
 
 ;;RLAPI void UnloadWaveSamples(float *samples);                         // Unload samples data loaded with LoadWaveSamples()
 (defcfun "UnloadWaveSamples" :void
+  "Unload samples data loaded with LoadWaveSamples()"
   (samples (:pointer :float)))
 
 ;;
