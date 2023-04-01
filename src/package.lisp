@@ -3,6 +3,7 @@
   (:use #:cl #:cffi #:alexandria)
   (:export
     ;; Basic Colors
+    #:make-rgba
     #:+lightgray+
     #:+gray+
     #:+darkgray+
