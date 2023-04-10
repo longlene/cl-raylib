@@ -369,6 +369,7 @@
     #:draw-ring
     #:draw-ring-lines
     #:draw-rectangle
+    #:draw-rectangle-v
     #:draw-rectangle-rec
     #:draw-rectangle-pro
     #:draw-rectangle-gradient-v
