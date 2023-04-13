@@ -1529,13 +1529,16 @@
 ;;    MOUSE_BUTTON_FORWARD = 5,       // Mouse button fordward (advanced mouse device)
 ;;    MOUSE_BUTTON_BACK    = 6,       // Mouse button back (advanced mouse device)
 ;;} MouseButton;
-(define-constant +mouse-button-left+ 0)
-(define-constant +mouse-button-right+ 1)
-(define-constant +mouse-button-middle+ 2)
-(define-constant +mouse-button-side+ 3)
-(define-constant +mouse-button-extra+ 4)
-(define-constant +mouse-button-forward+ 5)
-(define-constant +mouse-button-back+ 6)
+
+(cffi:defcenum MouseButton
+  "Mouse buttons"
+  (:mouse-button-left 0)
+  (:mouse-button-right 1)
+  (:mouse-button-middle 2)
+  (:mouse-button-side 3)
+  (:mouse-button-extra 4)
+  (:mouse-button-forward 5)
+  (:mouse-button-back 6))
 
 ;;
 ;;// Mouse cursor
@@ -2742,22 +2745,22 @@
 ;;RLAPI bool IsMouseButtonPressed(int button);                  // Check if a mouse button has been pressed once
 (defcfun "IsMouseButtonPressed" :boolean
  "Check if a mouse button has been pressed once"
- (button :int))
+ (button MouseButton))
 
 ;;RLAPI bool IsMouseButtonDown(int button);                     // Check if a mouse button is being pressed
 (defcfun "IsMouseButtonDown" :boolean
  "Check if a mouse button is being pressed"
- (button :int))
+ (button MouseButton))
 
 ;;RLAPI bool IsMouseButtonReleased(int button);                 // Check if a mouse button has been released once
 (defcfun "IsMouseButtonReleased" :boolean
  "Check if a mouse button has been released once"
- (button :int))
+ (button MouseButton))
 
 ;;RLAPI bool IsMouseButtonUp(int button);                       // Check if a mouse button is NOT being pressed
 (defcfun "IsMouseButtonUp" :boolean
  "Check if a mouse button is NOT being pressed"
- (button :int))
+ (button MouseButton))
 
 ;;RLAPI int GetMouseX(void);                                    // Get mouse position X
 (defcfun "GetMouseX" :int
