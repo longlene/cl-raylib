@@ -1530,7 +1530,7 @@
 ;;    MOUSE_BUTTON_BACK    = 6,       // Mouse button back (advanced mouse device)
 ;;} MouseButton;
 
-(cffi:defcenum MouseButton
+(defcenum MouseButton
   "Mouse buttons"
   (:mouse-button-left 0)
   (:mouse-button-right 1)
