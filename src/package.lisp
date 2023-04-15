@@ -194,17 +194,6 @@
     #:+key-right-bracket+
     #:+key-grave+
 
-
-    #:+mouse-button-left+
-    #:+mouse-button-right+
-    #:+mouse-button-middle+
-    #:+mouse-button-side+
-    #:+mouse-button-extra+
-    #:+mouse-button-forward+
-    #:+mouse-button-back+
-
-
-
     #:+camera-custom+
     #:+camera-free+
     #:+camera-orbital+
