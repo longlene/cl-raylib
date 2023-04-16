@@ -607,6 +607,16 @@
                :glyphs glyphs)))
 
 ;;
+;;// Camera projection
+;;typedef enum {
+;;    CAMERA_PERSPECTIVE = 0,         // Perspective projection
+;;    CAMERA_ORTHOGRAPHIC             // Orthographic projection
+;;} CameraProjection;
+(defcenum CameraProjection
+  (:camera-perspective 0)
+  (:camera-orthographic 1))
+
+;;
 ;;// Camera, defines position/orientation in 3d space
 ;;typedef struct Camera3D {
 ;;    Vector3 position;       // Camera position
@@ -650,7 +660,7 @@
      (setf (camera3d-target ,lisp-var) target)
      (setf (camera3d-fovy ,lisp-var) fovy)
      (setf (camera3d-up ,lisp-var) up)
-     (setf (camera3d-projection ,lisp-var) (cffi:foreign-enum-keyword projection))))
+     (setf (camera3d-projection ,lisp-var) projection)))
 
 ;;
 ;;// Camera2D, defines position/orientation in 2d space
@@ -1938,16 +1948,6 @@
   (:camera-third-person 4))
 
 ;;
-;;// Camera projection
-;;typedef enum {
-;;    CAMERA_PERSPECTIVE = 0,         // Perspective projection
-;;    CAMERA_ORTHOGRAPHIC             // Orthographic projection
-;;} CameraProjection;
-(defcenum CameraProjection
-  (:camera-perspective 0)
-  (:camera-orthographic 1))
-
-;;
 ;;// N-patch layout
 ;;typedef enum {
 ;;    NPATCH_NINE_PATCH = 0,          // Npatch layout: 3x3 tiles
@@ -2897,21 +2897,16 @@
 ;;//------------------------------------------------------------------------------------
 ;;// Camera System Functions (Module: rcamera)
 ;;//------------------------------------------------------------------------------------
-;;RLAPI void SetCameraMode(Camera camera, int mode);      // Set camera mode (multiple camera modes available)
-(defcfun "SetCameraMode" :void
- "Set camera mode (multiple camera modes available)"
- (camera (:struct %camera3d))
- (mode :int))
-
-;;RLAPI void UpdateCamera(Camera *camera);                // Update camera position for selected mode
+;;RLAPI void UpdateCamera(Camera *camera, int mode);      // Update camera position for selected mode
 (defcfun ("UpdateCamera" %update-camera) :void
-  (camera (:pointer (:struct %camera3d))))
+  (camera (:pointer (:struct %camera3d)))
+  (mode CameraMode))
 
-(defmacro update-camera (camera)
+(defmacro update-camera (camera mode)
   (let ((foreign-camera (gensym)))
     `(cffi:with-foreign-object (,foreign-camera '(:struct %camera3d))
        (convert-into-foreign-memory ,camera '(:struct %camera3d) ,foreign-camera)
-       (%update-camera ,foreign-camera)
+       (%update-camera ,foreign-camera ,mode)
        (update-camera3d-from-foreign ,camera ,foreign-camera))))
 
 ;;
