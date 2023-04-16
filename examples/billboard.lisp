@@ -20,7 +20,11 @@
          (bill-position (vec 0.0 2.0 0.0)))
     (with-window (screen-width screen-height title)
       (set-target-fps 60)
-      (let ((bill (load-texture "resources/billboard.png")))
+      (let ((bill
+              (load-texture
+               (uiop:native-namestring
+                (asdf:system-relative-pathname 'cl-raylib
+                                               "examples/resources/billboard.png")))))
         (loop
           (if (window-should-close) (return)) ; dectect window close button or ESC key
           (update-camera camera :camera-orbital)
