@@ -100,15 +100,6 @@
     #:camera2d-rotation
     #:camera2d-zoom
 
-    #:+camera-custom+
-    #:+camera-free+
-    #:+camera-orbital+
-    #:+camera-first-person+
-    #:+camera-third-person+
-
-    #:+camera-perspective+
-    #:+camera-orthographic+
-
     #:init-window
     #:window-should-close
     #:close-window
