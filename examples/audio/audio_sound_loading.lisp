@@ -17,8 +17,8 @@
 	    (loop
 	      until (window-should-close) ; dectect window close button or ESC key
 	      do
-		 (if (is-key-pressed +key-space+) (play-sound fx-wav))
-		 (if (is-key-pressed +key-enter+) (play-sound fx-ogg))
+		 (if (is-key-pressed :key-space) (play-sound fx-wav))
+		 (if (is-key-pressed :key-enter) (play-sound fx-ogg))
 		 (with-drawing
 		   (clear-background +raywhite+)
 		   (draw-text "Press SPACE to PLAY the WAV sound!" 200 180 20 +lightgray+)
