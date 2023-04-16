@@ -1333,55 +1333,6 @@
 ;;    KEY_BACKSLASH       = 92,       // Key: '\'
 ;;    KEY_RIGHT_BRACKET   = 93,       // Key: ]
 ;;    KEY_GRAVE           = 96,       // Key: `
-(define-constant +key-null+ 0)
-(define-constant +key-apostrophe+ 39)
-(define-constant +key-comma+ 44)
-(define-constant +key-minus+ 45)
-(define-constant +key-period+ 46)
-(define-constant +key-slash+ 47)
-(define-constant +key-zero+ 48)
-(define-constant +key-one+ 49)
-(define-constant +key-two+ 50)
-(define-constant +key-three+ 51)
-(define-constant +key-four+ 52)
-(define-constant +key-five+ 53)
-(define-constant +key-six+ 54)
-(define-constant +key-seven+ 55)
-(define-constant +key-eight+ 56)
-(define-constant +key-nine+ 57)
-(define-constant +key-semicolon+ 59)
-(define-constant +key-equal+ 61)
-(define-constant +key-a+ 65)
-(define-constant +key-b+ 66)
-(define-constant +key-c+ 67)
-(define-constant +key-d+ 68)
-(define-constant +key-e+ 69)
-(define-constant +key-f+ 70)
-(define-constant +key-g+ 71)
-(define-constant +key-h+ 72)
-(define-constant +key-i+ 73)
-(define-constant +key-j+ 74)
-(define-constant +key-k+ 75)
-(define-constant +key-l+ 76)
-(define-constant +key-m+ 77)
-(define-constant +key-n+ 78)
-(define-constant +key-o+ 79)
-(define-constant +key-p+ 80)
-(define-constant +key-q+ 81)
-(define-constant +key-r+ 82)
-(define-constant +key-s+ 83)
-(define-constant +key-t+ 84)
-(define-constant +key-u+ 85)
-(define-constant +key-v+ 86)
-(define-constant +key-w+ 87)
-(define-constant +key-x+ 88)
-(define-constant +key-y+ 89)
-(define-constant +key-z+ 90)
-(define-constant +key-left-bracket+ 91)
-(define-constant +key-backslash+ 92)
-(define-constant +key-right-bracket+ 93)
-(define-constant +key-grave+ 96)
-
 ;;    // Function keys
 ;;    KEY_SPACE           = 32,       // Key: Space
 ;;    KEY_ESCAPE          = 256,      // Key: Esc
@@ -1424,48 +1375,6 @@
 ;;    KEY_RIGHT_ALT       = 346,      // Key: Alt right
 ;;    KEY_RIGHT_SUPER     = 347,      // Key: Super right
 ;;    KEY_KB_MENU         = 348,      // Key: KB menu
-(define-constant +key-space+ 32)
-(define-constant +key-escape+ 256)
-(define-constant +key-enter+ 257)
-(define-constant +key-tab+ 258)
-(define-constant +key-backspace+ 259)
-(define-constant +key-insert+ 260)
-(define-constant +key-delete+ 261)
-(define-constant +key-right+ 262)
-(define-constant +key-left+ 263)
-(define-constant +key-down+ 264)
-(define-constant +key-up+ 265)
-(define-constant +key-page-up+ 266)
-(define-constant +key-page-down+ 267)
-(define-constant +key-home+ 268)
-(define-constant +key-end+ 269)
-(define-constant +key-caps-lock+ 280)
-(define-constant +key-scroll-lock+ 281)
-(define-constant +key-num-lock+ 282)
-(define-constant +key-print-screen+ 283)
-(define-constant +key-pause+ 284)
-(define-constant +key-f1+ 290)
-(define-constant +key-f2+ 291)
-(define-constant +key-f3+ 292)
-(define-constant +key-f4+ 293)
-(define-constant +key-f5+ 294)
-(define-constant +key-f6+ 295)
-(define-constant +key-f7+ 296)
-(define-constant +key-f8+ 297)
-(define-constant +key-f9+ 298)
-(define-constant +key-f10+ 299)
-(define-constant +key-f11+ 300)
-(define-constant +key-f12+ 301)
-(define-constant +key-left-shift+ 340)
-(define-constant +key-left-control+ 341)
-(define-constant +key-left-alt+ 342)
-(define-constant +key-left-super+ 343)
-(define-constant +key-right-shift+ 344)
-(define-constant +key-right-control+ 345)
-(define-constant +key-right-alt+ 346)
-(define-constant +key-right-super+ 347)
-(define-constant +key-kb-menu+ 348)
-
 ;;    // Keypad keys
 ;;    KEY_KP_0            = 320,      // Key: Keypad 0
 ;;    KEY_KP_1            = 321,      // Key: Keypad 1
@@ -1490,28 +1399,121 @@
 ;;    KEY_VOLUME_UP       = 24,       // Key: Android volume up button
 ;;    KEY_VOLUME_DOWN     = 25        // Key: Android volume down button
 ;;} KeyboardKey;
-(define-constant +key-kp-0+ 320)
-(define-constant +key-kp-1+ 321)
-(define-constant +key-kp-2+ 322)
-(define-constant +key-kp-3+ 323)
-(define-constant +key-kp-4+ 324)
-(define-constant +key-kp-5+ 325)
-(define-constant +key-kp-6+ 326)
-(define-constant +key-kp-7+ 327)
-(define-constant +key-kp-8+ 328)
-(define-constant +key-kp-9+ 329)
-(define-constant +key-kp-decimal+ 330)
-(define-constant +key-kp-divide+ 331)
-(define-constant +key-kp-multiply+ 332)
-(define-constant +key-kp-subtract+ 333)
-(define-constant +key-kp-add+ 334)
-(define-constant +key-kp-enter+ 335)
-(define-constant +key-kp-equal+ 336)
 
-(define-constant +key-back+ 4)
-(define-constant +key-menu+ 82)
-(define-constant +key-volume-up+ 24)
-(define-constant +key-volume-down+ 25)
+(defcenum KeyboardKey
+  (:key-null 0)
+  (:key-apostrophe 39)
+  (:key-comma 44)
+  (:key-minus 45)
+  (:key-period 46)
+  (:key-slash 47)
+  (:key-zero 48)
+  (:key-one 49)
+  (:key-two 50)
+  (:key-three 51)
+  (:key-four 52)
+  (:key-five 53)
+  (:key-six 54)
+  (:key-seven 55)
+  (:key-eight 56)
+  (:key-nine 57)
+  (:key-semicolon 59)
+  (:key-equal 61)
+  (:key-a 65)
+  (:key-b 66)
+  (:key-c 67)
+  (:key-d 68)
+  (:key-e 69)
+  (:key-f 70)
+  (:key-g 71)
+  (:key-h 72)
+  (:key-i 73)
+  (:key-j 74)
+  (:key-k 75)
+  (:key-l 76)
+  (:key-m 77)
+  (:key-n 78)
+  (:key-o 79)
+  (:key-p 80)
+  (:key-q 81)
+  (:key-r 82)
+  (:key-s 83)
+  (:key-t 84)
+  (:key-u 85)
+  (:key-v 86)
+  (:key-w 87)
+  (:key-x 88)
+  (:key-y 89)
+  (:key-z 90)
+  (:key-left-bracket 91)
+  (:key-backslash 92)
+  (:key-right-bracket 93)
+  (:key-grave 96)
+
+  (:key-space 32)
+  (:key-escape 256)
+  (:key-enter 257)
+  (:key-tab 258)
+  (:key-backspace 259)
+  (:key-insert 260)
+  (:key-delete 261)
+  (:key-right 262)
+  (:key-left 263)
+  (:key-down 264)
+  (:key-up 265)
+  (:key-page-up 266)
+  (:key-page-down 267)
+  (:key-home 268)
+  (:key-end 269)
+  (:key-caps-lock 280)
+  (:key-scroll-lock 281)
+  (:key-num-lock 282)
+  (:key-print-screen 283)
+  (:key-pause 284)
+  (:key-f1 290)
+  (:key-f2 291)
+  (:key-f3 292)
+  (:key-f4 293)
+  (:key-f5 294)
+  (:key-f6 295)
+  (:key-f7 296)
+  (:key-f8 297)
+  (:key-f9 298)
+  (:key-f10 299)
+  (:key-f11 300)
+  (:key-f12 301)
+  (:key-left-shift 340)
+  (:key-left-control 341)
+  (:key-left-alt 342)
+  (:key-left-super 343)
+  (:key-right-shift 344)
+  (:key-right-control 345)
+  (:key-right-alt 346)
+  (:key-right-super 347)
+  (:key-kb-menu 348)
+
+  (:key-kp-0 320)
+  (:key-kp-1 321)
+  (:key-kp-2 322)
+  (:key-kp-3 323)
+  (:key-kp-4 324)
+  (:key-kp-5 325)
+  (:key-kp-6 326)
+  (:key-kp-7 327)
+  (:key-kp-8 328)
+  (:key-kp-9 329)
+  (:key-kp-decimal 330)
+  (:key-kp-divide 331)
+  (:key-kp-multiply 332)
+  (:key-kp-subtract 333)
+  (:key-kp-add 334)
+  (:key-kp-enter 335)
+  (:key-kp-equal 336)
+
+  (:key-back 4)
+  (:key-menu 82)
+  (:key-volume-up 24)
+  (:key-volume-down 25))
 
 ;;
 ;;// Add backwards compatibility support for deprecated names
@@ -1555,17 +1557,18 @@
 ;;    MOUSE_CURSOR_RESIZE_ALL    = 9,     // The omni-directional resize/move cursor shape
 ;;    MOUSE_CURSOR_NOT_ALLOWED   = 10     // The operation-not-allowed shape
 ;;} MouseCursor;
-(define-constant +mouse-cursor-default+       0)
-(define-constant +mouse-cursor-arrow+         1)
-(define-constant +mouse-cursor-ibeam+         2)
-(define-constant +mouse-cursor-crosshair+     3)
-(define-constant +mouse-cursor-pointing-hand+ 4)
-(define-constant +mouse-cursor-resize-ew+     5)
-(define-constant +mouse-cursor-resize-ns+     6)
-(define-constant +mouse-cursor-resize-nwse+   7)
-(define-constant +mouse-cursor-resize-nesw+   8)
-(define-constant +mouse-cursor-resize-all+    9)
-(define-constant +mouse-cursor-not-allowed+   10)
+(defcenum MouseCursor
+  (:mouse-cursor-default       0)
+  (:mouse-cursor-arrow         1)
+  (:mouse-cursor-ibeam         2)
+  (:mouse-cursor-crosshair     3)
+  (:mouse-cursor-pointing-hand 4)
+  (:mouse-cursor-resize-ew     5)
+  (:mouse-cursor-resize-ns     6)
+  (:mouse-cursor-resize-nwse   7)
+  (:mouse-cursor-resize-nesw   8)
+  (:mouse-cursor-resize-all    9)
+  (:mouse-cursor-not-allowed   10))
 
 ;;
 ;;// Gamepad buttons
@@ -1589,24 +1592,25 @@
 ;;    GAMEPAD_BUTTON_LEFT_THUMB,          // Gamepad joystick pressed button left
 ;;    GAMEPAD_BUTTON_RIGHT_THUMB          // Gamepad joystick pressed button right
 ;;} GamepadButton;
-(define-constant +gamepad-button-unknown+ 0)
-(define-constant +gamepad-button-left-face-up+ 1)
-(define-constant +gamepad-button-left-face-right+ 2)
-(define-constant +gamepad-button-left-face-down+ 3)
-(define-constant +gamepad-button-left-face-left+ 4)
-(define-constant +gamepad-button-right-face-up+ 5)
-(define-constant +gamepad-button-right-face-right+ 6)
-(define-constant +gamepad-button-right-face-down+ 7)
-(define-constant +gamepad-button-right-face-left+ 8)
-(define-constant +gamepad-button-left-trigger-1+ 9)
-(define-constant +gamepad-button-left-trigger-2+ 10)
-(define-constant +gamepad-button-right-trigger-1+ 11)
-(define-constant +gamepad-button-right-trigger-2+ 12)
-(define-constant +gamepad-button-middle-left+ 13)
-(define-constant +gamepad-button-middle+ 14)
-(define-constant +gamepad-button-middle-right+ 15)
-(define-constant +gamepad-button-left-thumb+ 16)
-(define-constant +gamepad-button-right-thumb+ 17)
+(defcenum GamepadButton
+  (:gamepad-button-unknown 0)
+  (:gamepad-button-left-face-up 1)
+  (:gamepad-button-left-face-right 2)
+  (:gamepad-button-left-face-down 3)
+  (:gamepad-button-left-face-left 4)
+  (:gamepad-button-right-face-up 5)
+  (:gamepad-button-right-face-right 6)
+  (:gamepad-button-right-face-down 7)
+  (:gamepad-button-right-face-left 8)
+  (:gamepad-button-left-trigger-1 9)
+  (:gamepad-button-left-trigger-2 10)
+  (:gamepad-button-right-trigger-1 11)
+  (:gamepad-button-right-trigger-2 12)
+  (:gamepad-button-middle-left 13)
+  (:gamepad-button-middle 14)
+  (:gamepad-button-middle-right 15)
+  (:gamepad-button-left-thumb 16)
+  (:gamepad-button-right-thumb 17))
 
 ;;
 ;;// Gamepad axis
@@ -1618,12 +1622,13 @@
 ;;    GAMEPAD_AXIS_LEFT_TRIGGER  = 4,     // Gamepad back trigger left, pressure level: [1..-1]
 ;;    GAMEPAD_AXIS_RIGHT_TRIGGER = 5      // Gamepad back trigger right, pressure level: [1..-1]
 ;;} GamepadAxis;
-(define-constant +gamepad-axis-left-x+ 0)
-(define-constant +gamepad-axis-left-y+ 1)
-(define-constant +gamepad-axis-right-x+ 2)
-(define-constant +gamepad-axis-right-y+ 3)
-(define-constant +gamepad-axis-left-trigger+ 4)
-(define-constant +gamepad-axis-right-trigger+ 5)
+(defcenum GamepadAxis
+  (:gamepad-axis-left-x 0)
+  (:gamepad-axis-left-y 1)
+  (:gamepad-axis-right-x 2)
+  (:gamepad-axis-right-y 3)
+  (:gamepad-axis-left-trigger 4)
+  (:gamepad-axis-right-trigger 5))
 
 ;;
 ;;// Material map index
@@ -1640,17 +1645,18 @@
 ;;    MATERIAL_MAP_PREFILTER,         // Prefilter material (NOTE: Uses GL_TEXTURE_CUBE_MAP)
 ;;    MATERIAL_MAP_BRDF               // Brdf material
 ;;} MaterialMapIndex;
-(define-constant +material-map-albedo+ 0)
-(define-constant +material-map-metalness+ 1)
-(define-constant +material-map-normal+ 2)
-(define-constant +material-map-roughness+ 3)
-(define-constant +material-map-occlusion+ 4)
-(define-constant +material-map-emission+ 5)
-(define-constant +material-map-height+ 6)
-(define-constant +material-map-cubemap+ 7)
-(define-constant +material-map-irradiance+ 8)
-(define-constant +material-map-prefilter+ 9)
-(define-constant +material-map-brdf+ 10)
+(defcenum MaterialMapIndex
+  (:material-map-albedo 0)
+  (:material-map-metalness 1)
+  (:material-map-normal 2)
+  (:material-map-roughness 3)
+  (:material-map-occlusion 4)
+  (:material-map-emission 5)
+  (:material-map-height 6)
+  (:material-map-cubemap 7)
+  (:material-map-irradiance 8)
+  (:material-map-prefilter 9)
+  (:material-map-brdf 10))
 
 ;;// Shader location index
 ;;typedef enum {
@@ -1681,36 +1687,40 @@
 ;;    SHADER_LOC_MAP_PREFILTER,       // Shader location: samplerCube texture: prefilter
 ;;    SHADER_LOC_MAP_BRDF             // Shader location: sampler2d texture: brdf
 ;;} ShaderLocationIndex;
-(define-constant +shader-loc-vertex-position+ 0)
-(define-constant +shader-loc-vertex-texcoord01+ 1)
-(define-constant +shader-loc-vertex-texcoord02+ 2)
-(define-constant +shader-loc-vertex-normal+ 3)
-(define-constant +shader-loc-vertex-tangent+ 4)
-(define-constant +shader-loc-vertex-color+ 5)
-(define-constant +shader-loc-matrix-mvp+ 6)
-(define-constant +shader-loc-matrix-view+ 7)
-(define-constant +shader-loc-matrix-projection+ 8)
-(define-constant +shader-loc-matrix-model+ 9)
-(define-constant +shader-loc-matrix-normal+ 10)
-(define-constant +shader-loc-vector-view+ 11)
-(define-constant +shader-loc-color-diffuse+ 12)
-(define-constant +shader-loc-color-specular+ 13)
-(define-constant +shader-loc-color-ambient+ 14)
-(define-constant +shader-loc-map-albedo+ 15)
-(define-constant +shader-loc-map-metalness+ 16)
-(define-constant +shader-loc-map-normal+ 17)
-(define-constant +shader-loc-map-roughness+ 18)
-(define-constant +shader-loc-map-occlusion+ 19)
-(define-constant +shader-loc-map-emission+ 20)
-(define-constant +shader-loc-map-height+ 21)
-(define-constant +shader-loc-map-cubemap+ 22)
-(define-constant +shader-loc-map-irradiance+ 23)
-(define-constant +shader-loc-map-prefilter+ 24)
-(define-constant +shader-loc-map-brdf+ 25)
-
 ;;
 ;;#define SHADER_LOC_MAP_DIFFUSE      SHADER_LOC_MAP_ALBEDO
 ;;#define SHADER_LOC_MAP_SPECULAR     SHADER_LOC_MAP_METALNESS
+(defcenum ShaderLocationIndex
+  (:shader-loc-vertex-position 0)
+  (:shader-loc-vertex-texcoord01 1)
+  (:shader-loc-vertex-texcoord02 2)
+  (:shader-loc-vertex-normal 3)
+  (:shader-loc-vertex-tangent 4)
+  (:shader-loc-vertex-color 5)
+  (:shader-loc-matrix-mvp 6)
+  (:shader-loc-matrix-view 7)
+  (:shader-loc-matrix-projection 8)
+  (:shader-loc-matrix-model 9)
+  (:shader-loc-matrix-normal 10)
+  (:shader-loc-vector-view 11)
+  (:shader-loc-color-diffuse 12)
+  (:shader-loc-color-specular 13)
+  (:shader-loc-color-ambient 14)
+  (:shader-loc-map-albedo 15)
+  (:shader-loc-map-metalness 16)
+  (:shader-loc-map-normal 17)
+  (:shader-loc-map-roughness 18)
+  (:shader-loc-map-occlusion 19)
+  (:shader-loc-map-emission 20)
+  (:shader-loc-map-height 21)
+  (:shader-loc-map-cubemap 22)
+  (:shader-loc-map-irradiance 23)
+  (:shader-loc-map-prefilter 24)
+  (:shader-loc-map-brdf 25)
+
+  (:shader-loc-map-diffuse 15)
+  (:shader-loc-map-specular 16))
+
 ;;
 ;;// Shader uniform data type
 ;;typedef enum {
@@ -1724,15 +1734,16 @@
 ;;    SHADER_UNIFORM_IVEC4,           // Shader uniform type: ivec4 (4 int)
 ;;    SHADER_UNIFORM_SAMPLER2D        // Shader uniform type: sampler2d
 ;;} ShaderUniformDataType;
-(define-constant +shader-uniform-float+ 0)
-(define-constant +shader-uniform-vec2+ 1)
-(define-constant +shader-uniform-vec3+ 2)
-(define-constant +shader-uniform-vec4+ 3)
-(define-constant +shader-uniform-int+ 4)
-(define-constant +shader-uniform-ivec2+ 5)
-(define-constant +shader-uniform-ivec3+ 6)
-(define-constant +shader-uniform-ivec4+ 7)
-(define-constant +shader-uniform-sampler2d+ 8)
+(defcenum ShaderUniformDataType
+  (:shader-uniform-float 0)
+  (:shader-uniform-vec2 1)
+  (:shader-uniform-vec3 2)
+  (:shader-uniform-vec4 3)
+  (:shader-uniform-int 4)
+  (:shader-uniform-ivec2 5)
+  (:shader-uniform-ivec3 6)
+  (:shader-uniform-ivec4 7)
+  (:shader-uniform-sampler2d 8))
 
 ;;
 ;;// Shader attribute data types
@@ -1742,10 +1753,11 @@
 ;;    SHADER_ATTRIB_VEC3,             // Shader attribute type: vec3 (3 float)
 ;;    SHADER_ATTRIB_VEC4              // Shader attribute type: vec4 (4 float)
 ;;} ShaderAttributeDataType;
-(define-constant +shader-attrib-float+ 0)
-(define-constant +shader-attrib-vec2+ 1)
-(define-constant +shader-attrib-vec3+ 2)
-(define-constant +shader-attrib-vec4+ 3)
+(defcenum ShaderAttributeDataType
+  (:shader-attrib-float 0)
+  (:shader-attrib-vec2 1)
+  (:shader-attrib-vec3 2)
+  (:shader-attrib-vec4 3))
 
 ;;
 ;;// Pixel formats
@@ -1773,27 +1785,28 @@
 ;;    PIXELFORMAT_COMPRESSED_ASTC_4x4_RGBA,   // 8 bpp
 ;;    PIXELFORMAT_COMPRESSED_ASTC_8x8_RGBA    // 2 bpp
 ;;} PixelFormat;
-(define-constant +pixelformat-uncompressed-grayscale+ 1)
-(define-constant +pixelformat-uncompressed-gray-alpha+ 2)
-(define-constant +pixelformat-uncompressed-r5g6b5+ 3)
-(define-constant +pixelformat-uncompressed-r8g8b8+ 4)
-(define-constant +pixelformat-uncompressed-r5g5b5a1+ 5)
-(define-constant +pixelformat-uncompressed-r4g4b4a4+ 6)
-(define-constant +pixelformat-uncompressed-r8g8b8a8+ 7)
-(define-constant +pixelformat-uncompressed-r32+ 8)
-(define-constant +pixelformat-uncompressed-r32g32b32+ 9)
-(define-constant +pixelformat-uncompressed-r32g32b32a32+ 10)
-(define-constant +pixelformat-compressed-dxt1-rgb+ 11)
-(define-constant +pixelformat-compressed-dxt1-rgba+ 12)
-(define-constant +pixelformat-compressed-dxt3-rgba+ 13)
-(define-constant +pixelformat-compressed-dxt5-rgba+ 14)
-(define-constant +pixelformat-compressed-etc1-rgb+ 15)
-(define-constant +pixelformat-compressed-etc2-rgb+ 16)
-(define-constant +pixelformat-compressed-etc2-eac-rgba+ 17)
-(define-constant +pixelformat-compressed-pvrt-rgb+ 18)
-(define-constant +pixelformat-compressed-pvrt-rgba+ 19)
-(define-constant +pixelformat-compressed-astc-4x4-rgba+ 20)
-(define-constant +pixelformat-compressed-astc-8x8-rgba+ 21)
+(defcenum PixelFormat
+  (:pixelformat-uncompressed-grayscale 1)
+  (:pixelformat-uncompressed-gray-alpha 2)
+  (:pixelformat-uncompressed-r5g6b5 3)
+  (:pixelformat-uncompressed-r8g8b8 4)
+  (:pixelformat-uncompressed-r5g5b5a1 5)
+  (:pixelformat-uncompressed-r4g4b4a4 6)
+  (:pixelformat-uncompressed-r8g8b8a8 7)
+  (:pixelformat-uncompressed-r32 8)
+  (:pixelformat-uncompressed-r32g32b32 9)
+  (:pixelformat-uncompressed-r32g32b32a32 10)
+  (:pixelformat-compressed-dxt1-rgb 11)
+  (:pixelformat-compressed-dxt1-rgba 12)
+  (:pixelformat-compressed-dxt3-rgba 13)
+  (:pixelformat-compressed-dxt5-rgba 14)
+  (:pixelformat-compressed-etc1-rgb 15)
+  (:pixelformat-compressed-etc2-rgb 16)
+  (:pixelformat-compressed-etc2-eac-rgba 17)
+  (:pixelformat-compressed-pvrt-rgb 18)
+  (:pixelformat-compressed-pvrt-rgba 19)
+  (:pixelformat-compressed-astc-4x4-rgba 20)
+  (:pixelformat-compressed-astc-8x8-rgba 21))
 
 ;;
 ;;// Texture parameters: filter mode
@@ -1807,12 +1820,13 @@
 ;;    TEXTURE_FILTER_ANISOTROPIC_8X,          // Anisotropic filtering 8x
 ;;    TEXTURE_FILTER_ANISOTROPIC_16X,         // Anisotropic filtering 16x
 ;;} TextureFilter;
-(define-constant +texture-filter-point+ 0)
-(define-constant +texture-filter-bilinear+ 1)
-(define-constant +texture-filter-trilinear+ 2)
-(define-constant +texture-filter-anisotropic-4x+ 3)
-(define-constant +texture-filter-anisotropic-8x+ 4)
-(define-constant +texture-filter-anisotropic-16x+ 5)
+(defcenum TextureFilter
+  (:texture-filter-point 0)
+  (:texture-filter-bilinear 1)
+  (:texture-filter-trilinear 2)
+  (:texture-filter-anisotropic-4x 3)
+  (:texture-filter-anisotropic-8x 4)
+  (:texture-filter-anisotropic-16x 5))
 
 ;;
 ;;// Texture parameters: wrap mode
@@ -1822,10 +1836,11 @@
 ;;    TEXTURE_WRAP_MIRROR_REPEAT,             // Mirrors and repeats the texture in tiled mode
 ;;    TEXTURE_WRAP_MIRROR_CLAMP               // Mirrors and clamps to border the texture in tiled mode
 ;;} TextureWrap;
-(define-constant +texture-wrap-repeat+ 0)
-(define-constant +texture-wrap-clamp+ 1)
-(define-constant +texture-wrap-mirror-repeat+ 2)
-(define-constant +texture-wrap-mirror-clamp+ 3)
+(defcenum TextureWrap
+  (:texture-wrap-repeat 0)
+  (:texture-wrap-clamp 1)
+  (:texture-wrap-mirror-repeat 2)
+  (:texture-wrap-mirror-clamp 3))
 
 ;;
 ;;// Cubemap layouts
@@ -1837,12 +1852,13 @@
 ;;    CUBEMAP_LAYOUT_CROSS_FOUR_BY_THREE,     // Layout is defined by a 4x3 cross with cubemap faces
 ;;    CUBEMAP_LAYOUT_PANORAMA                 // Layout is defined by a panorama image (equirectangular map)
 ;;} CubemapLayout;
-(define-constant +cubemap-layout-auto-detect+ 0)
-(define-constant +cubemap-layout-line-vertical+ 1)
-(define-constant +cubemap-layout-line-horizontal+ 2)
-(define-constant +cubemap-layout-cross-three-by-four+ 3)
-(define-constant +cubemap-layout-cross-four-by-three+ 4)
-(define-constant +cubemap-layout-panorama+ 5)
+(defcenum CubemapLayout
+  (:cubemap-layout-auto-detect 0)
+  (:cubemap-layout-line-vertical 1)
+  (:cubemap-layout-line-horizontal 2)
+  (:cubemap-layout-cross-three-by-four 3)
+  (:cubemap-layout-cross-four-by-three 4)
+  (:cubemap-layout-panorama 5))
 
 ;;
 ;;// Font type, defines generation method
@@ -1851,9 +1867,10 @@
 ;;    FONT_BITMAP,                    // Bitmap font generation, no anti-aliasing
 ;;    FONT_SDF                        // SDF font generation, requires external shader
 ;;} FontType;
-(define-constant +font-default+ 0)
-(define-constant +font-bitmap+ 1)
-(define-constant +font-sdf+ 2)
+(defcenum FontType
+  (:font-default 0)
+  (:font-bitmap 1)
+  (:font-sdf 2))
 
 ;;
 ;;// Color blending modes (pre-defined)
@@ -1866,13 +1883,14 @@
 ;;    BLEND_ALPHA_PREMULTIPLY,        // Blend premultiplied textures considering alpha
 ;;    BLEND_CUSTOM                    // Blend textures using custom src/dst factors (use rlSetBlendMode())
 ;;} BlendMode;
-(define-constant +blend-alpha+ 0)
-(define-constant +blend-additive+ 1)
-(define-constant +blend-multiplied+ 2)
-(define-constant +blend-add-colors+ 3)
-(define-constant +blend-subtract-colors+ 4)
-(define-constant +blend-alpha-premultiply+ 5)
-(define-constant +blend-custom+ 6)
+(defcenum BlendMode
+  (:blend-alpha 0)
+  (:blend-additive 1)
+  (:blend-multiplied 2)
+  (:blend-add-colors 3)
+  (:blend-subtract-colors 4)
+  (:blend-alpha-premultiply 5)
+  (:blend-custom 6))
 
 ;;
 ;;// Gesture
@@ -1890,17 +1908,18 @@
 ;;    GESTURE_PINCH_IN    = 256,      // Pinch in gesture
 ;;    GESTURE_PINCH_OUT   = 512       // Pinch out gesture
 ;;} Gesture;
-(define-constant +gesture-none+ 0)
-(define-constant +gesture-tap+ 1)
-(define-constant +gesture-doubletap+ 2)
-(define-constant +gesture-hold+ 4)
-(define-constant +gesture-drag+ 8)
-(define-constant +gesture-swipe-right+ 16)
-(define-constant +gesture-swipe-left+ 32)
-(define-constant +gesture-swipe-up+ 64)
-(define-constant +gesture-swipe-down+ 128)
-(define-constant +gesture-pinch-in+ 256)
-(define-constant +gesture-pinch-out+ 512)
+(defbitfield Gesture
+  (:gesture-none 0)
+  (:gesture-tap 1)
+  (:gesture-doubletap 2)
+  (:gesture-hold 4)
+  (:gesture-drag 8)
+  (:gesture-swipe-right 16)
+  (:gesture-swipe-left 32)
+  (:gesture-swipe-up 64)
+  (:gesture-swipe-down 128)
+  (:gesture-pinch-in 256)
+  (:gesture-pinch-out 512))
 
 ;;
 ;;// Camera system modes
@@ -1911,11 +1930,12 @@
 ;;    CAMERA_FIRST_PERSON,            // First person camera
 ;;    CAMERA_THIRD_PERSON             // Third person camera
 ;;} CameraMode;
-(define-constant +camera-custom+ 0)
-(define-constant +camera-free+ 1)
-(define-constant +camera-orbital+ 2)
-(define-constant +camera-first-person+ 3)
-(define-constant +camera-third-person+ 4)
+(defcenum CameraMode
+  (:camera-custom 0)
+  (:camera-free 1)
+  (:camera-orbital 2)
+  (:camera-first-person 3)
+  (:camera-third-person 4))
 
 ;;
 ;;// Camera projection
@@ -1923,8 +1943,9 @@
 ;;    CAMERA_PERSPECTIVE = 0,         // Perspective projection
 ;;    CAMERA_ORTHOGRAPHIC             // Orthographic projection
 ;;} CameraProjection;
-(define-constant +camera-perspective+ 0)
-(define-constant +camera-orthographic+ 1)
+(defcenum CameraProjection
+  (+camera-perspective+ 0)
+  (+camera-orthographic+ 1))
 
 ;;
 ;;// N-patch layout
@@ -1933,9 +1954,10 @@
 ;;    NPATCH_THREE_PATCH_VERTICAL,    // Npatch layout: 1x3 tiles
 ;;    NPATCH_THREE_PATCH_HORIZONTAL   // Npatch layout: 3x1 tiles
 ;;} NPatchLayout;
-(define-constant +npatch-nine-patch+ 0)
-(define-constant +npatch-three-patch-vertical+ 1)
-(define-constant +npatch-three-patch-horizontal+ 2)
+(defcenum NPatchLayout
+  (+npatch-nine-patch+ 0)
+  (+npatch-three-patch-vertical+ 1)
+  (+npatch-three-patch-horizontal+ 2))
 
 ;;
 ;;// Callbacks to hook some internal functions
@@ -2254,7 +2276,7 @@
 ;;RLAPI void BeginBlendMode(int mode);                              // Begin blending mode (alpha, additive, multiplied, subtract, custom)
 (defcfun "BeginBlendMode" :void
   "Begin blending mode"
-  (mode :int))
+  (mode BlendMode))
 
 ;;RLAPI void EndBlendMode(void);                                    // End blending mode (reset to default: alpha blending)
 (defcfun "EndBlendMode" :void
@@ -2324,7 +2346,7 @@
 (defcfun "SetShaderValue" :void
   "Set shader uniform value"
   (shader (:struct %shader))
-  (loc-index :int)
+  (loc-index ShaderLocationIndex)
   (value :pointer)
   (uniform-type :int))
 
@@ -2332,7 +2354,7 @@
 (defcfun "SetShaderValueV" :void
   "Set shader uniform value vector"
   (shader (:struct %shader))
-  (loc-index :int)
+  (loc-index ShaderLocationIndex)
   (value :pointer)
   (uniform-type :int)
   (count :int))
@@ -2340,14 +2362,14 @@
 ;;RLAPI void SetShaderValueMatrix(Shader shader, int locIndex, Matrix mat);         // Set shader uniform value (matrix 4x4)
 (defcfun "SetShaderValueMatrix" :void
   (shader (:struct %shader))
-  (loc-index :int)
+  (loc-index ShaderLocationIndex)
   (mat (:struct %matrix)))
 
 ;;RLAPI void SetShaderValueTexture(Shader shader, int locIndex, Texture2D texture); // Set shader uniform value for texture (sampler2d)
 (defcfun "SetShaderValueTexture" :void
   "Set shader uniform value for texture (sampler2d)"
   (shader (:struct %shader))
-  (loc-index :int)
+  (loc-index ShaderLocationIndex)
   (texture (:struct %texture)))
 
 ;;RLAPI void UnloadShader(Shader shader);                                    // Unload shader from GPU memory (VRAM)
@@ -2654,30 +2676,30 @@
 ;;RLAPI bool IsKeyPressed(int key);                             // Check if a key has been pressed once
 (defcfun "IsKeyPressed" :bool
  "Check if a key has been pressed once"
- (key :int))
+ (key KeyboardKey))
 
 ;;RLAPI bool IsKeyDown(int key);                                // Check if a key is being pressed
 (defcfun "IsKeyDown" :bool
  "Check if a key is being pressed"
- (key :int))
+ (key KeyboardKey))
 
 ;;RLAPI bool IsKeyReleased(int key);                            // Check if a key has been released once
 (defcfun "IsKeyReleased" :bool
  "Check if a key has been released once"
- (key :int))
+ (key KeyboardKey))
 
 ;;RLAPI bool IsKeyUp(int key);                                  // Check if a key is NOT being pressed
 (defcfun "IsKeyUp" :bool
  "Detect if a key is NOT being pressed"
- (key :int))
+ (key KeyboardKey))
  
 ;;RLAPI void SetExitKey(int key);                               // Set a custom key to exit program (default is ESC)
 (defcfun "SetExitKey" :void
  "Set a custom key to exit program (default is ESC)"
- (key :int))
+ (key KeyboardKey))
 
 ;;RLAPI int GetKeyPressed(void);                                // Get key pressed (keycode), call it multiple times for keys queued, returns 0 when the queue is empty
-(defcfun "GetKeyPressed" :int
+(defcfun "GetKeyPressed" KeyboardKey
  "Get key pressed, call it multiple times for chars queued")
 
 ;;RLAPI int GetCharPressed(void);                               // Get char pressed (unicode), call it multiple times for chars queued, returns 0 when the queue is empty
@@ -2700,28 +2722,28 @@
 (defcfun "IsGamepadButtonPressed" :boolean
  "Check if a gamepad button has been pressed once"
  (gamepad :int)
- (button :int))
+ (button GamepadButton))
 
 ;;RLAPI bool IsGamepadButtonDown(int gamepad, int button);      // Check if a gamepad button is being pressed
 (defcfun "IsGamepadButtonDown" :boolean
  "Check if a gamepad button is being pressed"
  (gamepad :int)
- (button :int))
+ (button GamepadButton))
 
 ;;RLAPI bool IsGamepadButtonReleased(int gamepad, int button);  // Check if a gamepad button has been released once
 (defcfun "IsGamepadButtonReleased" :boolean
  "Check if a gamepad button has been released once"
  (gamepad :int)
- (button :int))
+ (button GamepadButton))
 
 ;;RLAPI bool IsGamepadButtonUp(int gamepad, int button);        // Check if a gamepad button is NOT being pressed
 (defcfun "IsGamepadButtonUp" :boolean
  "Check if a gamepad button is NOT being pressed"
  (gamepad :int)
- (button :int))
+ (button GamepadButton))
 
 ;;RLAPI int GetGamepadButtonPressed(void);                      // Get the last gamepad button pressed
-(defcfun "GetGamepadButtonPressed" :int
+(defcfun "GetGamepadButtonPressed" GamepadButton
  "Get the last gamepad button pressed")
 
 ;;RLAPI int GetGamepadAxisCount(int gamepad);                   // Get gamepad axis count for a gamepad
@@ -2733,7 +2755,7 @@
 (defcfun "GetGamepadAxisMovement" :float
  "Get axis movement value for a gamepad axis"
  (gamepad :int)
- (axis :int))
+ (axis GamepadAxis))
 
 ;;RLAPI int SetGamepadMappings(const char *mappings);           // Set internal gamepad mappings (SDL_GameControllerDB)
 (defcfun "SetGamepadMappings" :int
@@ -2807,7 +2829,7 @@
 ;;RLAPI void SetMouseCursor(int cursor);                        // Set mouse cursor
 (defcfun "SetMouseCursor" :void
   "Set mouse cursor"
-  (cursor :int))
+  (cursor MouseCursor))
 
 ;;
 ;;// Input-related functions: touch
@@ -2840,15 +2862,15 @@
 ;;RLAPI void SetGesturesEnabled(unsigned int flags);      // Enable a set of gestures using flags
 (defcfun "SetGesturesEnabled" :void
  "Enable a set of gestures using flags"
- (flags :unsigned-int))
+ (flags Gesture))
 
 ;;RLAPI bool IsGestureDetected(int gesture);              // Check if a gesture have been detected
 (defcfun "IsGestureDetected" :boolean
  "Check if a gesture have been detected"
- (gesture :int))
+ (gesture Gesture))
 
 ;;RLAPI int GetGestureDetected(void);                     // Get latest detected gesture
-(defcfun "GetGestureDetected" :int
+(defcfun "GetGestureDetected" Gesture
  "Get latest detected gesture")
 
 ;;RLAPI float GetGestureHoldDuration(void);               // Get gesture hold time in milliseconds
@@ -2895,26 +2917,26 @@
 ;;
 ;;RLAPI void SetCameraPanControl(int keyPan);             // Set camera pan key to combine with mouse movement (free camera)
 (defcfun "SetCameraPanControl" :void
- (key-pan :int))
+ (key-pan KeyboardKey))
 
 ;;RLAPI void SetCameraAltControl(int keyAlt);             // Set camera alt key to combine with mouse movement (free camera)
 (defcfun "SetCameraAltControl" :void
- (key-alt :int))
+ (key-alt KeyboardKey))
 
 ;;RLAPI void SetCameraSmoothZoomControl(int keySmoothZoom); // Set camera smooth zoom key to combine with mouse (free camera)
 (defcfun "SetCameraSmoothZoomControl" :void
  "Set camera smooth zoom key to combine with mouse (free camera)"
- (key-smooth-zoom :int))
+ (key-smooth-zoom KeyboardKey))
 
 ;;RLAPI void SetCameraMoveControls(int keyFront, int keyBack, int keyRight, int keyLeft, int keyUp, int keyDown); // Set camera move controls (1st person and 3rd person cameras)
 (defcfun "SetCameraMoveControls" :void
  "Set camera move controls (1st person and 3rd person cameras)"
- (front-key :int)
- (back-key :int)
- (right-key :int)
- (left-key :int)
- (up-key :int)
- (down-key :int))
+ (front-key KeyboardKey)
+ (back-key KeyboardKey)
+ (right-key KeyboardKey)
+ (left-key KeyboardKey)
+ (up-key KeyboardKey)
+ (down-key KeyboardKey))
 
 ;;
 ;;//------------------------------------------------------------------------------------
@@ -3792,7 +3814,7 @@
 (defcfun "SetTextureWrap" :void
  "Set texture wrapping mode"
  (texture (:struct %texture))
- (wrap-mode :int))
+ (wrap-mode TextureWrap))
 
 ;;
 ;;// Texture drawing functions
@@ -3988,7 +4010,7 @@
  (file-name :string)
  (font-chars :int)
  (chars-count :int)
- (type :int))
+ (type FontType))
  
 ;;RLAPI Image GenImageFontAtlas(const GlyphInfo *chars, Rectangle **recs, int glyphCount, int fontSize, int padding, int packMethod); // Generate image font atlas using chars info
 (defcfun "GenImageFontAtlas" (:struct %image)
@@ -4665,7 +4687,7 @@
 (defcfun "SetMaterialTexture" :void
  "Set texture for a material map type (MAP_DIFFUSE, MAP_SPECULAR...)"
  (material (:struct %material))
- (map-type :int)
+ (map-type MaterialMapIndex)
  (texture (:struct %texture)))
 
 ;;RLAPI void SetModelMeshMaterial(Model *model, int meshId, int materialId);                  // Set material for a mesh
