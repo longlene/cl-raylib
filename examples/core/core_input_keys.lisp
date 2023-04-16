@@ -13,13 +13,13 @@
       (set-target-fps 60) ; Set our game to run at 60 FPS
       (loop until (window-should-close) ; dectect window close button or ESC key
             do
-            (if (is-key-down +key-right+)
+            (if (is-key-down :key-right)
                 (incf (vx ball-position) 2.0))
-            (if (is-key-down +key-left+)
+            (if (is-key-down :key-left)
                 (incf (vx ball-position) (- 2.0)))
-            (if (is-key-down +key-down+)
+            (if (is-key-down :key-down)
                 (incf (vy ball-position) 2.0))
-            (if (is-key-down +key-up+)
+            (if (is-key-down :key-up)
                 (incf (vy ball-position) (- 2.0)))
             (with-drawing
               (clear-background +raywhite+)
