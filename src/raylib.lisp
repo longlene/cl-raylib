@@ -623,7 +623,7 @@
   (target (:struct %vector3))
   (up (:struct %vector3))
   (fovy :float)
-  (projection :int))
+  (projection CameraProjection))
 
 (defstruct camera3d
   position target up fovy projection)
@@ -634,7 +634,7 @@
     (convert-into-foreign-memory (camera3d-target object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'target))
     (convert-into-foreign-memory (camera3d-up object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'up))
     (setf fovy (coerce (camera3d-fovy object) 'float)
-          projection (camera3d-projection object))))
+          projection (foreign-enum-value 'CameraProjection (camera3d-projection object)))))
 
 (define-conversion-from-foreign (pointer (type camera3d-type))
   (with-foreign-slots ((position target up fovy projection) pointer (:struct %camera3d))
@@ -642,7 +642,7 @@
                    :target target
                    :up up
                    :fovy fovy
-                   :projection projection)))
+                   :projection (foreign-enum-keyword 'CameraProjection projection))))
 
 (defmacro update-camera3d-from-foreign (lisp-var ptr)
   `(cffi:with-foreign-slots ((position target up fovy projection) ,ptr (:struct %camera3d))
@@ -650,7 +650,7 @@
      (setf (camera3d-target ,lisp-var) target)
      (setf (camera3d-fovy ,lisp-var) fovy)
      (setf (camera3d-up ,lisp-var) up)
-     (setf (camera3d-projection ,lisp-var) projection)))
+     (setf (camera3d-projection ,lisp-var) (cffi:foreign-enum-keyword projection))))
 
 ;;
 ;;// Camera2D, defines position/orientation in 2d space
@@ -1944,8 +1944,8 @@
 ;;    CAMERA_ORTHOGRAPHIC             // Orthographic projection
 ;;} CameraProjection;
 (defcenum CameraProjection
-  (+camera-perspective+ 0)
-  (+camera-orthographic+ 1))
+  (:camera-perspective 0)
+  (:camera-orthographic 1))
 
 ;;
 ;;// N-patch layout
@@ -1955,9 +1955,9 @@
 ;;    NPATCH_THREE_PATCH_HORIZONTAL   // Npatch layout: 3x1 tiles
 ;;} NPatchLayout;
 (defcenum NPatchLayout
-  (+npatch-nine-patch+ 0)
-  (+npatch-three-patch-vertical+ 1)
-  (+npatch-three-patch-horizontal+ 2))
+  (:npatch-nine-patch 0)
+  (:npatch-three-patch-vertical 1)
+  (:npatch-three-patch-horizontal 2))
 
 ;;
 ;;// Callbacks to hook some internal functions
