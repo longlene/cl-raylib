@@ -9,10 +9,14 @@
   (let* ((screen-width 800)
          (screen-height 450)
          (title "raylib [core] example - 3d camera mode")
-         (camera-pos (vec 0.0 0.0 10.0))
+         (camera-pos (vec 0.0 10.0 10.0))
          (camera-target (vec 0.0 0.0 0.0))
          (camera-up (vec 0.0 1.0 0.0))
-         (camera (make-camera3d :position camera-pos :target camera-target :up camera-up :fovy 45.0 :projection +camera-perspective+))
+         (camera (make-camera3d :position camera-pos
+                                :target camera-target
+                                :up camera-up
+                                :fovy 45.0
+                                :projection :camera-perspective))
          (cube-pos (vec 0.0 0.0 0.0)))
     (with-window (screen-width screen-height title)
                  (set-target-fps 60) ; Set our game to run at 60 FPS

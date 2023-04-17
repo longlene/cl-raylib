@@ -17,8 +17,8 @@
         do
 	   (setf frame-counter
 		 (cond
-		   ((is-key-down +KEY-SPACE+) (+ frame-counter 8))
-		   ((is-key-down +KEY-ENTER+) 0)
+		   ((is-key-down :key-space) (+ frame-counter 8))
+		   ((is-key-down :key-enter) 0)
 		   (t (1+ frame-counter))))
 	   (with-drawing
 	     (incf frame-counter)
@@ -26,6 +26,6 @@
              (draw-text
 	      (text-subtext message 0 (floor frame-counter 10))
 	      ;;message
-	      210 160 20 +MAROON+))))))
+	      210 160 20 +maroon+))))))
 
 (main)

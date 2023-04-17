@@ -12,15 +12,19 @@
          (camera-pos (vec 10.0 10.0 10.0))
          (camera-target (vec 0.0 0.0 0.0))
          (camera-up (vec 0.0 1.0 0.0))
-         (camera (make-camera3d :position camera-pos :target camera-target :up camera-up :fovy 45.0 :projection +camera-perspective+))
+         (camera (make-camera3d :position camera-pos
+                                :target camera-target
+                                :up camera-up
+                                :fovy 45.0
+                                :projection :camera-perspective))
          (cube-pos (vec 0.0 0.0 0.0))
          (cube-screen-pos (vec 0.0 0.0)))
     (with-window (screen-width screen-height title)
-      (set-camera-mode camera +camera-free+)
+      (disable-cursor)
       (set-target-fps 60) ; Set our game to run at 60 FPS
       (loop
         until (window-should-close) ; dectect window close button or ESC key
-        do (update-camera camera)
+        do (update-camera camera :camera-free)
            (setf cube-screen-pos (get-world-to-screen (v+ cube-pos (vec 0 2.5 0)) camera))
            (with-drawing
              (clear-background +raywhite+)
