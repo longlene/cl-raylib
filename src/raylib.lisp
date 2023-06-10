@@ -2181,7 +2181,7 @@
 ;;
 ;;// Custom frame control functions
 ;;// NOTE: Those functions are intended for advance users that want full control over the frame processing
-;;// By default EndDrawing() does this job: draws everything + SwapScreenBuffer() + manage frame timming + PollInputEvents()
+;;// By default EndDrawing() does this job: draws everything + SwapScreenBuffer() + manage frame timing + PollInputEvents()
 ;;// To avoid that behaviour and control frame processes manually, enable in config.h: SUPPORT_CUSTOM_FRAME_CONTROL
 ;;RLAPI void SwapScreenBuffer(void);                                // Swap back buffer with front buffer (screen drawing)
 (defcfun "SwapScreenBuffer" :void
@@ -4564,7 +4564,7 @@
   "Draw multiple mesh instances with material and different transforms"
   (mesh (:struct %mesh))
   (material (:struct %material))
-  (transorms (:pointer (:struct %matrix)))
+  (transforms (:pointer (:struct %matrix)))
   (instances :int))
 
 ;;RLAPI bool ExportMesh(Mesh mesh, const char *fileName);                                     // Export mesh data to file, returns true on success
@@ -4761,7 +4761,7 @@
 (defcfun "GetRayCollisionMesh" (:struct %ray-collision)
   (ray (:struct %ray))
   (mesh (:struct %mesh))
-  (transofrm (:struct %matrix)))
+  (transform (:struct %matrix)))
 
 ;;RLAPI RayCollision GetRayCollisionTriangle(Ray ray, Vector3 p1, Vector3 p2, Vector3 p3);            // Get collision info between ray and triangle
 (defcfun "GetRayCollisionTriangle" (:struct %ray-collision)

@@ -13,7 +13,7 @@
     (with-window (screen-width screen-height "raylib [text] example - text writing anim")
       (set-target-fps 60) ; Set our game to run at 60 FPS
       (loop
-        until (window-should-close) ; dectect window close button or ESC key
+        until (window-should-close) ; detect window close button or ESC key
         do
 	   (setf frame-counter
 		 (cond

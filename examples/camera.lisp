@@ -21,7 +21,7 @@
     (with-window (screen-width screen-height title)
                  (set-target-fps 60) ; Set our game to run at 60 FPS
                  (loop
-                   (if (window-should-close) (return)) ; dectect window close button or ESC key
+                   (if (window-should-close) (return)) ; detect window close button or ESC key
                    (with-drawing
                      (clear-background +raywhite+)
                      (with-mode-3d (camera)
