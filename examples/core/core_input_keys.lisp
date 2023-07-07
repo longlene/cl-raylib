@@ -11,7 +11,7 @@
          (ball-position (vec (float (/ screen-width 2)) (float (/ screen-height 2)))))
     (with-window (screen-width screen-height "raylib [core] example - keyboard input")
       (set-target-fps 60) ; Set our game to run at 60 FPS
-      (loop until (window-should-close) ; dectect window close button or ESC key
+      (loop until (window-should-close) ; detect window close button or ESC key
             do
             (if (is-key-down :key-right)
                 (incf (vx ball-position) 2.0))

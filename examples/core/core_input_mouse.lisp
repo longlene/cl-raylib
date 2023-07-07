@@ -12,7 +12,7 @@
          (ball-color +darkblue+))
     (with-window (screen-width screen-height "raylib [core] example - mouse input")
       (set-target-fps 60) ; Set our game to run at 60 FPS
-      (loop until (window-should-close) ; dectect window close button or ESC key
+      (loop until (window-should-close) ; detect window close button or ESC key
             do
             (setf ball-position (get-mouse-position))
             (cond

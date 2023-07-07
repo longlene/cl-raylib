@@ -15,7 +15,7 @@
         (with-sound (fx-wav (concatenate 'string res-path "sound.wav"))
 	  (with-sound (fx-ogg (concatenate 'string res-path "target.ogg"))
 	    (loop
-	      until (window-should-close) ; dectect window close button or ESC key
+	      until (window-should-close) ; detect window close button or ESC key
 	      do
 		 (if (is-key-pressed :key-space) (play-sound fx-wav))
 		 (if (is-key-pressed :key-enter) (play-sound fx-ogg))
