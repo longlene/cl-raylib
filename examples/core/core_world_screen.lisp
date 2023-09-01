@@ -27,13 +27,13 @@
         do (update-camera camera :camera-free)
            (setf cube-screen-pos (get-world-to-screen (v+ cube-pos (vec 0 2.5 0)) camera))
            (with-drawing
-             (clear-background +raywhite+)
+             (clear-background :raywhite)
              (with-mode-3d (camera)
-               (draw-cube cube-pos 2.0 2.0 2.0 +red+)
-               (draw-cube-wires cube-pos 2.0 2.0 2.0 +maroon+)
+               (draw-cube cube-pos 2.0 2.0 2.0 :red)
+               (draw-cube-wires cube-pos 2.0 2.0 2.0 :maroon)
                (draw-grid 10 1.0))
              (draw-text "Enemy: 100/100" (- (floor (vx cube-screen-pos)) (floor (measure-text "Enemy: 100/100" 20) 2)) 
-                        (floor (vy cube-screen-pos) ) 20 +black+)
-             (draw-text "Text is always on top of the cube" (floor (- screen-width (measure-text "Text is always on top of the cube" 20)) 2) 25 20 +gray+))))))
+                        (floor (vy cube-screen-pos) ) 20 :black)
+             (draw-text "Text is always on top of the cube" (floor (- screen-width (measure-text "Text is always on top of the cube" 20)) 2) 25 20 :gray))))))
 
 (main)

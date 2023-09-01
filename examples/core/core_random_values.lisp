@@ -18,8 +18,8 @@
                 (setf rand-value (get-random-value -8 5)
                       frames-counter 0))
             (with-drawing
-              (clear-background +raywhite+)
-              (draw-text "Every 2 seconds a new random value is generated:" 130 100 20 +maroon+)
-              (draw-text (text-format "%i" :int rand-value) 360 180 80 +lightgray+))))))
+              (clear-background :raywhite)
+              (draw-text "Every 2 seconds a new random value is generated:" 130 100 20 :maroon)
+              (draw-text (text-format "%i" :int rand-value) 360 180 80 :lightgray))))))
 
 (main)

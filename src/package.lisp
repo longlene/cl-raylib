@@ -4,32 +4,6 @@
   (:export
     ;; Basic Colors
     #:make-rgba
-    #:+lightgray+
-    #:+gray+
-    #:+darkgray+
-    #:+yellow+
-    #:+gold+
-    #:+orange+
-    #:+pink+
-    #:+red+
-    #:+maroon+
-    #:+green+
-    #:+lime+
-    #:+darkgreen+
-    #:+skyblue+
-    #:+blue+
-    #:+darkblue+
-    #:+purple+
-    #:+violet+
-    #:+darkpurple+
-    #:+beige+
-    #:+brown+
-    #:+darkbrown+
-    #:+white+
-    #:+black+
-    #:+blank+
-    #:+magenta+
-    #:+raywhite+
 
     #:make-vector2
     #:vector2-x

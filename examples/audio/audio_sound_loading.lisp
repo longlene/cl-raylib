@@ -20,8 +20,8 @@
 		 (if (is-key-pressed :key-space) (play-sound fx-wav))
 		 (if (is-key-pressed :key-enter) (play-sound fx-ogg))
 		 (with-drawing
-		   (clear-background +raywhite+)
-		   (draw-text "Press SPACE to PLAY the WAV sound!" 200 180 20 +lightgray+)
-		   (draw-text "Press ENTER to PLAY the OGG sound!" 200 220 20 +lightgray+)))))))))
+		   (clear-background :raywhite)
+		   (draw-text "Press SPACE to PLAY the WAV sound!" 200 180 20 :lightgray)
+		   (draw-text "Press ENTER to PLAY the OGG sound!" 200 220 20 :lightgray)))))))))
 
 (main)

@@ -23,13 +23,13 @@
                  (loop
                    (if (window-should-close) (return)) ; detect window close button or ESC key
                    (with-drawing
-                     (clear-background +raywhite+)
+                     (clear-background :raywhite)
                      (with-mode-3d (camera)
-                                   (draw-cube cube-pos 2.0 2.0 2.0 +red+)
-                                   (draw-cube-wires cube-pos 2.0 2.0 2.0 +maroon+)
+                                   (draw-cube cube-pos 2.0 2.0 2.0 :red)
+                                   (draw-cube-wires cube-pos 2.0 2.0 2.0 :maroon)
                                    (draw-grid 10 1.0))
 
-                     (draw-text "Welcome to the third dimension!" 10 40 20 +darkgray+)
+                     (draw-text "Welcome to the third dimension!" 10 40 20 :darkgray)
                      (draw-fps 10 10))))))
 
 (main)

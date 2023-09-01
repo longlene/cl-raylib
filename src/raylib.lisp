@@ -158,59 +158,62 @@
      (ash b 16)
      (ash a 24))))
 
-;;#define LIGHTGRAY  CLITERAL(Color){ 200, 200, 200, 255 }   // Light Gray
-(define-constant +lightgray+ (make-rgba 200 200 200 255) :test #'equal)
-;;#define GRAY       CLITERAL(Color){ 130, 130, 130, 255 }   // Gray
-(define-constant +gray+ (make-rgba 130 130 130 255) :test #'equal)
-;;#define DARKGRAY   CLITERAL(Color){ 80, 80, 80, 255 }      // Dark Gray
-(define-constant +darkgray+ (make-rgba 80 80 80 255) :test #'equal)
-;;#define YELLOW     CLITERAL(Color){ 253, 249, 0, 255 }     // Yellow
-(define-constant +yellow+ (make-rgba 253 249 0 255) :test #'equal)
-;;#define GOLD       CLITERAL(Color){ 255, 203, 0, 255 }     // Gold
-(define-constant +gold+ (make-rgba 255 203 0 255) :test #'equal)
-;;#define ORANGE     CLITERAL(Color){ 255, 161, 0, 255 }     // Orange
-(define-constant +orange+     (make-rgba 255 161 0 255 ) :test #'equal)
-;;#define PINK       CLITERAL(Color){ 255, 109, 194, 255 }   // Pink
-(define-constant +pink+       (make-rgba 255 109 194 255) :test #'equal)
-;;#define RED        CLITERAL(Color){ 230, 41, 55, 255 }     // Red
-(define-constant +red+        (make-rgba  230 41 55 255 ) :test #'equal)    
-;;#define MAROON     CLITERAL(Color){ 190, 33, 55, 255 }     // Maroon
-(define-constant +maroon+      (make-rgba 190 33 55 255) :test #'equal)
-;;#define GREEN      CLITERAL(Color){ 0, 228, 48, 255 }      // Green
-(define-constant +green+       (make-rgba 0 228 48 255) :test #'equal)
-;;#define LIME       CLITERAL(Color){ 0, 158, 47, 255 }      // Lime
-(define-constant +lime+        (make-rgba 0 158 47 255) :test #'equal)
-;;#define DARKGREEN  CLITERAL(Color){ 0, 117, 44, 255 }      // Dark Green
-(define-constant +darkgreen+   (make-rgba 0 117 44 255) :test #'equal)
-;;#define SKYBLUE    CLITERAL(Color){ 102, 191, 255, 255 }   // Sky Blue
-(define-constant +skyblue+     (make-rgba 102 191 255 255) :test #'equal)
-;;#define BLUE       CLITERAL(Color){ 0, 121, 241, 255 }     // Blue
-(define-constant +blue+        (make-rgba 0 121 241 255) :test #'equal)
-;;#define DARKBLUE   CLITERAL(Color){ 0, 82, 172, 255 }      // Dark Blue
-(define-constant +darkblue+    (make-rgba 0 82 172 255) :test #'equal)
-;;#define PURPLE     CLITERAL(Color){ 200, 122, 255, 255 }   // Purple
-(define-constant +purple+      (make-rgba 200 122 255 255) :test #'equal)
-;;#define VIOLET     CLITERAL(Color){ 135, 60, 190, 255 }    // Violet
-(define-constant +violet+      (make-rgba 135 60 190 255) :test #'equal)
-;;#define DARKPURPLE CLITERAL(Color){ 112, 31, 126, 255 }    // Dark Purple
-(define-constant +darkpurple+  (make-rgba 112 31 126 255) :test #'equal) 
-;;#define BEIGE      CLITERAL(Color){ 211, 176, 131, 255 }   // Beige
-(define-constant +beige+       (make-rgba 211 176 131 255) :test #'equal) 
-;;#define BROWN      CLITERAL(Color){ 127, 106, 79, 255 }    // Brown
-(define-constant +brown+       (make-rgba 127 106 79 255) :test #'equal)
-;;#define DARKBROWN  CLITERAL(Color){ 76, 63, 47, 255 }      // Dark Brown
-(define-constant +darkbrown+   (make-rgba 76 63 47 255) :test #'equal)
-;;
-;;#define WHITE      CLITERAL(Color){ 255, 255, 255, 255 }   // White
-(define-constant +white+       (make-rgba 255 255 255 255) :test #'equal)
-;;#define BLACK      CLITERAL(Color){ 0, 0, 0, 255 }         // Black
-(define-constant +black+       (make-rgba 0 0 0 255) :test #'equal)
-;;#define BLANK      CLITERAL(Color){ 0, 0, 0, 0 }           // Blank (Transparent)
-(define-constant +blank+       (make-rgba 0 0 0 0) :test #'equal)
-;;#define MAGENTA    CLITERAL(Color){ 255, 0, 255, 255 }     // Magenta
-(define-constant +magenta+     (make-rgba 255 0 255 255) :test #'equal)
-;;#define RAYWHITE   CLITERAL(Color){ 245, 245, 245, 255 }   // My own White (raylib logo)
-(define-constant +raywhite+    (make-rgba 245 245 245 255) :test #'equal)
+(defparameter +colors+
+  (plist-hash-table
+   (list
+    ;;#define LIGHTGRAY  CLITERAL(Color){ 200, 200, 200, 255 }   // Light Gray
+    :lightgray (make-rgba 200 200 200 255)
+    ;;#define GRAY       CLITERAL(Color){ 130, 130, 130, 255 }   // Gray
+    :gray (make-rgba 130 130 130 255)
+    ;;#define DARKGRAY   CLITERAL(Color){ 80, 80, 80, 255 }      // Dark Gray
+    :darkgray (make-rgba 80 80 80 255)
+    ;;#define YELLOW     CLITERAL(Color){ 253, 249, 0, 255 }     // Yellow
+    :yellow (make-rgba 253 249 0 255)
+    ;;#define GOLD       CLITERAL(Color){ 255, 203, 0, 255 }     // Gold
+    :gold (make-rgba 255 203 0 255)
+    ;;#define ORANGE     CLITERAL(Color){ 255, 161, 0, 255 }     // Orange
+    :orange (make-rgba 255 161 0 255 )
+    ;;#define PINK       CLITERAL(Color){ 255, 109, 194, 255 }   // Pink
+    :pink (make-rgba 255 109 194 255)
+    ;;#define RED        CLITERAL(Color){ 230, 41, 55, 255 }     // Red
+    :red (make-rgba  230 41 55 255 )
+    ;;#define MAROON     CLITERAL(Color){ 190, 33, 55, 255 }     // Maroon
+    :maroon (make-rgba 190 33 55 255)
+    ;;#define GREEN      CLITERAL(Color){ 0, 228, 48, 255 }      // Green
+    :green (make-rgba 0 228 48 255)
+    ;;#define LIME       CLITERAL(Color){ 0, 158, 47, 255 }      // Lime
+    :lime (make-rgba 0 158 47 255)
+    ;;#define DARKGREEN  CLITERAL(Color){ 0, 117, 44, 255 }      // Dark Green
+    :darkgreen (make-rgba 0 117 44 255)
+    ;;#define SKYBLUE    CLITERAL(Color){ 102, 191, 255, 255 }   // Sky Blue
+    :skyblue (make-rgba 102 191 255 255)
+    ;;#define BLUE       CLITERAL(Color){ 0, 121, 241, 255 }     // Blue
+    :blue (make-rgba 0 121 241 255)
+    ;;#define DARKBLUE   CLITERAL(Color){ 0, 82, 172, 255 }      // Dark Blue
+    :darkblue (make-rgba 0 82 172 255)
+    ;;#define PURPLE     CLITERAL(Color){ 200, 122, 255, 255 }   // Purple
+    :purple (make-rgba 200 122 255 255)
+    ;;#define VIOLET     CLITERAL(Color){ 135, 60, 190, 255 }    // Violet
+    :violet (make-rgba 135 60 190 255)
+    ;;#define DARKPURPLE CLITERAL(Color){ 112, 31, 126, 255 }    // Dark Purple
+    :darkpurple (make-rgba 112 31 126 255)
+    ;;#define BEIGE      CLITERAL(Color){ 211, 176, 131, 255 }   // Beige
+    :beige (make-rgba 211 176 131 255)
+    ;;#define BROWN      CLITERAL(Color){ 127, 106, 79, 255 }    // Brown
+    :brown (make-rgba 127 106 79 255)
+    ;;#define DARKBROWN  CLITERAL(Color){ 76, 63, 47, 255 }      // Dark Brown
+    :darkbrown (make-rgba 76 63 47 255)
+    ;;#define WHITE      CLITERAL(Color){ 255, 255, 255, 255 }   // White
+    :white (make-rgba 255 255 255 255)
+    ;;#define BLACK      CLITERAL(Color){ 0, 0, 0, 255 }         // Black
+    :black (make-rgba 0 0 0 255)
+    ;;#define BLANK      CLITERAL(Color){ 0, 0, 0, 0 }           // Blank (Transparent)
+    :blank (make-rgba 0 0 0 0)
+    ;;#define MAGENTA    CLITERAL(Color){ 255, 0, 255, 255 }     // Magenta
+    :magenta (make-rgba 255 0 255 255)
+    ;;#define RAYWHITE   CLITERAL(Color){ 245, 245, 245, 255 }   // My own White (raylib logo)
+    :raywhite (make-rgba 245 245 245 255))))
+
 ;;
 ;;//----------------------------------------------------------------------------------
 ;;// Structures Definition
@@ -355,16 +358,24 @@
   (b :unsigned-char)
   (a :unsigned-char))
 
+(defun colorp (c)
+  (and (keywordp c)
+       (member c (hash-table-keys +colors+))))
+
+(deftype color () '(satisfies colorp))
+
 (define-conversion-into-foreign-memory (object (type color-type) pointer)
-  (with-foreign-slots ((r g b a) pointer (:struct %color))
-                      (setf r (nth 0 object))
-                      (setf g (nth 1 object))
-                      (setf b (nth 2 object))
-                      (setf a (nth 3 object))))
+  (ctypecase object
+    (color (setf (mem-ref pointer :uint) (gethash object +colors+)))
+    ((unsigned-byte 32) (setf (mem-ref pointer :uint) object))
+    (list (with-foreign-slots ((r g b a) pointer (:struct %color))
+            (setf r (nth 0 object)
+                  g (nth 1 object)
+                  b (nth 2 object)
+                  a (nth 3 object))))))
 
 (define-conversion-from-foreign (pointer (type color-type))
-  (with-foreign-slots ((r g b a) pointer (:struct %color))
-   (list r g b a)))
+  (mem-ref pointer :uint))
 
 ;;
 ;;// Rectangle, 4 components
@@ -789,14 +800,14 @@
 (defcstruct (%material-map :class material-map-type)
  "Material texture map"
  (texture (:struct %texture))
- (color :uint)
+ (color (:struct %color))
  (value :float))
  
 (define-conversion-into-foreign-memory (object (type material-map-type) pointer)
- (with-foreign-slots ((texture color value) pointer (:struct %material-map))
-                      (setf texture (nth 0 object))
-                      (setf color (nth 1 object))
-                      (setf value (coerce (nth 2 object) 'float))))
+  (with-foreign-slots ((texture (:pointer color) value) pointer (:struct %material-map))
+    (setf texture (nth 0 object))
+    (translate-into-foreign-memory (nth 1 object) '(:struct %color) color)
+    (setf value (coerce (nth 2 object) 'float))))
 
 (define-conversion-from-foreign (pointer (type material-map-type))
   (with-foreign-slots ((texture color value) pointer (:struct %material-map))
@@ -2227,7 +2238,7 @@
 ;;RLAPI void ClearBackground(Color color);                          // Set background color (framebuffer clear color)
 (defcfun "ClearBackground" :void
  "Set background color (framebuffer clear color)"
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void BeginDrawing(void);                                    // Setup canvas (framebuffer) to start drawing
 (defcfun "BeginDrawing" :void
@@ -2952,13 +2963,13 @@
  "Draw a pixel"
  (pos-x :int)
  (pos-y :int)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawPixelV(Vector2 position, Color color);                                                    // Draw a pixel (Vector version)
 (defcfun "DrawPixelV" :void
  "Draw a pixel (Vector version)"
  (position (:struct %vector2))
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawLine(int startPosX, int startPosY, int endPosX, int endPosY, Color color);                // Draw a line
 (defcfun "DrawLine" :void
@@ -2967,14 +2978,14 @@
  (start-pos-y :int)
  (end-pos-x :int)
  (end-pos-y :int)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawLineV(Vector2 startPos, Vector2 endPos, Color color);                                     // Draw a line (Vector version)
 (defcfun "DrawLineV" :void
  "Draw a line (Vector version)"
  (start-pos (:struct %vector2))
  (end-pos (:struct %vector2))
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawLineEx(Vector2 startPos, Vector2 endPos, float thick, Color color);                       // Draw a line defining thickness
 (defcfun "DrawLineEx" :void
@@ -2982,7 +2993,7 @@
  (start-pos (:struct %vector2))
  (end-pos (:struct %vector2))
  (thick :float)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawLineBezier(Vector2 startPos, Vector2 endPos, float thick, Color color);                   // Draw a line using cubic-bezier curves in-out
 (defcfun "DrawLineBezier" :void
@@ -2990,7 +3001,7 @@
  (start-pos (:struct %vector2))
  (end-pos (:struct %vector2))
  (thick :float)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawLineBezierQuad(Vector2 startPos, Vector2 endPos, Vector2 controlPos, float thick, Color color); // Draw line using quadratic bezier curves with a control point
 (defcfun "DrawLineBezierQuad" :void
@@ -2999,7 +3010,7 @@
   (end-pos (:struct %vector2))
   (control-pos (:struct %vector2))
   (thick :float)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void DrawLineBezierCubic(Vector2 startPos, Vector2 endPos, Vector2 startControlPos, Vector2 endControlPos, float thick, Color color); // Draw line using cubic bezier curves with 2 control points
 (defcfun "DrawLineBezierCubic" :void
@@ -3009,14 +3020,14 @@
   (start-control-pos (:struct %vector2))
   (end-control-pos (:struct %vector2))
   (thick :float)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void DrawLineStrip(Vector2 *points, int pointCount, Color color);                                  // Draw lines sequence
 (defcfun "DrawLineStrip" :void
   "Draw lines sequence"
   (points (:pointer (:struct %vector2)))
   (point-count :int)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void DrawCircle(int centerX, int centerY, float radius, Color color);                              // Draw a color-filled circle
 (defcfun "DrawCircle" :void
@@ -3024,7 +3035,7 @@
   (center-x :int)
   (center-y :int)
   (radius :float)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void DrawCircleSector(Vector2 center, float radius, float startAngle, float endAngle, int segments, Color color);      // Draw a piece of a circle
 (defcfun "DrawCircleSector" :void
@@ -3034,7 +3045,7 @@
   (start-angle :float)
   (end-angle :float)
   (segments :int)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void DrawCircleSectorLines(Vector2 center, float radius, float startAngle, float endAngle, int segments, Color color); // Draw circle sector outline
 (defcfun "DrawCircleSectorLines" :void
@@ -3044,7 +3055,7 @@
   (start-angle :float)
   (end-angle :float)
   (segments :int)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void DrawCircleGradient(int centerX, int centerY, float radius, Color color1, Color color2);       // Draw a gradient-filled circle
 (defcfun "DrawCircleGradient" :void
@@ -3052,15 +3063,15 @@
   (center-x :int)
   (center-y :int)
   (radius :float)
-  (color1 :uint)
-  (color2 :uint))
+  (color1 (:struct %color))
+  (color2 (:struct %color)))
 
 ;;RLAPI void DrawCircleV(Vector2 center, float radius, Color color);                                       // Draw a color-filled circle (Vector version)
 (defcfun "DrawCircleV" :void
  "Draw a color-filled circle (Vector version)"
  (center (:struct %vector2))
  (radius :float)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawCircleLines(int centerX, int centerY, float radius, Color color);                         // Draw circle outline
 (defcfun "DrawCircleLines" :void
@@ -3068,7 +3079,7 @@
   (center-x :int)
   (center-y :int)
   (radius :float)
-  (color :uint))
+  (color (:struct %color)))
   
 ;;RLAPI void DrawEllipse(int centerX, int centerY, float radiusH, float radiusV, Color color);             // Draw ellipse
 (defcfun "DrawEllipse" :void
@@ -3077,7 +3088,7 @@
  (center-y :int)
  (radius-h :float)
  (radius-v :float)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawEllipseLines(int centerX, int centerY, float radiusH, float radiusV, Color color);        // Draw ellipse outline
 (defcfun "DrawEllipseLines" :void
@@ -3086,7 +3097,7 @@
  (center-y :int)
  (radius-h :float)
  (radius-v :float)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawRing(Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, int segments, Color color); // Draw ring
 (defcfun "DrawRing" :void
@@ -3097,7 +3108,7 @@
   (start-angle :float)
   (end-angle :float)
   (segments :int)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void DrawRingLines(Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, int segments, Color color);    // Draw ring outline
 (defcfun "DrawRingLines" :void
@@ -3108,7 +3119,7 @@
   (start-angle :float)
   (end-angle :float)
   (segments :int)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void DrawRectangle(int posX, int posY, int width, int height, Color color);                        // Draw a color-filled rectangle
 (defcfun "DrawRectangle" :void
@@ -3117,20 +3128,20 @@
  (pos-y :int)
  (width :int)
  (height :int)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawRectangleV(Vector2 position, Vector2 size, Color color);                                  // Draw a color-filled rectangle (Vector version)
 (defcfun "DrawRectangleV" :void
  "Draw a color-filled rectangle (Vector version)"
  (position (:struct %vector2))
  (size (:struct %vector2))
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawRectangleRec(Rectangle rec, Color color);                                                 // Draw a color-filled rectangle
 (defcfun "DrawRectangleRec" :void
  "Draw a color-filled rectangle"
  (rec (:struct %rectangle))
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawRectanglePro(Rectangle rec, Vector2 origin, float rotation, Color color);                 // Draw a color-filled rectangle with pro parameters
 (defcfun "DrawRectanglePro" :void
@@ -3138,7 +3149,7 @@
  (rec (:struct %rectangle))
  (origin (:struct %vector2))
  (rotation :float)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawRectangleGradientV(int posX, int posY, int width, int height, Color color1, Color color2);// Draw a vertical-gradient-filled rectangle
 (defcfun "DrawRectangleGradientV" :void
@@ -3147,8 +3158,8 @@
  (pos-y :int)
  (width :int)
  (height :int)
- (color1 :uint)
- (color2 :uint))
+ (color1 (:struct %color))
+ (color2 (:struct %color)))
 
 ;;RLAPI void DrawRectangleGradientH(int posX, int posY, int width, int height, Color color1, Color color2);// Draw a horizontal-gradient-filled rectangle
 (defcfun "DrawRectangleGradientH" :void
@@ -3157,17 +3168,17 @@
  (pos-y :int)
  (width :int)
  (height :int)
- (color1 :uint)
- (color2 :uint))
+ (color1 (:struct %color))
+ (color2 (:struct %color)))
 
 ;;RLAPI void DrawRectangleGradientEx(Rectangle rec, Color col1, Color col2, Color col3, Color col4);       // Draw a gradient-filled rectangle with custom vertex colors
 (defcfun "DrawRectangleGradientEx" :void
  "Draw a gradient-filled rectangle with custom vertex colors"
  (rec (:struct %rectangle))
- (col1 :uint)
- (col2 :uint)
- (col3 :uint)
- (col4 :uint))
+ (col1 (:struct %color))
+ (col2 (:struct %color))
+ (col3 (:struct %color))
+ (col4 (:struct %color)))
 
 ;;RLAPI void DrawRectangleLines(int posX, int posY, int width, int height, Color color);                   // Draw rectangle outline
 (defcfun "DrawRectangleLines" :void
@@ -3176,14 +3187,14 @@
  (pos-y :int)
  (width :int)
  (height :int)
- (color :uint))
+ (color (:struct %color)))
  
 ;;RLAPI void DrawRectangleLinesEx(Rectangle rec, float lineThick, Color color);                            // Draw rectangle outline with extended parameters
 (defcfun "DrawRectangleLinesEx" :void
  "Draw rectangle outline with extended parameters"
  (rec (:struct %rectangle))
  (line-thick :float)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawRectangleRounded(Rectangle rec, float roundness, int segments, Color color);              // Draw rectangle with rounded edges
 (defcfun "DrawRectangleRounded" :void
@@ -3191,7 +3202,7 @@
  (rec (:struct %rectangle))
  (roundness :float)
  (segments :int)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawRectangleRoundedLines(Rectangle rec, float roundness, int segments, float lineThick, Color color); // Draw rectangle with rounded edges outline
 (defcfun "DrawRectangleRoundedLines" :void
@@ -3200,7 +3211,7 @@
  (roundness :float)
  (segments :int)
  (line-thick :float)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawTriangle(Vector2 v1, Vector2 v2, Vector2 v3, Color color);                                // Draw a color-filled triangle (vertex in counter-clockwise order!)
 (defcfun "DrawTriangle" :void
@@ -3208,7 +3219,7 @@
  (v1 (:struct %vector2))
  (v2 (:struct %vector2))
  (v3 (:struct %vector2))
- (color :uint))
+ (color (:struct %color)))
  
 ;;RLAPI void DrawTriangleLines(Vector2 v1, Vector2 v2, Vector2 v3, Color color);                           // Draw triangle outline (vertex in counter-clockwise order!)
 (defcfun "DrawTriangleLines" :void
@@ -3216,21 +3227,21 @@
  (v1 (:struct %vector2))
  (v2 (:struct %vector2))
  (v3 (:struct %vector2))
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawTriangleFan(Vector2 *points, int pointCount, Color color);                                // Draw a triangle fan defined by points (first vertex is the center)
 (defcfun "DrawTriangleFan" :void
  "Draw a triangle fan defined by points"
  (points (:pointer (:struct %vector2)))
  (point-count :int)
- (color :uint))
+ (color (:struct %color)))
  
 ;;RLAPI void DrawTriangleStrip(Vector2 *points, int pointCount, Color color);                              // Draw a triangle strip defined by points
 (defcfun "DrawTriangleStrip" :void
  "Draw a triangle strip defined by points"
  (points (:pointer (:struct %vector2)))
  (point-count :int)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawPoly(Vector2 center, int sides, float radius, float rotation, Color color);               // Draw a regular polygon (Vector version)
 (defcfun "DrawPoly" :void
@@ -3239,7 +3250,7 @@
  (sides :int)
  (radius :float)
  (rotation :float)
- (color :uint))
+ (color (:struct %color)))
  
 ;;RLAPI void DrawPolyLines(Vector2 center, int sides, float radius, float rotation, Color color);          // Draw a polygon outline of n sides
 (defcfun "DrawPolyLines" :void
@@ -3248,7 +3259,7 @@
  (sides :int)
  (radius :float)
  (rotation :float)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawPolyLinesEx(Vector2 center, int sides, float radius, float rotation, float lineThick, Color color); // Draw a polygon outline of n sides with extended parameters
 (defcfun "DrawPolyLinesEx" :void
@@ -3257,7 +3268,7 @@
   (radius :float)
   (rotation :float)
   (line-thick :float)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;
 ;;// Basic shapes collision detection functions
@@ -3380,23 +3391,23 @@
  "Generate image: plain color"
  (width :int)
  (height :int)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI Image GenImageGradientV(int width, int height, Color top, Color bottom);                           // Generate image: vertical gradient
 (defcfun "GenImageGradientV" (:struct %image)
  "Generate image: vertical gradient"
  (width :int)
  (height :int)
- (top :uint)
- (bottom :uint))
+ (top (:struct %color))
+ (bottom (:struct %color)))
 
 ;;RLAPI Image GenImageGradientH(int width, int height, Color left, Color right);                           // Generate image: horizontal gradient
 (defcfun "GenImageGradientH" (:struct %image)
  "Generate image: horizontal gradient"
  (width :int)
  (height :int)
- (left :uint)
- (right :uint))
+ (left (:struct %color))
+ (right (:struct %color)))
 
 ;;RLAPI Image GenImageGradientRadial(int width, int height, float density, Color inner, Color outer);      // Generate image: radial gradient
 (defcfun "GenImageGradientRadial" (:struct %image)
@@ -3404,8 +3415,8 @@
  (width :int)
  (height :int)
  (density :float)
- (inner :uint)
- (outer :uint))         
+ (inner (:struct %color))
+ (outer (:struct %color)))         
    
 ;;RLAPI Image GenImageChecked(int width, int height, int checksX, int checksY, Color col1, Color col2);    // Generate image: checked
 (defcfun "GenImageChecked" (:struct %image)
@@ -3414,8 +3425,8 @@
  (height :int)
  (checks-x :int)
  (checks-y :int)
- (col1 :uint)
- (col2 :uint))
+ (col1 (:struct %color))
+ (col2 (:struct %color)))
 
 ;;RLAPI Image GenImageWhiteNoise(int width, int height, float factor);                                     // Generate image: white noise
 (defcfun "GenImageWhiteNoise" (:struct %image)
@@ -3449,7 +3460,7 @@
  "Create an image from text (default font)"
  (text :string)
  (font-size :int)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI Image ImageTextEx(Font font, const char *text, float fontSize, float spacing, Color tint);         // Create an image from text (custom sprite font)
 (defcfun "ImageTextEx" (:struct %image)
@@ -3458,7 +3469,7 @@
  (text :string)
  (font-size :float)
  (spacing :float)
- (tint :uint))
+ (tint (:struct %color)))
 
 ;;RLAPI void ImageFormat(Image *image, int newFormat);                                                     // Convert image data to desired format
 (defcfun "ImageFormat" :void
@@ -3468,7 +3479,7 @@
 ;;RLAPI void ImageToPOT(Image *image, Color fill);                                                         // Convert image to POT (power-of-two)
 (defcfun "ImageToPOT" :void
  (image (:pointer (:struct %image)))
- (fill-color :uint))
+ (fill-color (:struct %color)))
 
 ;;RLAPI void ImageCrop(Image *image, Rectangle crop);                                                      // Crop an image to a defined rectangle
 (defcfun "ImageCrop" :void
@@ -3486,7 +3497,7 @@
 (defcfun "ImageAlphaClear" :void
  "Clear alpha channel to desired color"
  (image :pointer)
- (color :uint)
+ (color (:struct %color))
  (threshold :float))
 
 ;;RLAPI void ImageAlphaMask(Image *image, Image alphaMask);                                                // Apply alpha mask to image
@@ -3521,7 +3532,7 @@
  (new-height :int)
  (offset-x :int)
  (offset-y :int)
- (fill :uint))
+ (fill (:struct %color)))
 
 ;;RLAPI void ImageMipmaps(Image *image);                                                                   // Compute all mipmap levels for a provided image
 (defcfun "ImageMipmaps" :void
@@ -3561,7 +3572,7 @@
 (defcfun "ImageColorTint" :void
  "Modify image color: tint"
  (image (:pointer (:struct %image)))
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void ImageColorInvert(Image *image);                                                               // Modify image color: invert
 (defcfun "ImageColorInvert" :void
@@ -3589,26 +3600,26 @@
 (defcfun "ImageColorReplace" :void
  "Modify image color: replace color"
  (image :pointer)
- (color :uint)
- (replace :uint))
+ (color (:struct %color))
+ (replace (:struct %color)))
 
 ;;RLAPI Color *LoadImageColors(Image image);                                                               // Load color data from image as a Color array (RGBA - 32bit)
-(defcfun "LoadImageColors" (:pointer :uint)
+(defcfun "LoadImageColors" (:pointer (:struct %color))
   (image (:struct %image)))
 
 ;;RLAPI Color *LoadImagePalette(Image image, int maxPaletteSize, int *colorCount);                         // Load colors palette from image as a Color array (RGBA - 32bit)
-(defcfun "LoadImagePalette" (:pointer :uint)
+(defcfun "LoadImagePalette" (:pointer (:struct %color))
   (image (:struct %image))
   (max-palette-size :int)
   (color-count (:pointer :int)))
 
 ;;RLAPI void UnloadImageColors(Color *colors);                                                             // Unload color data loaded with LoadImageColors()
 (defcfun "UnloadImageColors" :void
-  (colors (:pointer :uint)))
+  (colors (:pointer (:struct %color))))
 
 ;;RLAPI void UnloadImagePalette(Color *colors);                                                            // Unload colors palette loaded with LoadImagePalette()
 (defcfun "UnloadImagePalette" :void
-  (colors (:pointer :uint)))
+  (colors (:pointer (:struct %color))))
  
 ;;RLAPI Rectangle GetImageAlphaBorder(Image image, float threshold);                                       // Get image alpha border rectangle
 (defcfun "GetImageAlphaBorder" (:struct %rectangle)
@@ -3617,7 +3628,7 @@
  (threshold :float))
 
 ;;RLAPI Color GetImageColor(Image image, int x, int y);                                                    // Get image pixel color at (x, y) position
-(defcfun "GetImageColor" :uint
+(defcfun "GetImageColor" (:struct %color)
   (image (:struct %image))
   (x :int)
   (y :int))
@@ -3629,7 +3640,7 @@
 (defcfun "ImageClearBackground" :void
   "Clear image background with given color"
   (dst (:pointer (:struct %image)))
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void ImageDrawPixel(Image *dst, int posX, int posY, Color color);                                  // Draw pixel within an image
 (defcfun "ImageDrawPixel" :void
@@ -3637,14 +3648,14 @@
   (dst (:pointer (:struct %image)))
   (pos-x :int)
   (pos-y :int)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void ImageDrawPixelV(Image *dst, Vector2 position, Color color);                                   // Draw pixel within an image (Vector version)
 (defcfun "ImageDrawPixelV" :void
   "Draw pixel within an image (Vector version)"
   (dst (:pointer (:struct %image)))
   (position (:struct %vector2))
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void ImageDrawLine(Image *dst, int startPosX, int startPosY, int endPosX, int endPosY, Color color); // Draw line within an image
 (defcfun "ImageDrawLine" :void
@@ -3654,7 +3665,7 @@
   (start-pos-y :int)
   (end-pos-x :int)
   (end-pos-y :int)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void ImageDrawLineV(Image *dst, Vector2 start, Vector2 end, Color color);                          // Draw line within an image (Vector version)
 (defcfun "ImageDrawLineV" :void
@@ -3662,7 +3673,7 @@
   (dst (:pointer (:struct %image)))
   (start (:struct %vector2))
   (end (:struct %vector2))
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void ImageDrawCircle(Image *dst, int centerX, int centerY, int radius, Color color);               // Draw circle within an image
 (defcfun "ImageDrawCircle" :void
@@ -3671,7 +3682,7 @@
   (center-x :int)
   (center-y :int)
   (radius :int)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void ImageDrawCircleV(Image *dst, Vector2 center, int radius, Color color);                        // Draw circle within an image (Vector version)
 (defcfun "ImageDrawCircleV" :void
@@ -3679,7 +3690,7 @@
   (dst (:pointer (:struct %image)))
   (center (:struct %vector2))
   (radius :int)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void ImageDrawRectangle(Image *dst, int posX, int posY, int width, int height, Color color);       // Draw rectangle within an image
 (defcfun "ImageDrawRectangle" :void
@@ -3689,7 +3700,7 @@
   (pos-y :int)
   (width :int)
   (height :int)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void ImageDrawRectangleV(Image *dst, Vector2 position, Vector2 size, Color color);                 // Draw rectangle within an image (Vector version)
 (defcfun "ImageDrawRectangleV" :void
@@ -3697,14 +3708,14 @@
   (dst (:pointer (:struct %image)))
   (position (:struct %vector2))
   (size (:struct %vector2))
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void ImageDrawRectangleRec(Image *dst, Rectangle rec, Color color);                                // Draw rectangle within an image
 (defcfun "ImageDrawRectangleRec" :void
   "Draw rectangle within an image"
   (dst (:pointer (:struct %image)))
   (rec (:struct %rectangle))
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void ImageDrawRectangleLines(Image *dst, Rectangle rec, int thick, Color color);                   // Draw rectangle lines within an image
 (defcfun "ImageDrawRectangleLines" :void
@@ -3712,7 +3723,7 @@
   (dst (:pointer (:struct %image)))
   (rec (:struct %rectangle))
   (thick :int)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void ImageDraw(Image *dst, Image src, Rectangle srcRec, Rectangle dstRec, Color tint);             // Draw a source image within a destination image (tint applied to source)
 (defcfun "ImageDraw" :void
@@ -3721,7 +3732,7 @@
   (src (:struct %image))
   (src-rec (:struct %rectangle))
   (dst-rec (:struct %rectangle))
-  (tint :uint))
+  (tint (:struct %color)))
 
 ;;RLAPI void ImageDrawText(Image *dst, const char *text, int posX, int posY, int fontSize, Color color);   // Draw text (using default font) within an image (destination)
 (defcfun "ImageDrawText" :void
@@ -3731,7 +3742,7 @@
   (pos-x :int)
   (pos-y :int)
   (font-size :int)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void ImageDrawTextEx(Image *dst, Font font, const char *text, Vector2 position, float fontSize, float spacing, Color tint); // Draw text (custom sprite font) within an image (destination)
 (defcfun "ImageDrawTextEx" :void
@@ -3742,7 +3753,7 @@
   (position (:struct %vector2))
   (font-size :float)
   (spacing :float)
-  (tint :uint))
+  (tint (:struct %color)))
 
 ;;
 ;;// Texture loading functions
@@ -3819,14 +3830,14 @@
  (texture (:struct %texture))
  (pos-x :int)
  (pos-y :int)
- (tint :uint))
+ (tint (:struct %color)))
 
 ;;RLAPI void DrawTextureV(Texture2D texture, Vector2 position, Color tint);                                // Draw a Texture2D with position defined as Vector2
 (defcfun "DrawTextureV" :void
  "Draw a Texture2D with position defined as Vector2"
  (texture (:struct %texture))
  (position (:struct %vector2))
- (tint :uint))
+ (tint (:struct %color)))
 
 ;;RLAPI void DrawTextureEx(Texture2D texture, Vector2 position, float rotation, float scale, Color tint);  // Draw a Texture2D with extended parameters
 (defcfun "DrawTextureEx" :void
@@ -3835,7 +3846,7 @@
  (position (:struct %vector2))
  (rotation :float)
  (scale :float)
- (tint :uint))
+ (tint (:struct %color)))
 
 ;;RLAPI void DrawTextureRec(Texture2D texture, Rectangle source, Vector2 position, Color tint);            // Draw a part of a texture defined by a rectangle
 (defcfun "DrawTextureRec" :void
@@ -3843,7 +3854,7 @@
  (texture (:struct %texture))
  (source (:struct %rectangle))
  (position (:struct %vector2))
- (tint :uint))
+ (tint (:struct %color)))
 
 ;;RLAPI void DrawTextureQuad(Texture2D texture, Vector2 tiling, Vector2 offset, Rectangle quad, Color tint);  // Draw texture quad with tiling and offset parameters
 (defcfun "DrawTextureQuad" :void
@@ -3852,7 +3863,7 @@
  (tiling (:struct %vector2))
  (offset (:struct %vector2))
  (quad (:struct %rectangle))
- (tint :uint))
+ (tint (:struct %color)))
 
 ;;RLAPI void DrawTextureTiled(Texture2D texture, Rectangle source, Rectangle dest, Vector2 origin, float rotation, float scale, Color tint); // Draw part of a texture (defined by a rectangle) with rotation and scale tiled into dest.
 (defcfun "DrawTextureTiled" :void
@@ -3863,7 +3874,7 @@
   (origin (:struct %vector2))
   (rotation :float)
   (scale :float)
-  (tint :uint))
+  (tint (:struct %color)))
 
 ;;RLAPI void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest, Vector2 origin, float rotation, Color tint);           // Draw a part of a texture defined by a rectangle with 'pro' parameters
 (defcfun "DrawTexturePro" :void
@@ -3873,7 +3884,7 @@
  (dest (:struct %rectangle))
  (origin (:struct %vector2))
  (rotation :float)
- (tint :uint))
+ (tint (:struct %color)))
 
 ;;RLAPI void DrawTextureNPatch(Texture2D texture, NPatchInfo nPatchInfo, Rectangle dest, Vector2 origin, float rotation, Color tint);   // Draws a texture (or part of it) that stretches or shrinks nicely
 (defcfun "DrawTextureNPatch" :void
@@ -3883,7 +3894,7 @@
  (dest-rec (:struct %rectangle))
  (origin (:struct %vector2))
  (rotation :float)
- (tint :uint))
+ (tint (:struct %color)))
 
 ;;RLAPI void DrawTexturePoly(Texture2D texture, Vector2 center, Vector2 *points, Vector2 *texcoords, int pointCount, Color tint);       // Draw a textured polygon
 (defcfun "DrawTexturePoly" :void
@@ -3893,66 +3904,66 @@
   (points (:pointer (:struct %vector2)))
   (texcoords (:pointer (:struct %vector2)))
   (point-count :int)
-  (tint :uint))
+  (tint (:struct %color)))
 ;;
 ;;// Color/pixel related functions
 ;;RLAPI Color Fade(Color color, float alpha);                                 // Get color with alpha applied, alpha goes from 0.0f to 1.0f
-(defcfun "Fade" :uint
+(defcfun "Fade" (:struct %color)
   "Get color with alpha applied, alpha goes from 0.0f to 1.0f"
-  (color :uint)
+  (color (:struct %color))
   (alpha :float))
 
 ;;RLAPI int ColorToInt(Color color);                                          // Get hexadecimal value for a Color
 (defcfun "ColorToInt" :int
  "Get hexadecimal value for a Color"
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI Vector4 ColorNormalize(Color color);                                  // Get Color normalized as float [0..1]
 (defcfun "ColorNormalize" (:struct %vector4)
  "Get color normalized as float [0..1]"
- (color :uint))
+ (color (:struct %color)))
  
 ;;RLAPI Color ColorFromNormalized(Vector4 normalized);                        // Get Color from normalized values [0..1]
-(defcfun "ColorFromNormalized" :uint
+(defcfun "ColorFromNormalized" (:struct %color)
  "Get color from normalized values [0..1]"
  (normalized (:struct %vector4)))
 
 ;;RLAPI Vector3 ColorToHSV(Color color);                                      // Get HSV values for a Color, hue [0..360], saturation/value [0..1]
 (defcfun "ColorToHSV" (:struct %vector3)
  "Get HSV values for a Color"
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI Color ColorFromHSV(float hue, float saturation, float value);         // Get a Color from HSV values, hue [0..360], saturation/value [0..1]
-(defcfun "ColorFromHSV" :uint
+(defcfun "ColorFromHSV" (:struct %color)
   (hue :float)
   (saturation :float)
   (value :float))
 
 ;;RLAPI Color ColorAlpha(Color color, float alpha);                           // Get color with alpha applied, alpha goes from 0.0f to 1.0f
-(defcfun "ColorAlpha" :uint
-  (color :uint)
+(defcfun "ColorAlpha" (:struct %color)
+  (color (:struct %color))
   (alpha :float))
 
 ;;RLAPI Color ColorAlphaBlend(Color dst, Color src, Color tint);              // Get src alpha-blended into dst color with tint
-(defcfun "ColorAlphaBlend" :uint
-  (dst :uint)
-  (src :uint)
-  (tint :uint))
+(defcfun "ColorAlphaBlend" (:struct %color)
+  (dst (:struct %color))
+  (src (:struct %color))
+  (tint (:struct %color)))
 
 ;;RLAPI Color GetColor(unsigned int hexValue);                                // Get Color structure from hexadecimal value
-(defcfun "GetColor" :uint
+(defcfun "GetColor" (:struct %color)
  "Get a Color struct from hexadecimal value"
- (hex-value :unsigned-int))
+ (hex-value (:struct %color)))
 
 ;;RLAPI Color GetPixelColor(void *srcPtr, int format);                        // Get Color from a source pixel pointer of certain format
-(defcfun "GetPixelColor" :uint
+(defcfun "GetPixelColor" (:struct %color)
   (src-ptr :pointer)
   (format :int))
 
 ;;RLAPI void SetPixelColor(void *dstPtr, Color color, int format);            // Set color formatted into destination pixel pointer
 (defcfun "SetPixelColor" :void
   (dst-ptr :pointer)
-  (color :uint)
+  (color (:struct %color))
   (format :int))
 
 ;;RLAPI int GetPixelDataSize(int width, int height, int format);              // Get pixel data size in bytes for certain format
@@ -3986,7 +3997,7 @@
 (defcfun "LoadFontFromImage" (:struct %font)
  "Load font from Image (XNA style)"
  (image (:struct %image))
- (key :uint)
+ (key (:struct %color))
  (first-char :int))
 
 ;;RLAPI Font LoadFontFromMemory(const char *fileType, const unsigned char *fileData, int dataSize, int fontSize, int *fontChars, int glyphCount); // Load font from memory buffer, fileType refers to extension: i.e. '.ttf'
@@ -4049,7 +4060,7 @@
  (pos-x :int)
  (pos-y :int)
  (font-size :int)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawTextEx(Font font, const char *text, Vector2 position, float fontSize, float spacing, Color tint); // Draw text using font and additional parameters
 (defcfun "DrawTextEx" :void
@@ -4059,7 +4070,7 @@
  (position (:struct %vector2))
  (font-size :float)
  (spacing :float)
- (tint :uint))
+ (tint (:struct %color)))
 
 ;;RLAPI void DrawTextPro(Font font, const char *text, Vector2 position, Vector2 origin, float rotation, float fontSize, float spacing, Color tint); // Draw text using Font and pro parameters (rotation)
 (defcfun "DrawTextPro" :void
@@ -4071,7 +4082,7 @@
   (rotation :float)
   (font-size :float)
   (spacing :float)
-  (tint :uint))
+  (tint (:struct %color)))
 
 ;;RLAPI void DrawTextCodepoint(Font font, int codepoint, Vector2 position, float fontSize, Color tint); // Draw one character (codepoint)
 (defcfun "DrawTextCodepoint" :void
@@ -4080,7 +4091,7 @@
  (codepoint :int)
  (position (:struct %vector2))
  (font-size :float)
- (tint :uint))
+ (tint (:struct %color)))
 
 ;;RLAPI void DrawTextCodepoints(Font font, const int *codepoints, int count, Vector2 position, float fontSize, float spacing, Color tint); // Draw multiple character (codepoint)
 (defcfun "DrawTextCodepoints" :void
@@ -4091,7 +4102,7 @@
   (position (:struct %vector2))
   (font-size :float)
   (spacing :float)
-  (tint :uint))
+  (tint (:struct %color)))
 
 ;;
 ;;// Text font info functions
@@ -4264,13 +4275,13 @@
 (defcfun "DrawLine3D" :void
  (start-pos (:struct %vector3))
  (end-pos (:struct %vector3))
- (color :uint))
+ (color (:struct %color)))
  
 ;;RLAPI void DrawPoint3D(Vector3 position, Color color);                                                   // Draw a point in 3D space, actually a small line
 (defcfun "DrawPoint3D" :void
  "Draw a point in 3D space, actually a small line"
  (position (:struct %vector3))
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawCircle3D(Vector3 center, float radius, Vector3 rotationAxis, float rotationAngle, Color color); // Draw a circle in 3D world space
 (defcfun "DrawCircle3D" :void
@@ -4278,7 +4289,7 @@
  (radius :float)
  (rotation-axis (:struct %vector3))
  (rotation-angle :float)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawTriangle3D(Vector3 v1, Vector3 v2, Vector3 v3, Color color);                              // Draw a color-filled triangle (vertex in counter-clockwise order!)
 (defcfun "DrawTriangle3D" :void
@@ -4286,14 +4297,14 @@
   (v1 (:struct %vector3))
   (v2 (:struct %vector3))
   (v3 (:struct %vector3))
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void DrawTriangleStrip3D(Vector3 *points, int pointCount, Color color);                            // Draw a triangle strip defined by points
 (defcfun "DrawTriangleStrip3D" :void
   "Draw a triangle strip defined by points"
   (points (:pointer (:struct %vector3)))
   (point-count :int)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void DrawCube(Vector3 position, float width, float height, float length, Color color);             // Draw cube
 (defcfun "DrawCube" :void
@@ -4301,13 +4312,13 @@
  (width :float)
  (height :float)
  (length :float)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawCubeV(Vector3 position, Vector3 size, Color color);                                       // Draw cube (Vector version)
 (defcfun "DrawCubeV" :void
  (position (:struct %vector3))
  (size (:struct %vector3))
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawCubeWires(Vector3 position, float width, float height, float length, Color color);        // Draw cube wires
 (defcfun "DrawCubeWires" :void
@@ -4316,14 +4327,14 @@
  (width :float)
  (height :float)
  (length :float)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawCubeWiresV(Vector3 position, Vector3 size, Color color);                                  // Draw cube wires (Vector version)
 (defcfun "DrawCubeWiresV" :void
  "Draw cube wires (Vector version)"
  (position (:struct %vector3))
  (size (:struct %vector3))
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawCubeTexture(Texture2D texture, Vector3 position, float width, float height, float length, Color color); // Draw cube textured
 (defcfun "DrawCubeTexture" :void
@@ -4332,7 +4343,7 @@
  (width :float)
  (height :float)
  (length :float)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawCubeTextureRec(Texture2D texture, Rectangle source, Vector3 position, float width, float height, float length, Color color); // Draw cube with a region of a texture
 (defcfun "DrawCubeTextureRec" :void
@@ -4343,14 +4354,14 @@
   (width :float)
   (height :float)
   (length :float)
-  (tint :uint))
+  (tint (:struct %color)))
 
 ;;RLAPI void DrawSphere(Vector3 centerPos, float radius, Color color);                                     // Draw sphere
 (defcfun "DrawSphere" :void
  "Draw sphere"
  (center-pos (:struct %vector3))
  (radius :float)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawSphereEx(Vector3 centerPos, float radius, int rings, int slices, Color color);            // Draw sphere with extended parameters
 (defcfun "DrawSphereEx" :void
@@ -4359,7 +4370,7 @@
  (radius :float)
  (rings :int)
  (slices :int)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawSphereWires(Vector3 centerPos, float radius, int rings, int slices, Color color);         // Draw sphere wires
 (defcfun "DrawSphereWires" :void
@@ -4367,7 +4378,7 @@
  (radius :float)
  (rings :int)
  (slices :int)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawCylinder(Vector3 position, float radiusTop, float radiusBottom, float height, int slices, Color color); // Draw a cylinder/cone
 (defcfun "DrawCylinder" :void
@@ -4376,7 +4387,7 @@
  (radius-bottom :float)
  (height :float)
  (slices :int)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawCylinderEx(Vector3 startPos, Vector3 endPos, float startRadius, float endRadius, int sides, Color color); // Draw a cylinder with base at startPos and top at endPos
 (defcfun "DrawCylinderEx" :void
@@ -4386,7 +4397,7 @@
   (start-radius :float)
   (end-radius :float)
   (sides :int)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void DrawCylinderWires(Vector3 position, float radiusTop, float radiusBottom, float height, int slices, Color color); // Draw a cylinder/cone wires
 (defcfun "DrawCylinderWires" :void
@@ -4395,7 +4406,7 @@
  (radius-bottom :float)
  (height :float)
  (slices :int)
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawCylinderWiresEx(Vector3 startPos, Vector3 endPos, float startRadius, float endRadius, int sides, Color color); // Draw a cylinder wires with base at startPos and top at endPos
 (defcfun "DrawCylinderWiresEx" :void
@@ -4405,18 +4416,18 @@
   (start-radius :float)
   (end-radius :float)
   (sides :int)
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void DrawPlane(Vector3 centerPos, Vector2 size, Color color);                                      // Draw a plane XZ
 (defcfun "DrawPlane" :void
  (current-pos (:struct %vector3))
  (size  (:struct %vector2))
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawRay(Ray ray, Color color);                                                                // Draw a ray line
 (defcfun "DrawRay" :void
  (ray (:struct %ray))
- (color :uint))
+ (color (:struct %color)))
 
 ;;RLAPI void DrawGrid(int slices, float spacing);                                                          // Draw a grid (centered at (0, 0, 0))
 (defcfun "DrawGrid" :void
@@ -4464,7 +4475,7 @@
   (model (:struct %model))
   (position (:struct %vector3))
   (scale (:struct %vector3))
-  (tint :uint))
+  (tint (:struct %color)))
 
 ;;RLAPI void DrawModelEx(Model model, Vector3 position, Vector3 rotationAxis, float rotationAngle, Vector3 scale, Color tint); // Draw a model with extended parameters
 (defcfun "DrawModelEx" :void
@@ -4473,7 +4484,7 @@
   (rotation-axis (:struct %vector3))
   (rotation-angle :float)
   (scale (:struct %vector3))
-  (tint :uint))
+  (tint (:struct %color)))
 
 ;;RLAPI void DrawModelWires(Model model, Vector3 position, float scale, Color tint);                      // Draw a model wires (with texture if set)
 (defcfun "DrawModelWires" :void
@@ -4481,7 +4492,7 @@
   (model (:struct %model))
   (position (:struct %vector3))
   (scale (:struct %vector3))
-  (tint :uint))
+  (tint (:struct %color)))
 
 ;;RLAPI void DrawModelWiresEx(Model model, Vector3 position, Vector3 rotationAxis, float rotationAngle, Vector3 scale, Color tint); // Draw a model wires (with texture if set) with extended parameters
 (defcfun "DrawModelWiresEx" :void
@@ -4491,13 +4502,13 @@
   (rotation-axis (:struct %vector3))
   (rotation-angle :float)
   (scale (:struct %vector3))
-  (tint :uint))
+  (tint (:struct %color)))
 
 ;;RLAPI void DrawBoundingBox(BoundingBox box, Color color);                                               // Draw bounding box (wires)
 (defcfun "DrawBoundingBox" :void
   "Draw bounding box (wires)"
   (box (:struct %bounding-box))
-  (color :uint))
+  (color (:struct %color)))
 
 ;;RLAPI void DrawBillboard(Camera camera, Texture2D texture, Vector3 position, float size, Color tint);   // Draw a billboard texture
 (defcfun "DrawBillboard" :void
@@ -4506,7 +4517,7 @@
   (texture (:struct %texture))
   (position (:struct %vector3))
   (size :float)
-  (tint :uint))
+  (tint (:struct %color)))
 
 ;;RLAPI void DrawBillboardRec(Camera camera, Texture2D texture, Rectangle source, Vector3 position, Vector2 size, Color tint); // Draw a billboard texture defined by source
 (defcfun "DrawBillboardRec" :void
@@ -4516,7 +4527,7 @@
   (source (:struct %rectangle))
   (position (:struct %vector3))
   (size (:struct %vector2))
-  (tint :uint))
+  (tint (:struct %color)))
 
 ;;RLAPI void DrawBillboardPro(Camera camera, Texture2D texture, Rectangle source, Vector3 position, Vector3 up, Vector2 size, Vector2 origin, float rotation, Color tint); // Draw a billboard texture defined by source and rotation
 (defcfun "DrawBillboardPro" :void
@@ -4528,7 +4539,7 @@
   (size (:struct %vector2))
   (origin (:struct %vector2))
   (rotation :float)
-  (tint :uint))
+  (tint (:struct %color)))
 
 ;;
 ;;// Mesh management functions
