@@ -366,8 +366,8 @@
 
 (define-conversion-into-foreign-memory (object (type color-type) pointer)
   (ctypecase object
-    (color (setf (mem-ref pointer :uint) (gethash object +colors+)))
-    ((unsigned-byte 32) (setf (mem-ref pointer :uint) object))
+    (color (setf (mem-ref pointer :uint32) (gethash object +colors+)))
+    ((unsigned-byte 32) (setf (mem-ref pointer :uint32) object))
     (list (with-foreign-slots ((r g b a) pointer (:struct %color))
             (setf r (nth 0 object)
                   g (nth 1 object)
@@ -375,7 +375,7 @@
                   a (nth 3 object))))))
 
 (define-conversion-from-foreign (pointer (type color-type))
-  (mem-ref pointer :uint))
+  (mem-ref pointer :uint32))
 
 ;;
 ;;// Rectangle, 4 components
