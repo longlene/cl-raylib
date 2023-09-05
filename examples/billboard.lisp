@@ -28,10 +28,10 @@
         (loop while (not (window-should-close))
               do (update-camera camera :camera-orbital)
                  (with-drawing
-                   (clear-background +raywhite+)
+                   (clear-background :raywhite)
                    (with-mode-3d (camera)
                      (draw-grid 10 1.0)
-                     (raylib:draw-billboard camera bill bill-position 2.0 +raywhite+))
+                     (raylib:draw-billboard camera bill bill-position 2.0 :raywhite))
                    (draw-fps 10 10)))))))
 
 (main)

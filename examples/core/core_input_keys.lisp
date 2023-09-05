@@ -22,9 +22,9 @@
             (if (is-key-down :key-up)
                 (incf (vy ball-position) (- 2.0)))
             (with-drawing
-              (clear-background +raywhite+)
-              (draw-text "move the ball with arrow keys" 10 10 20 +darkgray+)
-              (draw-circle-v ball-position 50.0 +maroon+))))))
+              (clear-background :raywhite)
+              (draw-text "move the ball with arrow keys" 10 10 20 :darkgray)
+              (draw-circle-v ball-position 50.0 :maroon))))))
 
 (main)
 

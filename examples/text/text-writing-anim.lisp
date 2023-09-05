@@ -22,10 +22,10 @@
 		   (t (1+ frame-counter))))
 	   (with-drawing
 	     (incf frame-counter)
-             (clear-background +raywhite+)
+             (clear-background :raywhite)
              (draw-text
 	      (text-subtext message 0 (floor frame-counter 10))
 	      ;;message
-	      210 160 20 +maroon+))))))
+	      210 160 20 :maroon))))))
 
 (main)

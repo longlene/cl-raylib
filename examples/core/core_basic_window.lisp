@@ -13,8 +13,8 @@
       (loop
         until (window-should-close) ; detect window close button or ESC key
         do (with-drawing
-             (clear-background +raywhite+)
+             (clear-background :raywhite)
              (draw-fps 20 20)
-             (draw-text "Congrats! You created your first window!" 190 200 20 +lightgray+))))))
+             (draw-text "Congrats! You created your first window!" 190 200 20 :lightgray))))))
 
 (main)
