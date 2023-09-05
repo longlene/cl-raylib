@@ -28,5 +28,4 @@
    (:file "library")
    (:file "util")
    (:file "raylib")
-   (:file "macro"))
-  :in-order-to ((test-op (test-op cl-raylib-test))))
+   (:file "macro")))
