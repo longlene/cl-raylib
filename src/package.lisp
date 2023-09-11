@@ -418,7 +418,7 @@
    #:get-collision-ray-triangle
    #:get-collision-ray-ground
    #:load-shader
-   #:load-shader-code
+   #:load-shader-from-memory
    #:unload-shader
    #:get-shader-default
    #:get-texture-default
@@ -519,4 +519,237 @@
 (defpackage #:cl-rlgl
   (:nicknames #:rlgl)
   (:use #:cl #:cffi #:alexandria #:cl-raylib-util)
-  (:export))
+  (:export
+   #:+texture-wrap-s+
+   #:+texture-wrap-t+
+   #:+texture-map-filter+
+   #:+texture-min-filter+
+   
+   #:+texture-filter-nearest+
+   #:+texture-filter-linear+
+   #:+texture-filter-mip-nearest+
+   #:+texture-filter-nearest-mip-linear+
+   #:+texture-filter-linear-mip-nearest+
+   #:+texture-filter-mip-linear+
+   #:+texture-filter-anisotropic+
+   #:+texture-mipmap-bias-ratio+
+
+   #:+texture-wrap-repeat+
+   #:+texture-wrap-clamp+
+   #:+texture-wrap-mirror-repeat+
+   #:+texture-wrap-minnor-clamp+
+
+   #:+modelview+
+   #:+projection+
+   #:+texture+
+
+   #:+lines+
+   #:+triangles+
+   #:+quads+
+
+   #:+unsigned-byte+
+   #:+float+
+
+   #:+stream-draw+
+   #:+stream-read+
+   #:+stream-copy+
+   #:+static-draw+
+   #:+static-read+
+   #:+static-copy+
+   #:+dynamic-draw+
+   #:+dynamic-read+
+   #:+dynamic-copy+
+
+   #:+fragment-shader+
+   #:+vertext-shader+
+   #:+compute-shader+
+
+   #:+zero+
+   #:+one+
+   #:+src-color+
+   #:+one-minu-src-color+
+   #:+src-alpha+
+   #:+one-minus-src-alpha+
+   #:+dst-alpha+
+   #:+one-minus-dst-alpha+
+   #:+dst-color+
+   #:+one-minus-dst-color+
+   #:+src-alpha-saturate+
+   #:+constant-color+
+   #:+one-minus-constant-color+
+   #:+constant-alpha+
+   #:+one-minus-constant-alpha+
+
+   #:+func-add+
+   #:+min+
+   #:+max+
+   #:+func-subtract+
+   #:+func-reverse-subtract+
+   #:+blend-equation+
+   #:+blend-equation-rgb+
+   #:+blend-equation-alpha+
+   #:+blend-dst-rgb+
+   #:+blend-src-rgb+
+   #:+blend-dst-alpha+
+   #:+blend-src-alpha+
+   #:+blend-color+
+
+   #:%VertexBuffer
+   #:%DrawCall
+   #:%RenderBatch
+
+   #:matrix-mode
+   #:push-matrix
+   #:pop-matrix
+   #:load-identity
+   #:translate-f
+   #:rotate-f
+   #:scale-f
+   #:mult-matrix-f
+   #:frustum
+   #:ortho
+   #:viewport
+   #:begin
+   #:end
+   #:vertex-2i
+   #:vertex-2f
+   #:vertex-3f
+   #:textcoord-2f
+   #:normal-3f
+   #:color-4ub
+   #:color-3f
+   #:color-4f
+   #:enable-vertext-array
+   #:disable-vertext-array
+   #:enable-vertex-buffer
+   #:disable-vertex-buffer
+   #:enable-vertex-buffer-element
+   #:disable-vertex-buffer-element
+   #:enable-vertex-buffer-attribute
+   #:disable-vertex-buffer-attribute
+   #:active-texture-slot
+   #:enable-texture
+   #:disable-texture
+   #:enable-texture-cubemap
+   #:disable-texture-cubemap
+   #:texture-parameters
+   #:cubemap-parameters
+   #:enable-shader
+   #:disable-shader
+   #:enable-framebuffer
+   #:disable-framebuffer
+   #:active-draw-buffers
+   #:enable-color-blend
+   #:disable-color-blend
+   #:enable-depth-test
+   #:disable-depth-test
+   #:enable-depth-mask
+   #:disable-depth-mask
+   #:enable-backface-culling
+   #:disable-backface-culling
+   #:set-cull-face
+   #:enable-scissor-test
+   #:disable-scissor-test
+   #:scissor
+   #:enable-wire-mode
+   #:disable-wire-mode
+   #:set-line-width
+   #:get-line-width
+   #:enable-smooth-lines
+   #:disable-smooth-lines
+   #:enable-stereo-render
+   #:disable-sterea-render
+   #:is-stereo-render-enabled
+   #:clear-color
+   #:clear-screen-buffers
+   #:check-errors
+   #:set-blend-mode
+   #:set-blend-factors
+   #:set-blend-factors-separate
+   
+   #:rlgl-init
+   #:rlgl-close
+   #:load-extensions
+   #:get-version
+   
+   #:set-framebuffer-width
+   #:get-framebuffer-width
+   #:set-framebuffer-height
+   #:get-framebuffer-height
+   
+   #:get-texture-id-default
+   #:get-shader-id-default
+   #:get-shader-locs-default
+   
+   #:load-render-batch
+   #:unload-render-batch
+   #:draw-render-batch
+   #:set-render-batch-active
+   #:draw-render-batch-active
+   #:check-render-batch-limit
+   
+   #:set-texture
+   
+   #:load-vertex-array
+   #:load-vertex-buffer
+   #:load-vertext-buffer-element
+   #:update-vertex-buffer
+   #:update-vertex-buffer-elements
+   #:unload-vertex-array
+   #:unload-vertex-buffer
+   #:set-vertex-attribute
+   #:set-vertex-attribute-divisor
+   #:set-vertex-attribute-default
+   #:draw-vertex-array
+   #:draw-vertex-array-elements
+   #:draw-vertex-array-instanced
+   #:draw-vertex-array-elements-instanced
+   
+   #:load-texture
+   #:load-texture-depth
+   #:load-texture-cubemap
+   #:update-texture
+   #:get-gl-texture-formats
+   #:get-pixel-format-name
+   #:unload-texture
+   #:gen-texture-mipmaps
+   #:read-texture-pixels
+   #:read-screen-pixels
+   
+   #:load-framebuffer
+   #:framebuffer-attach
+   #:framebuffer-complete
+   #:unload-framebuffer
+   
+   #:load-shader-code
+   #:compile-shader
+   #:load-shader-program
+   #:unload-shader-program
+   #:get-location-uniform
+   #:get-location-attrib
+   #:set-uniform
+   #:set-uniform-matrix
+   #:set-uniform-sampler
+   #:set-shader
+   #:load-compute-shader-program
+   #:compute-shader-dispatch
+   #:load-shader-buffer
+   #:unload-shader-buffer
+   #:update-shader-buffer
+   #:bind-shader-buffer
+   #:read-shader-buffer
+   #:copy-shader-buffers
+   #:get-shader-buffer-size
+   #:bind-image-texture
+   
+   #:get-matrix-modelview
+   #:get-matrix-projection
+   #:get-matrix-transform
+   #:get-matrix-projection-stereo
+   #:get-matrix-view-offset-stereo
+   #:set-matrix-projection
+   #:set-matrix-modelview
+   #:set-matrix-projection-stereo
+   #:set-matrix-view-offset-stereo
+   #:load-draw-cube
+   #:load-draw-quad))

@@ -68,19 +68,19 @@
 (defconstant +one-minus-constant-alpha+ #x8004 "GL_ONE_MINUS_CONSTANT_ALPHA")
 
 ;; gl blending functions/equations
-(defconstant +func_add+ #x8006 "GL_FUNC_ADD")
+(defconstant +func-add+ #x8006 "GL_FUNC_ADD")
 (defconstant +min+ #x8007 "GL_MIN")
 (defconstant +max+ #x8008 "GL_MAX")
-(defconstant +func_subtract+ #x800A "GL_FUNC_SUBTRACT")
-(defconstant +func_reverse_subtract+ #x800B "GL_FUNC_REVERSE_SUBTRACT")
-(defconstant +blend_equation+ #x8009 "GL_BLEND_EQUATION")
-(defconstant +blend_equation_rgb+ #x8009 "GL_BLEND_EQUATION_RGB)   (Same as BLEND_EQUATION")
-(defconstant +blend_equation_alpha+ #x883D "GL_BLEND_EQUATION_ALPHA")
-(defconstant +blend_dst_rgb+ #x80C8 "GL_BLEND_DST_RGB")
-(defconstant +blend_src_rgb+ #x80C9 "GL_BLEND_SRC_RGB")
-(defconstant +blend_dst_alpha+ #x80CA "GL_BLEND_DST_ALPHA")
-(defconstant +blend_src_alpha+ #x80CB "GL_BLEND_SRC_ALPHA")
-(defconstant +blend_color+ #x8005 "GL_BLEND_COLOR")
+(defconstant +func-subtract+ #x800A "GL_FUNC_SUBTRACT")
+(defconstant +func-reverse_subtract+ #x800B "GL_FUNC_REVERSE_SUBTRACT")
+(defconstant +blend-equation+ #x8009 "GL_BLEND_EQUATION")
+(defconstant +blend-equation-rgb+ #x8009 "GL_BLEND_EQUATION_RGB)   (Same as BLEND_EQUATION")
+(defconstant +blend-equation-alpha+ #x883D "GL_BLEND_EQUATION_ALPHA")
+(defconstant +blend-dst-rgb+ #x80C8 "GL_BLEND_DST_RGB")
+(defconstant +blend-src-rgb+ #x80C9 "GL_BLEND_SRC_RGB")
+(defconstant +blend-dst-alpha+ #x80CA "GL_BLEND_DST_ALPHA")
+(defconstant +blend-src-alpha+ #x80CB "GL_BLEND_SRC_ALPHA")
+(defconstant +blend-color+ #x8005 "GL_BLEND_COLOR")
 
 (defcstruct (%matrix :class %matrix-class)
   "Matrix, 4x4 components, column major, OpenGL style, right handed"
@@ -129,15 +129,6 @@
   (indices (:pointer :unsigned-int))
   (vao-id :unsigned-int)
   (vbo-id :unsigned-int :count 4))
-
-(defstruct vertex-buffer
-  element-count
-  vertices
-  texcoords
-  colors
-  indices
-  vao-id
-  vbo-id)
 
 (defcstruct %DrawCall
   "Draw call type
@@ -509,7 +500,7 @@ of those state-change happens (this is done in core module)"
 (defcfun ("rlDisableScissorTest" disable-scissor-test) :void
   "Disable scissor test")
 
-(defcfun ("rlScissor" SCISSOR) :void
+(defcfun ("rlScissor" scissor) :void
   "Scissor test"
   (x :int)
   (y :int)
@@ -576,7 +567,7 @@ of those state-change happens (this is done in core module)"
   (glEqRGB :int)
   (glEqAlpha :int))
 
-(defcfun ("rlglInit" init) :void
+(defcfun ("rlglInit" rlgl-init) :void
   "Initialize rlgl (buffers, shaders, textures, states)"
   (width :int)
   (height :int))
