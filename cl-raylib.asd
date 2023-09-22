@@ -25,7 +25,8 @@
   :pathname "src"
   :components
   ((:file "package")
-   (:file "library")
    (:file "util")
+   (:file "library")
    (:file "raylib")
+   (:file "rlgl")
    (:file "macro")))

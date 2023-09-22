@@ -2359,7 +2359,7 @@
   (shader (:struct %shader))
   (loc-index ShaderLocationIndex)
   (value :pointer)
-  (uniform-type :int))
+  (uniform-type ShaderUniformDataType))
 
 ;;RLAPI void SetShaderValueV(Shader shader, int locIndex, const void *value, int uniformType, int count);   // Set shader uniform value vector
 (defcfun "SetShaderValueV" :void
@@ -2367,7 +2367,7 @@
   (shader (:struct %shader))
   (loc-index ShaderLocationIndex)
   (value :pointer)
-  (uniform-type :int)
+  (uniform-type ShaderUniformDataType)
   (count :int))
 
 ;;RLAPI void SetShaderValueMatrix(Shader shader, int locIndex, Matrix mat);         // Set shader uniform value (matrix 4x4)
