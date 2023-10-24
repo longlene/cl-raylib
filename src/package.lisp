@@ -482,6 +482,7 @@
    #:stop-music-stream
    #:pause-music-stream
    #:resume-music-stream
+   #:seek-music-stream
    #:is-music-playing
    #:set-music-volume
    #:set-music-pitch
