@@ -260,7 +260,7 @@
    #:check-collision-point-triangle
    #:load-image
    #:load-image-ex
-   #:load-image-pro
+   #:load-image-from-memory
    #:load-image-raw
    #:unload-image
    #:export-image
