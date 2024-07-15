@@ -1,5 +1,3 @@
-(in-package #:cl-user)
-
 #+sbcl
 (declaim (sb-ext:muffle-conditions sb-kernel:character-decoding-error-in-comment))
 
@@ -7,12 +5,7 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (sb-int:set-floating-point-modes :traps nil))
 
-(defpackage #:cl-raylib-asd
-  (:use :cl :asdf))
-
-(in-package :cl-raylib-asd)
-
-(defsystem #:cl-raylib
+(asdf:defsystem #:cl-raylib
   :version "0.0.1"
   :author "loong0"
   :license "MIT"

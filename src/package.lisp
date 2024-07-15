@@ -595,9 +595,9 @@
    #:+blend-src-alpha+
    #:+blend-color+
 
-   #:%VertexBuffer
-   #:%DrawCall
-   #:%RenderBatch
+   #:%vertex-buffer
+   #:%draw-call
+   #:%render-batch
 
    #:matrix-mode
    #:push-matrix

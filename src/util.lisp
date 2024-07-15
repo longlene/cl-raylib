@@ -1,11 +1,11 @@
 (in-package #:cl-raylib-util)
 
 (defmethod translate-name-from-foreign ((spec string) (package (eql (find-package 'cl-raylib))) &optional varp)
- (let ((name (translate-camelcase-name spec :upper-initial-p t :special-words '("2D" "3D" "FPS" "HSV" "POT" "RES" "TTF" "BRDF" "URL"))))
+ (let ((name (translate-camelcase-name spec :upper-initial-p t :special-words '("2D" "3D" "FPS" "HSV" "POT" "RES" "TTF" "BRDF" "URL" "UTF8"))))
   (if varp (intern (format nil "*~a" name)) name)))
 
 (defmethod translate-name-to-foreign ((spec symbol) (package (eql (find-package 'cl-raylib))) &optional varp)
- (let ((name (translate-camelcase-name spec :upper-initial-p t :special-words '("2D" "3D" "FPS" "HSV" "POT" "RES" "TTF" "BRDF" "URL"))))
+ (let ((name (translate-camelcase-name spec :upper-initial-p t :special-words '("2D" "3D" "FPS" "HSV" "POT" "RES" "TTF" "BRDF" "URL" "UTF8"))))
   (if varp (subseq name 1 (1- (length name))) name)))
 
 (defmacro define-conversion-into-foreign-memory (lambda-list &body body)
