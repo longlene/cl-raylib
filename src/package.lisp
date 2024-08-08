@@ -84,36 +84,56 @@
    #:window-should-close
    #:close-window
    #:is-window-ready
-   #:is-window-minimized
-   #:is-window-resized
-   #:is-window-hidden
    #:is-window-fullscreen
+   #:is-window-hidden
+   #:is-window-minimized
+   #:is-window-maximized
+   #:is-window-focused
+   #:is-window-resized
+   #:is-window-state
+   #:set-window-state
+   #:clear-window-state
    #:toggle-fullscreen
-   #:unhide-window
-   #:hide-window
+   #:toggle-borderless-windowed
+   #:maximize-window
+   #:minimize-window
+   #:restore-window
    #:set-window-icon
+   #:set-window-icons
    #:set-window-title
    #:set-window-position
    #:set-window-monitor
    #:set-window-min-size
+   #:set-window-maxsize
    #:set-window-size
+   #:set-window-opacity
+   #:set-window-focused
    #:get-window-handle
    #:get-screen-width
    #:get-screen-height
+   #:get-render-width
+   #:get-render-height
    #:get-monitor-count
+   #:get-current-monitor
+   #:get-monitor-position
    #:get-monitor-width
    #:get-monitor-height
    #:get-monitor-physical-width
    #:get-monitor-physical-height
+   #:get-monitor-refresh-rate
    #:get-window-position
+   #:get-window-scale-dpi
    #:get-monitor-name
    #:get-clipboard-text
    #:set-clipboard-text
+   #:enable-event-waiting
+   #:disable-event-waiting
    #:show-cursor
    #:hide-cursor
    #:is-cursor-hidden
    #:enable-cursor
    #:disable-cursor
+   #:is-cursor-on-screen
    #:clear-background
    #:begin-drawing
    #:end-drawing
@@ -125,59 +145,98 @@
    #:end-texture-mode
    #:begin-scissor-mode
    #:end-scissor-mode
+   #:begin-vr-stereo-mode
+   #:end-vr-stereo-mode
+   #:load-vr-stereo-config
+   #:unload-vr-stereo-config
    #:get-mouse-ray
    #:get-camera-matrix
    #:get-camera-matrix-2d
    #:get-world-to-screen
+   #:get-screen-to-world-2d
+   #:get-world-to-screen-ex
+   #:get-world-to-screen-2d
    #:set-target-fps
    #:get-fps
    #:get-frame-time
    #:get-time
+   #:swap-screen-buffer
+   #:poll-input-events
+   #:wait-time
    #:color-to-int
    #:color-normalize
    #:color-from-normalized
    #:color-to-hsv
    #:color-from-hsv
+   #:color-tint
+   #:color-brightness
+   #:color-contrast
+   #:color-alpha
+   #:color-alpha-blend
    #:get-color
+   #:get-pixel-color
+   #:set-pixel-color
+   #:get-pixel-data-size
    #:fade
    #:set-config-flags
    #:set-trace-log-level
-   #:set-trace-log-exit
-   #:trace-log
+   #:mem-alloc
+   #:mem-realloc
+   #:mem-free
    #:take-screenshot
+   #:set-random-seed
    #:get-random-value
+   #:load-random-sequence
+   #:unload-random-sequence
    #:load-file-data
+   #:unload-file-data
    #:save-file-data
+   #:export-data-as-code
    #:load-file-text
+   #:unload-file-text
    #:save-file-text
    #:file-exists
    #:is-file-extension
    #:directory-exists
-   #:get-extension
+   #:get-file-length
+   #:get-file-extension
    #:get-file-name
    #:get-file-name-without-ext
    #:get-directory-path
    #:get-prev-directory-path
    #:get-working-directory
-   #:get-directory-files
+   #:get-application-directory
    #:change-directory
+   #:is-path-file
+   #:load-directory-files
+   #:load-directory-files-ex
+   #:unload-directory-files
    #:is-file-dropped
-   #:get-dropped-files
-   #:clear-dropped-files
+   #:load-dropped-files
+   #:unload-dropped-files
    #:get-file-mod-time
    #:compress-data
    #:decompress-data
-   #:save-storage-value
-   #:load-storage-value
+   #:encode-data-base64
+   #:decode-data-base64
+   #:load-automation-event-list
+   #:unload-automation-event-list
+   #:export-automation-event-list
+   #:set-automation-event-list
+   #:set-automation-event-base-frame
+   #:start-automation-event-recording
+   #:stop-automation-event-recording
+   #:play-automation-event
    #:open-url
    #:is-key-pressed
+   #:is-key-pressed-repeat
    #:is-key-down
    #:is-key-released
    #:is-key-up
    #:set-exit-key
    #:get-key-pressed
+   #:get-char-pressed
    #:is-gamepad-available
-   #:is-gamepad-name
    #:get-gamepad-name
    #:is-gamepad-button-pressed
    #:is-gamepad-button-down
@@ -186,6 +245,7 @@
    #:get-gamepad-button-pressed
    #:get-gamepad-axis-count
    #:get-gamepad-axis-movement
+   #:set-gamepad-mappings
    #:is-mouse-button-pressed
    #:is-mouse-button-down
    #:is-mouse-button-released
@@ -193,36 +253,33 @@
    #:get-mouse-x
    #:get-mouse-y
    #:get-mouse-position
+   #:get-mouse-delta
    #:set-mouse-position
    #:set-mouse-offset
    #:set-mouse-scale
    #:get-mouse-wheel-move
+   #:get-mouse-wheel-move-v
+   #:set-mouse-cursor
    #:get-touch-x
    #:get-touch-y
    #:get-touch-position
+   #:get-touch-point-id
+   #:get-touch-point-count
    #:set-gestures-enabled
    #:is-gesture-detected
    #:get-gesture-detected
-   #:get-touch-points-count
    #:get-gesture-hold-duration
    #:get-gesture-drag-vector
    #:get-gesture-drag-angle
    #:get-gesture-pinch-vector
    #:get-gesture-pinch-angle
-   #:set-camera-mode
-   #:update-camera
-   #:set-camera-pan-control
-   #:set-camera-alt-control
-   #:set-camera-smooth-zoom-control
-   #:set-camera-move-controls
+   #:set-shapes-texture
    #:draw-pixel
    #:draw-pixel-v
    #:draw-line
    #:draw-line-v
    #:draw-line-ex
    #:draw-line-bezier
-   #:draw-line-bezier-quad
-   #:draw-line-bezier-cubic
    #:draw-line-strip
    #:draw-circle
    #:draw-circle-sector
@@ -230,6 +287,7 @@
    #:draw-circle-gradient
    #:draw-circle-v
    #:draw-circle-lines
+   #:draw-circle-lines-v
    #:draw-ellipse
    #:draw-ellipse-lines
    #:draw-ring
@@ -251,48 +309,74 @@
    #:draw-triangle-strip
    #:draw-poly
    #:draw-poly-lines
+   #:draw-poly-lines-ex
+   #:draw-spline-linear
+   #:draw-spline-linear
+   #:draw-spline-basis
+   #:draw-spline-catmull-rom
+   #:draw-spline-bezier-quadratic
+   #:draw-spline-bezier-cubic
+   #:draw-spline-segment-linear
+   #:draw-spline-segment-basis
+   #:draw-spline-segment-catmull-rom
+   #:draw-spline-segment-bezier-quadratic
+   #:draw-spline-segment-bezier-cubic
+   #:get-spline-point-linear
+   #:get-spline-point-basis
+   #:get-spline-point-catmull-rom
+   #:get-spline-point-bezier-quad
+   #:get-spline-point-bezier-cubic
    #:check-collision-recs
    #:check-collision-circles
    #:check-collision-circle-rec
-   #:get-collision-rec
    #:check-collision-point-rec
    #:check-collision-point-circle
    #:check-collision-point-triangle
+   #:check-collision-lines
+   #:check-collision-point-line
+   #:check-collision-point-poly
+   #:get-collision-rec
    #:load-image
-   #:load-image-ex
-   #:load-image-from-memory
    #:load-image-raw
+   #:load-image-svg
+   #:load-image-anim
+   #:load-image-from-memory
+   #:load-image-from-texture
+   #:load-image-from-screen
+   #:is-image-ready
    #:unload-image
    #:export-image
+   #:export-image-to-memory
    #:export-image-as-code
-   #:get-image-data
-   #:get-image-data-normalized
    #:gen-image-color
-   #:gen-image-gradient-v
-   #:gen-image-gradient-h
+   #:gen-image-gradient-linear
    #:gen-image-gradient-radial
+   #:gen-image-gradient-square
    #:gen-image-checked
    #:gen-image-white-noise
    #:gen-image-perlin-noise
    #:gen-image-cellular
+   #:gen-image-text
    #:image-copy
    #:image-from-image
    #:image-text
    #:image-text-ex
-   #:image-to-pot
    #:image-format
-   #:image-alpha-mask
-   #:image-alpha-clear
-   #:image-alpha-crop
-   #:image-alpha-premultiply
+   #:image-to-pot
    #:image-crop
+   #:image-alpha-crop
+   #:image-alpha-clear
+   #:image-alpha-mask
+   #:image-alpha-premultiply
+   #:image-blur-gaussian
    #:image-resize
-   #:image-resize-n-n
+   #:image-resize-nn
    #:image-resize-canvas
    #:image-mipmaps
    #:image-dither
    #:image-flip-vertical
    #:image-flip-horizontal
+   #:image-rotate
    #:image-rotate-cw
    #:image-rotate-ccw
    #:image-color-tint
@@ -301,17 +385,38 @@
    #:image-color-contrast
    #:image-color-brightness
    #:image-color-replace
-   #:image-extract-palette
+   #:load-image-colors
+   #:load-image-palette
+   #:unload-image-colors
+   #:unload-image-palette
    #:get-image-alpha-border
+   #:get-image-color
+   #:image-clear-background
+   #:image-draw-pixel
+   #:image-draw-pixel-v
+   #:image-draw-line
+   #:image-draw-line-v
+   #:image-draw-circle
+   #:image-draw-circle-v
+   #:image-draw-circle-lines
+   #:image-draw-circle-lines-v
+   #:image-draw-rectangle
+   #:image-draw-rectangle-v
+   #:image-draw-rectangle-rec
+   #:image-draw-rectangle-lines
+   #:image-draw
+   #:image-draw-text
+   #:image-draw-text-ex
    #:load-texture
    #:load-texture-from-image
    #:load-texture-cubemap
    #:load-render-texture
+   #:is-texture-ready
    #:unload-texture
+   #:is-render-texture-ready
    #:unload-render-texture
    #:update-texture
-   #:get-texture-data
-   #:get-screen-data
+   #:update-texture-rec
    #:gen-texture-mipmaps
    #:set-texture-filter
    #:set-texture-wrap
@@ -319,24 +424,39 @@
    #:draw-texture-v
    #:draw-texture-ex
    #:draw-texture-rec
-   #:draw-texture-quad
    #:draw-texture-pro
    #:draw-texture-n-patch
    #:get-font-default
    #:load-font
    #:load-font-ex
    #:load-font-from-image
+   #:load-font-from-memory
+   #:is-font-ready
    #:load-font-data
+   #:gen-image-font-atlas
+   #:unload-font-data
    #:unload-font
+   #:export-font-as-code
    #:draw-fps
    #:draw-text
    #:draw-text-ex
-   #:draw-text-rec
-   #:draw-text-rec-ex
+   #:draw-text-pro
    #:draw-text-codepoint
+   #:draw-text-codepoints
+   #:set-text-line-spacing
    #:measure-text
    #:measure-text-ex
    #:get-glyph-index
+   #:get-glyph-info
+   #:get-glyph-atlas-rec
+   #:load-utf8
+   #:unload-utf8
+   #:load-codepoints
+   #:unload-codepoints
+   #:get-codepoint-count
+   #:get-codepoint
+   #:get-codepoint-next
+   #:get-codepoint-previous
    #:text-copy
    #:text-is-equal
    #:text-length
@@ -352,42 +472,53 @@
    #:text-to-lower
    #:text-to-pascal
    #:text-to-integer
-   #:text-to-utf8
-   #:get-codepoints
-   #:get-codepoints-count
-   #:get-next-codepoint
    #:codepoint-to-utf8
    #:draw-line-3d
+   #:draw-point-3d
+   #:draw-triangle-3d
+   #:draw-triangle-strip-3d
    #:draw-circle-3d
    #:draw-cube
    #:draw-cube-v
    #:draw-cube-wires
    #:draw-cube-wires-v
-   #:draw-cube-texture
    #:draw-sphere
    #:draw-sphere-ex
    #:draw-sphere-wires
    #:draw-cylinder
+   #:draw-cylinder-ex
    #:draw-cylinder-wires
+   #:draw-cylinder-wires-ex
+   #:draw-capsule
+   #:draw-capsule-wires
    #:draw-plane
    #:draw-ray
    #:draw-grid
-   #:draw-gizmo
    #:load-model
    #:load-model-from-mesh
+   #:is-model-ready
    #:unload-model
-   #:load-meshes
+   #:get-model-bounding-box
    #:export-mesh
+   #:upload-mesh
+   #:update-mesh-buffer
    #:unload-mesh
+   #:draw-mesh
+   #:draw-mesh-instanced
    #:load-materials
    #:load-material-default
+   #:is-material-ready
    #:unload-material
    #:set-material-texture
    #:set-model-mesh-material
    #:load-model-animations
+   #:unload-model-animations
    #:update-model-animation
    #:unload-model-animation
    #:is-model-animation-valid
+   #:get-mesh-bounding-box
+   #:gen-mesh-tangents
+   #:gen-mesh-poly
    #:gen-mesh-plane
    #:gen-mesh-cube
    #:gen-mesh-sphere
@@ -397,9 +528,7 @@
    #:gen-mesh-knot
    #:gen-mesh-heightmap
    #:gen-mesh-cubicmap
-   #:mesh-bounding-box
-   #:mesh-tangents
-   #:mesh-binormals
+   #:gen-mesh-cone
    #:draw-model
    #:draw-model-ex
    #:draw-model-wires
@@ -407,100 +536,97 @@
    #:draw-bounding-box
    #:draw-billboard
    #:draw-billboard-rec
-   #:calculate-bounding-box
+   #:draw-billboard-pro
    #:check-collision-spheres
    #:check-collision-boxes
    #:check-collision-box-sphere
-   #:check-collision-ray-sphere
-   #:check-collision-ray-sphere-ex
-   #:check-collision-ray-box
-   #:get-collision-ray-model
-   #:get-collision-ray-triangle
-   #:get-collision-ray-ground
+   #:get-ray-collision-sphere
+   #:get-ray-collision-box
+   #:get-ray-collision-mesh
+   #:get-ray-collision-triangle
+   #:get-ray-collision-quad
    #:load-shader
    #:load-shader-from-memory
+   #:is-shader-ready
    #:unload-shader
-   #:get-shader-default
-   #:get-texture-default
-   #:get-shapes-texture
-   #:get-shapes-texture-rec
-   #:set-shapes-texture
    #:get-shader-location
+   #:get-shader-location-attrib
    #:set-shader-value
    #:set-shader-value-v
    #:set-shader-value-matrix
    #:set-shader-value-texture
-   #:set-matrix-projection
-   #:set-matrix-modelview
-   #:get-matrix-modelview
-   #:get-matrix-projection
-   #:gen-texture-cubemap
-   #:gen-texture-irradiance
-   #:gen-texture-prefilter
-   #:gen-texture-brdf
    #:begin-shader-mode
    #:end-shader-mode
    #:begin-blend-mode
    #:end-blend-mode
-   #:init-vr-simulator
-   #:close-vr-simulator
-   #:update-vr-tracking
-   #:set-vr-configuration
-   #:is-vr-simulator-ready
-   #:toggle-vr-mode
-   #:begin-vr-drawing
-   #:end-vr-drawing
    #:init-audio-device
    #:close-audio-device
    #:is-audio-device-ready
    #:set-master-volume
+   #:get-master-volume
    #:load-wave
+   #:load-wave-from-memory
+   #:is-wave-ready
    #:load-sound
    #:load-sound-from-wave
+   #:load-sound-alias
+   #:is-sound-ready
    #:update-sound
    #:unload-wave
    #:unload-sound
+   #:unload-sound-alias
    #:export-wave
    #:export-wave-as-code
    #:play-sound
+   #:stop-sound
    #:pause-sound
    #:resume-sound
-   #:play-sound-multi
-   #:stop-sound-multi
-   #:get-sounds-playing
    #:is-sound-playing
    #:set-sound-volume
    #:set-sound-pitch
+   #:set-sound-pan
    #:wave-format
+   #:get-wave-samples
+   #:unload-wave-samples
    #:wave-copy
    #:wave-crop
-   #:get-wave-data
    #:load-music-stream
+   #:load-music-stream-from-memory
+   #:is-music-ready
    #:unload-music-stream
    #:play-music-stream
+   #:is-music-stream-playing
    #:update-music-stream
    #:stop-music-stream
    #:pause-music-stream
    #:resume-music-stream
    #:seek-music-stream
-   #:is-music-playing
    #:set-music-volume
    #:set-music-pitch
-   #:get-music-loop-count
+   #:set-music-pan
+
    #:get-music-time-length
    #:get-music-time-played
-   #:init-audio-stream
    #:update-audio-stream
-   #:close-audio-stream
+   #:load-audio-stream
+   #:is-audio-stream-ready
+   #:unload-audio-stream
+   #:update-audio-stream
    #:is-audio-stream-processed
    #:play-audio-stream
    #:pause-audio-stream
    #:resume-audio-stream
-   #:is-audio-stream-palying
+   #:is-audio-stream-playing
    #:stop-audio-stream
    #:set-audio-stream-volume
    #:set-audio-stream-pitch
+   #:set-audio-stream-pan
    #:set-audio-stream-buffer-size-default
+   #:set-audio-stream-callback
+   #:attach-audio-stream-processor
+   #:detach-audio-stream-processor
+   #:attach-audio-mixed-processor
+   #:detach-audio-mixed-processor
 
 
    ;; high level api
@@ -511,8 +637,6 @@
    #:with-texture-mode
    #:with-shader-mode
    #:with-blend-mode
-   #:with-vr-simulator
-   #:with-vr-drawing
    #:with-audio-device
    #:with-audio-stream
    #:with-sound))

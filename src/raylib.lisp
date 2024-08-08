@@ -2295,7 +2295,7 @@
   "Get window position XY on monitor")
 
 ;;RLAPI Vector2 GetWindowScaleDPI(void);                            // Get window scale DPI factor
-(defcfun "GetWindowScaleDPI" (:struct %vector2)
+(defcfun ("GetWindowScaleDPI" get-window-scale-dpi) (:struct %vector2)
   "Get window scale DPI factor")
 
 ;;RLAPI const char *GetMonitorName(int monitor);                    // Get the human-readable, UTF-8 encoded name of the specified monitor
@@ -2822,13 +2822,13 @@
   (data-size (:pointer :int)))
 
 ;;RLAPI char *EncodeDataBase64(const unsigned char *data, int dataSize, int *outputSize);               // Encode data to Base64 string, memory must be MemFree()
-(defcfun "EncodeDataBase64" (:pointer :char)
+(defcfun ("EncodeDataBase64" encode-data-base64) (:pointer :char)
   (data (:pointer :unsigned-char))
   (data-size :int)
   (output-size (:pointer :int)))
 
 ;;RLAPI unsigned char *DecodeDataBase64(const unsigned char *data, int *outputSize);                    // Decode Base64 string data, memory must be MemFree()
-(defcfun "DecodeDataBase64" (:pointer :unsigned-char)
+(defcfun ("DecodeDataBase64" decode-data-base64) (:pointer :unsigned-char)
   "Decode Base64 string data"
   (data (:pointer :unsigned-char))
   (output-size (:pointer :int)))
@@ -3821,7 +3821,7 @@
   (new-format :int))
 
 ;;RLAPI void ImageToPOT(Image *image, Color fill);                                                         // Convert image to POT (power-of-two)
-(defcfun "ImageToPOT" :void
+(defcfun ("ImageToPOT" image-to-pot) :void
   (image (:pointer (:struct %image)))
   (fill-color (:struct %color)))
 
@@ -3868,7 +3868,7 @@
   (new-height :int))
 
 ;;RLAPI void ImageResizeNN(Image *image, int newWidth,int newHeight);                                      // Resize image (Nearest-Neighbor scaling algorithm)
-(defcfun "ImageResizeNN" :void
+(defcfun ("ImageResizeNN" image-resize-nn) :void
   "Resize image (Nearest-Neighbor scaling algorithm)"
   (image :pointer)
   (new-width :int)
@@ -3915,12 +3915,12 @@
   (degrees :int))
 
 ;;RLAPI void ImageRotateCW(Image *image);                                                                  // Rotate image clockwise 90deg
-(defcfun "ImageRotateCW" :void
+(defcfun ("ImageRotateCW" image-rotate-cw) :void
   "Rotate image clockwise 90deg"
   (image :pointer))
 
 ;;RLAPI void ImageRotateCCW(Image *image);                                                                 // Rotate image counter-clockwise 90deg
-(defcfun "ImageRotateCCW" :void
+(defcfun ("ImageRotateCCW" image-rotate-ccw) :void
   "Rotate image counter-clockwise 90deg"
   (image :pointer))
 
@@ -5217,7 +5217,7 @@
   (volume :float))
 
 ;;RLAPI float GetMasterVolume(void);                                    // Get master volume (listener)
-(defcfun "GetMastervolume" :float
+(defcfun "GetMasterVolume" :float
   "Get master volume (listener)")
 ;;
 ;;// Wave/Sound loading/unloading functions
