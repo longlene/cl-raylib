@@ -239,85 +239,149 @@
 ;;
 ;;// Texture parameters (equivalent to OpenGL defines)
 ;;#define RL_TEXTURE_WRAP_S                       0x2802      // GL_TEXTURE_WRAP_S
+(defconstant +texture-wrap-s+ #x2802)
 ;;#define RL_TEXTURE_WRAP_T                       0x2803      // GL_TEXTURE_WRAP_T
+(defconstant +texture-wrap-t+ #x2803)
 ;;#define RL_TEXTURE_MAG_FILTER                   0x2800      // GL_TEXTURE_MAG_FILTER
+(defconstant +texture-mag-filter+ #x2800)
 ;;#define RL_TEXTURE_MIN_FILTER                   0x2801      // GL_TEXTURE_MIN_FILTER
+(defconstant +texture-min-filter+ #x2801)
 ;;
 ;;#define RL_TEXTURE_FILTER_NEAREST               0x2600      // GL_NEAREST
+(defconstant +texture-filter-nearest+ #x2600)
 ;;#define RL_TEXTURE_FILTER_LINEAR                0x2601      // GL_LINEAR
+(defconstant +texture-filter-linear+ #x2601)
 ;;#define RL_TEXTURE_FILTER_MIP_NEAREST           0x2700      // GL_NEAREST_MIPMAP_NEAREST
+(defconstant +texture-filter-mip-nearest+ #x2700)
 ;;#define RL_TEXTURE_FILTER_NEAREST_MIP_LINEAR    0x2702      // GL_NEAREST_MIPMAP_LINEAR
+(defconstant +texture-filter-linear-mip-linear+ #x2702)
 ;;#define RL_TEXTURE_FILTER_LINEAR_MIP_NEAREST    0x2701      // GL_LINEAR_MIPMAP_NEAREST
+(defconstant +texture-filter-linear-mip-nearest+ #x2701)
 ;;#define RL_TEXTURE_FILTER_MIP_LINEAR            0x2703      // GL_LINEAR_MIPMAP_LINEAR
+(defconstant +texture-filter-mip-linear+ #x2703)
 ;;#define RL_TEXTURE_FILTER_ANISOTROPIC           0x3000      // Anisotropic filter (custom identifier)
+(defconstant +texture-filter-ansiotropic+ #x3000)
 ;;#define RL_TEXTURE_MIPMAP_BIAS_RATIO            0x4000      // Texture mipmap bias, percentage ratio (custom identifier)
+(defconstant +texture-mipmap-bias-ratio+ #x4000)
 ;;
 ;;#define RL_TEXTURE_WRAP_REPEAT                  0x2901      // GL_REPEAT
+(defconstant +texture-wrap-repeat+ #x2901)
 ;;#define RL_TEXTURE_WRAP_CLAMP                   0x812F      // GL_CLAMP_TO_EDGE
+(defconstant +texture-wrap-clamp+ #x812f)
 ;;#define RL_TEXTURE_WRAP_MIRROR_REPEAT           0x8370      // GL_MIRRORED_REPEAT
+(defconstant +texture-wrap-mirror-repeat+ #x8370)
 ;;#define RL_TEXTURE_WRAP_MIRROR_CLAMP            0x8742      // GL_MIRROR_CLAMP_EXT
+(defconstant +texture-wrap-mirror-clamp+ #x8742)
 ;;
 ;;// Matrix modes (equivalent to OpenGL)
 ;;#define RL_MODELVIEW                            0x1700      // GL_MODELVIEW
+(defconstant +modelview+ #x1700)
 ;;#define RL_PROJECTION                           0x1701      // GL_PROJECTION
+(defconstant +projection+ #x1701)
 ;;#define RL_TEXTURE                              0x1702      // GL_TEXTURE
+(defconstant +texture+ #x1702)
 ;;
 ;;// Primitive assembly draw modes
 ;;#define RL_LINES                                0x0001      // GL_LINES
+(defconstant +lines+ #x0001)
 ;;#define RL_TRIANGLES                            0x0004      // GL_TRIANGLES
+(defconstant +triangles+ #x0004)
 ;;#define RL_QUADS                                0x0007      // GL_QUADS
+(defconstant +quads+ #x0007)
 ;;
 ;;// GL equivalent data types
 ;;#define RL_UNSIGNED_BYTE                        0x1401      // GL_UNSIGNED_BYTE
+(defconstant +unsigned-byte+ #x1401)
 ;;#define RL_FLOAT                                0x1406      // GL_FLOAT
+(defconstant +float+ #x1406)
 ;;
 ;;// GL buffer usage hint
 ;;#define RL_STREAM_DRAW                          0x88E0      // GL_STREAM_DRAW
+(defconstant +stream-draw+ #x88e0)
 ;;#define RL_STREAM_READ                          0x88E1      // GL_STREAM_READ
+(defconstant +stream-read+ #x88e1)
 ;;#define RL_STREAM_COPY                          0x88E2      // GL_STREAM_COPY
+(defconstant +stream-copy+ #x88e2)
 ;;#define RL_STATIC_DRAW                          0x88E4      // GL_STATIC_DRAW
+(defconstant +static-draw+ #x88e5)
 ;;#define RL_STATIC_READ                          0x88E5      // GL_STATIC_READ
+(defconstant +static-read+ #x88e5)
 ;;#define RL_STATIC_COPY                          0x88E6      // GL_STATIC_COPY
+(defconstant +static-copy+ #x88e6)
 ;;#define RL_DYNAMIC_DRAW                         0x88E8      // GL_DYNAMIC_DRAW
+(defconstant +dynamic-draw+ #x88e8)
 ;;#define RL_DYNAMIC_READ                         0x88E9      // GL_DYNAMIC_READ
+(defconstant +dynamic-read+ #x88e9)
 ;;#define RL_DYNAMIC_COPY                         0x88EA      // GL_DYNAMIC_COPY
+(defconstant +dynamic-copy+ #x88ea)
 ;;
 ;;// GL Shader type
 ;;#define RL_FRAGMENT_SHADER                      0x8B30      // GL_FRAGMENT_SHADER
+(defconstant +fragment-shader+ #x8b30)
 ;;#define RL_VERTEX_SHADER                        0x8B31      // GL_VERTEX_SHADER
+(defconstant +vertex-shader+ #x8b31)
 ;;#define RL_COMPUTE_SHADER                       0x91B9      // GL_COMPUTE_SHADER
+(defconstant +compute-shader+ #x91b9)
 ;;
 ;;// GL blending factors
 ;;#define RL_ZERO                                 0           // GL_ZERO
+(defconstant +zero+ 0)
 ;;#define RL_ONE                                  1           // GL_ONE
+(defconstant +one+ 1)
 ;;#define RL_SRC_COLOR                            0x0300      // GL_SRC_COLOR
+(defconstant +src-color+ #x0300)
 ;;#define RL_ONE_MINUS_SRC_COLOR                  0x0301      // GL_ONE_MINUS_SRC_COLOR
+(defconstant +one-minus-src-color+ #x0301)
 ;;#define RL_SRC_ALPHA                            0x0302      // GL_SRC_ALPHA
+(defconstant +src-alpha+ #x0302)
 ;;#define RL_ONE_MINUS_SRC_ALPHA                  0x0303      // GL_ONE_MINUS_SRC_ALPHA
+(defconstant +one-minus-src-alpha+ #x0303)
 ;;#define RL_DST_ALPHA                            0x0304      // GL_DST_ALPHA
+(defconstant +dst-alpha+ #x0304)
 ;;#define RL_ONE_MINUS_DST_ALPHA                  0x0305      // GL_ONE_MINUS_DST_ALPHA
+(defconstant +one-minus-dst-alpha+ #x0305)
 ;;#define RL_DST_COLOR                            0x0306      // GL_DST_COLOR
+(defconstant +dst-color+ #x0306)
 ;;#define RL_ONE_MINUS_DST_COLOR                  0x0307      // GL_ONE_MINUS_DST_COLOR
+(defconstant +one-minus-dst-color+ #x0307)
 ;;#define RL_SRC_ALPHA_SATURATE                   0x0308      // GL_SRC_ALPHA_SATURATE
+(defconstant +src-alpha-saturate+ #x0308)
 ;;#define RL_CONSTANT_COLOR                       0x8001      // GL_CONSTANT_COLOR
+(defconstant +constant-color+ #x8001)
 ;;#define RL_ONE_MINUS_CONSTANT_COLOR             0x8002      // GL_ONE_MINUS_CONSTANT_COLOR
+(defconstant +one-minus-constant-color+ #x8002)
 ;;#define RL_CONSTANT_ALPHA                       0x8003      // GL_CONSTANT_ALPHA
+(defconstant +constant-alpha+ #x8003)
 ;;#define RL_ONE_MINUS_CONSTANT_ALPHA             0x8004      // GL_ONE_MINUS_CONSTANT_ALPHA
+(defconstant +one-minus-constant-alpha+ #x8004)
 ;;
 ;;// GL blending functions/equations
 ;;#define RL_FUNC_ADD                             0x8006      // GL_FUNC_ADD
+(defconstant +func-add+ #x8006)
 ;;#define RL_MIN                                  0x8007      // GL_MIN
+(defconstant +min+ #x8007)
 ;;#define RL_MAX                                  0x8008      // GL_MAX
+(defconstant +max+ #x8008)
 ;;#define RL_FUNC_SUBTRACT                        0x800A      // GL_FUNC_SUBTRACT
+(defconstant +func-subtract+ #x800a)
 ;;#define RL_FUNC_REVERSE_SUBTRACT                0x800B      // GL_FUNC_REVERSE_SUBTRACT
+(defconstant +func-reverse-subtract+ #x800b)
 ;;#define RL_BLEND_EQUATION                       0x8009      // GL_BLEND_EQUATION
+(defconstant +blend-equation+ #x8009)
 ;;#define RL_BLEND_EQUATION_RGB                   0x8009      // GL_BLEND_EQUATION_RGB   // (Same as BLEND_EQUATION)
+(defconstant +blend-equation-rgb+ #x8009)
 ;;#define RL_BLEND_EQUATION_ALPHA                 0x883D      // GL_BLEND_EQUATION_ALPHA
+(defconstant +blend-equation-alpha+ #x883d)
 ;;#define RL_BLEND_DST_RGB                        0x80C8      // GL_BLEND_DST_RGB
+(defconstant +blend-dst-rgb+ #x80c8)
 ;;#define RL_BLEND_SRC_RGB                        0x80C9      // GL_BLEND_SRC_RGB
+(defconstant +blend-src-rgb+ #x80c9)
 ;;#define RL_BLEND_DST_ALPHA                      0x80CA      // GL_BLEND_DST_ALPHA
+(defconstant +blend-dst-alpha+ #x80ca)
 ;;#define RL_BLEND_SRC_ALPHA                      0x80CB      // GL_BLEND_SRC_ALPHA
+(defconstant +blend-src-alpha+ #x80cb)
 ;;#define RL_BLEND_COLOR                          0x8005      // GL_BLEND_COLOR
+(defconstant +blend-color+ #x8005)
 ;;
 ;;
 ;;//----------------------------------------------------------------------------------
