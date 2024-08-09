@@ -273,6 +273,7 @@
    #:get-gesture-drag-angle
    #:get-gesture-pinch-vector
    #:get-gesture-pinch-angle
+   #:update-camera
    #:set-shapes-texture
    #:draw-pixel
    #:draw-pixel-v
