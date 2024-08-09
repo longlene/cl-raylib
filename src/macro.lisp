@@ -35,16 +35,6 @@
          (unwind-protect (progn ,@body)
           (end-blend-mode))))
 
-(defmacro with-vr-simulator (&body body)
- `(progn (init-vr-simulator)
-         (unwind-protect (progn ,@body)
-           (close-vr-simulator))))
-
-(defmacro with-vr-drawing (&body body)
- `(progn (begin-vr-drawing)
-         (unwind-protect (progn ,@body)
-           (end-vr-drawing))))
-
 (defmacro with-audio-device (&body body)
  `(progn (init-audio-device)
          (unwind-protect (progn ,@body)
