@@ -3124,10 +3124,10 @@
 
 ;;RLAPI void UpdateCameraPro(Camera *camera, Vector3 movement, Vector3 rotation, float zoom); // Update camera movement/rotation
 (defcfun ("UpdateCameraPro" %update-camera-pro) :void
-  "Update camera pro"
+  "Update camera by providing specific movement, rotation, and zoom. See Raylib's UpdateCameraPro."
   (camera (:pointer (:struct %camera3d)))
-  (movement raylib::%vector3)
-  (rotation raylib::%vector3)
+  (movement (:struct %vector3))
+  (rotation (:struct %vector3))
   (zoom :float))
 
 (defmacro update-camera-pro (camera movement rotation zoom)
@@ -3136,7 +3136,6 @@
        (convert-into-foreign-memory ,camera '(:struct %camera3d) ,foreign-camera)
        (%update-camera-pro ,foreign-camera ,movement ,rotation ,zoom)
        (update-camera3d-from-foreign ,camera ,foreign-camera))))
-
 
 ;;//------------------------------------------------------------------------------------
 ;;// Basic Shapes Drawing Functions (Module: shapes)
