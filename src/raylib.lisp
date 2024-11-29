@@ -211,11 +211,11 @@
     ;;#define GOLD       CLITERAL(Color){ 255, 203, 0, 255 }     // Gold
     :gold (make-rgba 255 203 0 255)
     ;;#define ORANGE     CLITERAL(Color){ 255, 161, 0, 255 }     // Orange
-    :orange (make-rgba 255 161 0 255 )
+    :orange (make-rgba 255 161 0 255)
     ;;#define PINK       CLITERAL(Color){ 255, 109, 194, 255 }   // Pink
     :pink (make-rgba 255 109 194 255)
     ;;#define RED        CLITERAL(Color){ 230, 41, 55, 255 }     // Red
-    :red (make-rgba  230 41 55 255 )
+    :red (make-rgba  230 41 55 255)
     ;;#define MAROON     CLITERAL(Color){ 190, 33, 55, 255 }     // Maroon
     :maroon (make-rgba 190 33 55 255)
     ;;#define GREEN      CLITERAL(Color){ 0, 228, 48, 255 }      // Green
@@ -2531,7 +2531,7 @@
 ;;RLAPI Vector2 GetScreenToWorld2D(Vector2 position, Camera2D camera); // Get the world space position for a 2d camera screen space position
 (defcfun "GetScreenToWorld2D" (:struct %vector2)
   (position (:struct %vector2))
-  (camera (:struct %camera2d))) 
+  (camera (:struct %camera2d)))
 
 ;;RLAPI Vector2 GetWorldToScreenEx(Vector3 position, Camera camera, int width, int height); // Get size position for a 3d world space position
 (defcfun "GetWorldToScreenEx" (:struct %vector2)
@@ -3123,7 +3123,20 @@
        (update-camera3d-from-foreign ,camera ,foreign-camera))))
 
 ;;RLAPI void UpdateCameraPro(Camera *camera, Vector3 movement, Vector3 rotation, float zoom); // Update camera movement/rotation
-;;
+(defcfun ("UpdateCameraPro" %update-camera-pro) :void
+  "Update camera by providing specific movement, rotation, and zoom. See Raylib's UpdateCameraPro."
+  (camera (:pointer (:struct %camera3d)))
+  (movement (:struct %vector3))
+  (rotation (:struct %vector3))
+  (zoom :float))
+
+(defmacro update-camera-pro (camera movement rotation zoom)
+  (let ((foreign-camera (gensym)))
+    `(cffi:with-foreign-object (,foreign-camera '(:struct %camera3d))
+       (convert-into-foreign-memory ,camera '(:struct %camera3d) ,foreign-camera)
+       (%update-camera-pro ,foreign-camera ,movement ,rotation ,zoom)
+       (update-camera3d-from-foreign ,camera ,foreign-camera))))
+
 ;;//------------------------------------------------------------------------------------
 ;;// Basic Shapes Drawing Functions (Module: shapes)
 ;;//------------------------------------------------------------------------------------
@@ -3735,16 +3748,16 @@
   (height :int)
   (density :float)
   (inner (:struct %color))
-  (outer (:struct %color)))         
+  (outer (:struct %color)))
 
 ;;RLAPI Image GenImageGradientSquare(int width, int height, float density, Color inner, Color outer);      // Generate image: square gradient
 (defcfun "GenImageGradientSquare" (:struct %image)
-"Generate image: square gradient"
+ "Generate image: square gradient"
   (width :int)
   (height :int)
   (density :float)
   (inner (:struct %color))
-  (outer (:struct %color)))         
+  (outer (:struct %color)))
 
 ;;RLAPI Image GenImageChecked(int width, int height, int checksX, int checksY, Color col1, Color col2);    // Generate image: checked
 (defcfun "GenImageChecked" (:struct %image)
@@ -3765,7 +3778,7 @@
 
 ;;RLAPI Image GenImagePerlinNoise(int width, int height, int offsetX, int offsetY, float scale);           // Generate image: perlin noise
 (defcfun "GenImagePerlinNoise" (:struct %image)
-"Generate image: perlin noise"
+ "Generate image: perlin noise"
   (width :int)
   (height :int)
   (offset-x :int)
@@ -4412,7 +4425,7 @@
 
 ;;RLAPI void UnloadFont(Font font);                                                           // Unload font from GPU memory (VRAM)
 (defcfun "UnloadFont" :void
-"Unload font from GPU memory (VRAM)"
+ "Unload font from GPU memory (VRAM)"
   (font (:struct %font)))
 
 ;;RLAPI bool ExportFontAsCode(Font font, const char *fileName);                               // Export font as code file, returns true on success
@@ -5125,7 +5138,7 @@
 ;;RLAPI void UnloadModelAnimations(ModelAnimation *animations, int animCount);                // Unload animation array data
 (defcfun "UnloadModelAnimations" :void
   (animations (:pointer (:struct %model-animation)))
-  (anim-count :int)) 
+  (anim-count :int))
 
 ;;RLAPI bool IsModelAnimationValid(Model model, ModelAnimation anim);                         // Check model animation skeleton match
 (defcfun "IsModelAnimationValid" :bool

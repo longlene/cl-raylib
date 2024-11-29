@@ -274,6 +274,7 @@
    #:get-gesture-pinch-vector
    #:get-gesture-pinch-angle
    #:update-camera
+   #:update-camera-pro
    #:set-shapes-texture
    #:draw-pixel
    #:draw-pixel-v
