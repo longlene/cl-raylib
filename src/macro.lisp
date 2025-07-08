@@ -1,29 +1,45 @@
 (in-package #:cl-raylib)
 
+;;; Utility macros for cleaner code
 (defmacro with-window ((width height title) &body body)
- `(progn (init-window ,width ,height ,title)
-         (unwind-protect (progn ,@body)
-          (close-window))))
+  "Convenience macro for window management"
+  `(unwind-protect
+        (progn
+          (init-window ,width ,height ,title)
+          ,@body)
+     (close-window)))
 
 (defmacro with-drawing (&body body)
- `(progn (begin-drawing)
-         (unwind-protect (progn ,@body)
-          (end-drawing))))
+  "Convenience macro for drawing"
+  `(progn
+     (begin-drawing)
+     ,@body
+     (end-drawing)))
 
 (defmacro with-mode-2d ((camera) &body body)
- `(progn (begin-mode-2d ,camera)
-         (unwind-protect (progn ,@body)
-          (end-mode-2d))))
+  "Convenience macro for 2D drawing with camera"
+  `(unwind-protect
+        (progn
+          (begin-mode-2d ,camera)
+          ,@body)
+     (end-mode-2d)))
 
 (defmacro with-mode-3d ((camera) &body body)
- `(progn (begin-mode-3d ,camera)
-         (unwind-protect (progn ,@body)
-          (end-mode-3d))))
+  "Convenience macro for 3D drawing"
+  `(unwind-protect
+        (progn
+          (begin-mode-3d ,camera)
+          ,@body)
+     (end-mode-3d)))
 
-(defmacro with-texture-mode ((target) &body body)
- `(progn (begin-texture-mode ,target)
-         (unwind-protect (progn ,@body)
-          (end-texture-mode))))
+;;; Convenience macro for render texture mode
+(defmacro with-texture-mode ((render-texture) &body body)
+  "Convenience macro for render texture mode usage"
+  `(unwind-protect
+        (progn
+          (begin-texture-mode ,render-texture)
+          ,@body)
+     (end-texture-mode)))
 
 (defmacro with-shader-mode ((shader) &body body)
  `(progn (begin-shader-mode ,shader)
@@ -34,6 +50,16 @@
  `(progn (begin-blend-mode ,mode)
          (unwind-protect (progn ,@body)
           (end-blend-mode))))
+
+(defmacro with-vr-simulator (&body body)
+ `(progn (init-vr-simulator)
+         (unwind-protect (progn ,@body)
+           (close-vr-simulator))))
+
+(defmacro with-vr-drawing (&body body)
+ `(progn (begin-vr-drawing)
+         (unwind-protect (progn ,@body)
+           (end-vr-drawing))))
 
 (defmacro with-audio-device (&body body)
  `(progn (init-audio-device)

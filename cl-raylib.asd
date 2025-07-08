@@ -1,25 +1,40 @@
-#+sbcl
-(declaim (sb-ext:muffle-conditions sb-kernel:character-decoding-error-in-comment))
-
-#+sbcl
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (sb-int:set-floating-point-modes :traps nil))
-
 (asdf:defsystem #:cl-raylib
-  :version "0.0.1"
+  :version "0.1.0"
   :author "loong0"
   :license "MIT"
-  :description "Common Lisp bindings of libraylib"
-  :depends-on (#:cffi-libffi
-               #:alexandria
+  :description "Common Lisp implementation of Raylib - modular architecture matching raylib C structure"
+  :depends-on (#:cl-opengl
+               #:cl-glu
+               #:glfw
+               #:3d-matrices
                #:3d-vectors
-               #:3d-matrices)
+               #:3d-transforms
+               #:3d-quaternions
+               #:alexandria
+               #:uiop)
   :serial t
   :pathname "src"
   :components
-  ((:file "package")
-   (:file "util")
-   (:file "library")
+  (;; Package definition
+   (:file "package")
    (:file "raylib")
-   (:file "rlgl")
+   (:file "glfw")                  ; Platform layer (must load before core for get-time function)
+   (:file "core")                  ; Current working core with consolidated timing functions
+   (:file "math")
+   (:file "camera2d")              ; 2D camera system (matches raylib Camera2D)
+   (:file "camera3d")
+   (:file "color")
+   (:file "texture")
+   (:file "textures")
+   (:file "gl")                    ; OpenGL abstraction layer (matches raylib rlgl.h functionality)
+   (:file "shaders")               ; Shader system (matches raylib rlgl.c shader functionality)
+   (:file "utils")                 ; Utility functions and logging system (required for raylib compatibility)
+   (:file "window")
+   (:file "input")
+   (:file "shapes")
+   (:file "shapes3d")
+   (:file "collision")             ; Collision detection (stateless, matches raylib design)
+   (:file "models")                ; 3D models and meshes (matching raylib rmodels.c)
+   (:file "text")                  ; Text rendering system (fixed implementation)
+   (:file "audio")                  ; Text rendering system (fixed implementation)
    (:file "macro")))

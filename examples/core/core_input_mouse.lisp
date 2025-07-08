@@ -9,7 +9,7 @@
   (let* ((screen-width 800)
          (screen-height 450)
          (ball-position (vec -100.0 -100.0))
-         (ball-color :darkblue))
+         (ball-color +darkblue+))
     (with-window (screen-width screen-height "raylib [core] example - mouse input")
       (set-target-fps 60) ; Set our game to run at 60 FPS
       (loop until (window-should-close) ; detect window close button or ESC key
@@ -31,8 +31,8 @@
               ((is-mouse-button-pressed :mouse-button-back)
                (setf ball-color :beige)))
             (with-drawing
-              (clear-background :raywhite)
+              (clear-background +raywhite+)
               (draw-circle-v ball-position 40.0 ball-color)
-              (draw-text "move ball with mouse and click mouse button to change color" 10 10 20 :darkgreen))))))
+              (draw-text "move ball with mouse and click mouse button to change color" 10 10 20 +darkgreen+))))))
 
 (main)
