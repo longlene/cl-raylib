@@ -1485,7 +1485,7 @@
 ;;    KEY_KP_EQUAL        = 336,      // Key: Keypad =
 ;;    // Android key buttons
 ;;    KEY_BACK            = 4,        // Key: Android back button
-;;    KEY_MENU            = 82,       // Key: Android menu button
+;;    KEY_MENU            = 5,        // Key: Android menu button
 ;;    KEY_VOLUME_UP       = 24,       // Key: Android volume up button
 ;;    KEY_VOLUME_DOWN     = 25        // Key: Android volume down button
 ;;} KeyboardKey;
@@ -1602,7 +1602,7 @@
   (:key-kp-equal 336)
 
   (:key-back 4)
-  (:key-menu 82)
+  (:key-menu 5)
   (:key-volume-up 24)
   (:key-volume-down 25))
 
