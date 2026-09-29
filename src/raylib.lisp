@@ -863,17 +863,20 @@
   "Material type"
   (shader (:struct %shader))
   (maps (:pointer (:struct %material-map)))
-  (params (:pointer :float)))
+  (params :float :count 4))
 
 (define-conversion-into-foreign-memory (object (type material-type) pointer)
-    (with-foreign-slots ((shader maps params) pointer (:struct %material))
-      (setf shader (nth 0 object))
+    (with-foreign-slots ((maps) pointer (:struct %material))
+      (convert-into-foreign-memory (nth 0 object) '(:struct %shader) (foreign-slot-pointer pointer '(:struct %material) 'shader))
       (setf maps (nth 1 object))
-      (setf params (nth 2 object))))
+      (let ((params (foreign-slot-pointer pointer '(:struct %material) 'params)))
+        (dotimes (i 4)
+          (setf (mem-aref params :float i) (coerce (or (nth i (nth 2 object)) 0) 'single-float))))))
 
 (define-conversion-from-foreign (pointer (type material-type))
-    (with-foreign-slots ((shader maps params) pointer (:struct %material))
-      (list shader maps params)))
+    (with-foreign-slots ((shader maps) pointer (:struct %material))
+      (let ((params (foreign-slot-pointer pointer '(:struct %material) 'params)))
+        (list shader maps (loop for i below 4 collect (mem-aref params :float i))))))
 
 ;;
 ;;// Transform, vertex transformation data
