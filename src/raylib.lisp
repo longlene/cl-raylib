@@ -2150,15 +2150,15 @@
 ;;RLAPI bool IsWindowState(unsigned int flag);                      // Check if one specific window flag is enabled
 (defcfun "IsWindowState" :boolean
   "Check if one specific window flag is enabled"
-  (flag :unsigned-int))
+  (flag ConfigFlags))
 
 ;;RLAPI void SetWindowState(unsigned int flags);                    // Set window configuration state using flags (only PLATFORM_DESKTOP)
 (defcfun "SetWindowState" :void
-  (flags :unsigned-int))
+  (flags ConfigFlags))
 
 ;;RLAPI void ClearWindowState(unsigned int flags);                  // Clear window configuration state flags
 (defcfun "ClearWindowState" :void
-  (flags :unsigned-int))
+  (flags ConfigFlags))
 
 ;;RLAPI void ToggleFullscreen(void);                                // Toggle window state: fullscreen/windowed (only PLATFORM_DESKTOP)
 (defcfun "ToggleFullscreen" :void
