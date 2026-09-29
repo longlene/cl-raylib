@@ -4403,10 +4403,12 @@
   (font (:struct %font)))
 
 ;;RLAPI GlyphInfo *LoadFontData(const unsigned char *fileData, int dataSize, int fontSize, int *codepoints, int codepointCount, int type); // Load font data for further use
-(defcfun "LoadFontData" :pointer
+(defcfun "LoadFontData" (:pointer (:struct %glyph-info))
   "Load font data for further use"
-  (file-name :string)
-  (codepoints :int)
+  (file-data (:pointer :unsigned-char))
+  (data-size :int)
+  (font-size :int)
+  (codepoints (:pointer :int))
   (codepoint-count :int)
   (type FontType))
 
@@ -4637,6 +4639,7 @@
 (defcfun "TextJoin" :string
   "Join text strings with delimiter"
   (text-list (:pointer :string))
+  (count :int)
   (delimiter :string))
 
 ;;RLAPI const char **TextSplit(const char *text, char delimiter, int *count);                 // Split text into multiple strings
