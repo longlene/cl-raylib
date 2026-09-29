@@ -2215,7 +2215,7 @@
   (height :int))
 
 ;;RLAPI void SetWindowMaxSize(int width, int height);               // Set window maximum dimensions (for FLAG_WINDOW_RESIZABLE)
-(defcfun "SetWindowMaxsize" :void
+(defcfun "SetWindowMaxSize" :void
   "Set window maximum dimensions (for FLAG_WINDOW_RESIZABLE)"
   (width :int)
   (height :int))
@@ -5373,7 +5373,7 @@
   (channels :int))
 
 ;;RLAPI float *LoadWaveSamples(Wave wave);                              // Load samples data from wave as a 32bit float data array
-(defcfun "GetWaveSamples" (:pointer :float)
+(defcfun "LoadWaveSamples" (:pointer :float)
   "Load samples data from wave as a floats array"
   (wave (:struct %wave)))
 
