@@ -436,10 +436,10 @@
 
 (define-conversion-into-foreign-memory (object (type rectangle-type) pointer)
     (with-foreign-slots ((x y width height) pointer (:struct %rectangle))
-      (setf x (coerce (rectangle-x object) 'float))
-      (setf y (coerce (rectangle-y object) 'float))
-      (setf width (coerce (rectangle-width object) 'float))
-      (setf height (coerce (rectangle-height object) 'float))))
+      (setf x (coerce (rectangle-x object) 'single-float))
+      (setf y (coerce (rectangle-y object) 'single-float))
+      (setf width (coerce (rectangle-width object) 'single-float))
+      (setf height (coerce (rectangle-height object) 'single-float))))
 
 (define-conversion-from-foreign (pointer (type rectangle-type))
     (with-foreign-slots ((x y width height) pointer (:struct %rectangle))
@@ -694,7 +694,7 @@
       (convert-into-foreign-memory (camera3d-position object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'position))
       (convert-into-foreign-memory (camera3d-target object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'target))
       (convert-into-foreign-memory (camera3d-up object) '(:struct %vector3) (foreign-slot-pointer pointer '(:struct %camera3d) 'up))
-      (setf fovy (coerce (camera3d-fovy object) 'float)
+      (setf fovy (coerce (camera3d-fovy object) 'single-float)
             projection (foreign-enum-value 'CameraProjection (camera3d-projection object)))))
 
 (define-conversion-from-foreign (pointer (type camera3d-type))
@@ -735,8 +735,8 @@
     (with-foreign-slots ((rotation zoom) pointer (:struct %camera2d))
       (convert-into-foreign-memory (camera2d-offset object) '(:struct %vector2) (foreign-slot-pointer pointer '(:struct %camera2d) 'offset))
       (convert-into-foreign-memory (camera2d-target object) '(:struct %vector2) (foreign-slot-pointer pointer '(:struct %camera2d) 'target))
-      (setf rotation (coerce (camera2d-rotation object) 'float))
-      (setf zoom (coerce (camera2d-zoom object) 'float))))
+      (setf rotation (coerce (camera2d-rotation object) 'single-float))
+      (setf zoom (coerce (camera2d-zoom object) 'single-float))))
 
 (define-conversion-from-foreign (pointer (type camera2d-type))
     (with-foreign-slots ((offset target rotation zoom) pointer (:struct %camera2d))
@@ -847,7 +847,7 @@
     (with-foreign-slots ((texture (:pointer color) value) pointer (:struct %material-map))
       (setf texture (nth 0 object))
       (translate-into-foreign-memory (nth 1 object) '(:struct %color) color)
-      (setf value (coerce (nth 2 object) 'float))))
+      (setf value (coerce (nth 2 object) 'single-float))))
 
 (define-conversion-from-foreign (pointer (type material-map-type))
     (with-foreign-slots ((texture color value) pointer (:struct %material-map))
@@ -863,17 +863,20 @@
   "Material type"
   (shader (:struct %shader))
   (maps (:pointer (:struct %material-map)))
-  (params (:pointer :float)))
+  (params :float :count 4))
 
 (define-conversion-into-foreign-memory (object (type material-type) pointer)
-    (with-foreign-slots ((shader maps params) pointer (:struct %material))
-      (setf shader (nth 0 object))
+    (with-foreign-slots ((maps) pointer (:struct %material))
+      (convert-into-foreign-memory (nth 0 object) '(:struct %shader) (foreign-slot-pointer pointer '(:struct %material) 'shader))
       (setf maps (nth 1 object))
-      (setf params (nth 2 object))))
+      (let ((params (foreign-slot-pointer pointer '(:struct %material) 'params)))
+        (dotimes (i 4)
+          (setf (mem-aref params :float i) (coerce (or (nth i (nth 2 object)) 0) 'single-float))))))
 
 (define-conversion-from-foreign (pointer (type material-type))
-    (with-foreign-slots ((shader maps params) pointer (:struct %material))
-      (list shader maps params)))
+    (with-foreign-slots ((shader maps) pointer (:struct %material))
+      (let ((params (foreign-slot-pointer pointer '(:struct %material) 'params)))
+        (list shader maps (loop for i below 4 collect (mem-aref params :float i))))))
 
 ;;
 ;;// Transform, vertex transformation data
@@ -1203,12 +1206,12 @@
     (with-foreign-slots ((h-resolution v-resolution h-screen-size v-screen-size v-screen-center eye-to-screen-distance lens-separation-distance interpupillary-distance lens-distortion-values chroma-ab-correction) pointer (:struct %vr-device-info))
       (setf h-resolution (nth 0 object))
       (setf v-resolution (nth 1 object))
-      (setf h-screen-size (coerce (nth 2 object) 'float))
-      (setf v-screen-size (coerce (nth 3 object) 'float))
-      (setf v-screen-center (coerce (nth 4 object) 'float))
-      (setf eye-to-screen-distance (coerce (nth 5 object) 'float))
-      (setf lens-separation-distance (coerce (nth 6 object) 'float))
-      (setf interpupillary-distance (coerce (nth 7 object) 'float))
+      (setf h-screen-size (coerce (nth 2 object) 'single-float))
+      (setf v-screen-size (coerce (nth 3 object) 'single-float))
+      (setf v-screen-center (coerce (nth 4 object) 'single-float))
+      (setf eye-to-screen-distance (coerce (nth 5 object) 'single-float))
+      (setf lens-separation-distance (coerce (nth 6 object) 'single-float))
+      (setf interpupillary-distance (coerce (nth 7 object) 'single-float))
       (setf lens-distortion-values (nth 8 object))
       (setf chroma-ab-correction (nth 9 object))))
 
@@ -2147,15 +2150,15 @@
 ;;RLAPI bool IsWindowState(unsigned int flag);                      // Check if one specific window flag is enabled
 (defcfun "IsWindowState" :boolean
   "Check if one specific window flag is enabled"
-  (flag :unsigned-int))
+  (flag ConfigFlags))
 
 ;;RLAPI void SetWindowState(unsigned int flags);                    // Set window configuration state using flags (only PLATFORM_DESKTOP)
 (defcfun "SetWindowState" :void
-  (flags :unsigned-int))
+  (flags ConfigFlags))
 
 ;;RLAPI void ClearWindowState(unsigned int flags);                  // Clear window configuration state flags
 (defcfun "ClearWindowState" :void
-  (flags :unsigned-int))
+  (flags ConfigFlags))
 
 ;;RLAPI void ToggleFullscreen(void);                                // Toggle window state: fullscreen/windowed (only PLATFORM_DESKTOP)
 (defcfun "ToggleFullscreen" :void
@@ -2212,7 +2215,7 @@
   (height :int))
 
 ;;RLAPI void SetWindowMaxSize(int width, int height);               // Set window maximum dimensions (for FLAG_WINDOW_RESIZABLE)
-(defcfun "SetWindowMaxsize" :void
+(defcfun "SetWindowMaxSize" :void
   "Set window maximum dimensions (for FLAG_WINDOW_RESIZABLE)"
   (width :int)
   (height :int))
@@ -4400,10 +4403,12 @@
   (font (:struct %font)))
 
 ;;RLAPI GlyphInfo *LoadFontData(const unsigned char *fileData, int dataSize, int fontSize, int *codepoints, int codepointCount, int type); // Load font data for further use
-(defcfun "LoadFontData" :pointer
+(defcfun "LoadFontData" (:pointer (:struct %glyph-info))
   "Load font data for further use"
-  (file-name :string)
-  (codepoints :int)
+  (file-data (:pointer :unsigned-char))
+  (data-size :int)
+  (font-size :int)
+  (codepoints (:pointer :int))
   (codepoint-count :int)
   (type FontType))
 
@@ -4634,6 +4639,7 @@
 (defcfun "TextJoin" :string
   "Join text strings with delimiter"
   (text-list (:pointer :string))
+  (count :int)
   (delimiter :string))
 
 ;;RLAPI const char **TextSplit(const char *text, char delimiter, int *count);                 // Split text into multiple strings
@@ -5370,7 +5376,7 @@
   (channels :int))
 
 ;;RLAPI float *LoadWaveSamples(Wave wave);                              // Load samples data from wave as a 32bit float data array
-(defcfun "GetWaveSamples" (:pointer :float)
+(defcfun "LoadWaveSamples" (:pointer :float)
   "Load samples data from wave as a floats array"
   (wave (:struct %wave)))
 

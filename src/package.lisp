@@ -104,7 +104,7 @@
    #:set-window-position
    #:set-window-monitor
    #:set-window-min-size
-   #:set-window-maxsize
+   #:set-window-max-size
    #:set-window-size
    #:set-window-opacity
    #:set-window-focused
@@ -588,7 +588,7 @@
    #:set-sound-pitch
    #:set-sound-pan
    #:wave-format
-   #:get-wave-samples
+   #:load-wave-samples
    #:unload-wave-samples
    #:wave-copy
    #:wave-crop

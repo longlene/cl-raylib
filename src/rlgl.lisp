@@ -1184,9 +1184,23 @@
   (batch (:struct %render-batch)))
 
 ;;RLAPI void rlDrawRenderBatch(rlRenderBatch *batch);                         // Draw render batch data (Update->Draw->Reset)
+(defcfun ("rlDrawRenderBatch" draw-render-batch) :void
+  "Draw render batch data (Update->Draw->Reset)"
+  (batch (:pointer (:struct %render-batch))))
+
 ;;RLAPI void rlSetRenderBatchActive(rlRenderBatch *batch);                    // Set the active render batch for rlgl (NULL for default internal)
+(defcfun ("rlSetRenderBatchActive" set-render-batch-active) :void
+  "Set the active render batch for rlgl (NULL for default internal)"
+  (batch (:pointer (:struct %render-batch))))
+
 ;;RLAPI void rlDrawRenderBatchActive(void);                                   // Update and draw internal render batch
+(defcfun ("rlDrawRenderBatchActive" draw-render-batch-active) :void
+  "Update and draw internal render batch")
+
 ;;RLAPI bool rlCheckRenderBatchLimit(int vCount);                             // Check internal buffer overflow for a given number of vertex
+(defcfun ("rlCheckRenderBatchLimit" check-render-batch-limit) :bool
+  "Check internal buffer overflow for a given number of vertex"
+  (v-count :int))
 ;;
 ;;RLAPI void rlSetTexture(unsigned int id);               // Set current texture for render batch and check buffers limits
 (defcfun ("rlSetTexture" set-texture) :void
