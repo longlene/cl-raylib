@@ -46,11 +46,11 @@
                  :initial-contents '(1f0 1f0 1f0 1f0 1f0 1f0 0.6666667f0 0.5f0 1f0 1f0 1f0 1f0 1f0 1f0 1.5f0 2f0))
   :test #'equalp)
 
-(declaim (inline %xm-sinf %xm-powf %u8 %u16))
+(declaim (inline %xm-sinf %xm-powf %xm-u8 %xm-u16))
 (defun %xm-sinf (x) (cffi:foreign-funcall "sinf" :float x :float))
 (defun %xm-powf (x y) (cffi:foreign-funcall "powf" :float x :float y :float))
-(defun %u8 (x) (logand x #xff))
-(defun %u16 (x) (logand x #xffff))
+(defun %xm-u8 (x) (logand x #xff))
+(defun %xm-u16 (x) (logand x #xffff))
 
 (defstruct (xm-envelope (:conc-name xenv-))
   (frames (make-array +xm-num-envelope-points+ :initial-element 0))
@@ -191,7 +191,7 @@
                (if (and (= (+ i 1) (xm-length ctx)) (> (xm-length ctx) 1))
                    (decf (xm-length ctx))   ; Trimming invalid POT
                    (return-from %xm-check-sanity-postload 1)))
-             (setf i (%u8 (+ i 1)))
+             (setf i (%xm-u8 (+ i 1)))
              (when (= i 0) (return))))
   0)
 
@@ -214,7 +214,7 @@
                 (xm-num-instruments ctx) (read-u16 (+ offset 12))
                 (xm-linear-interpolation ctx) 1   ; Linear interpolation can be set after loading
                 (xm-ramping ctx) 1)               ; Ramping can be set after loading
-          (let ((flags (%u16 (read-u32 (+ offset 14)))))
+          (let ((flags (%xm-u16 (read-u32 (+ offset 14)))))
             (setf (xm-frequency-type ctx) (if (logtest flags 1) +xm-linear-frequencies+ +xm-amiga-frequencies+)))
           (setf (xm-default-tempo ctx) (read-u16 (+ offset 16))
                 (xm-default-bpm ctx) (read-u16 (+ offset 18))
@@ -267,7 +267,7 @@
                                      (xsl-effect-type slot) (read-u8 (+ offset j 3))
                                      (xsl-effect-param slot) (read-u8 (+ offset j 4))
                                      j (+ j 5)))
-                           (setf j (%u16 j))
+                           (setf j (%xm-u16 j))
                            (incf k)))))
             (incf offset packed-patterndata-size)))
         ;; Read instruments
@@ -412,7 +412,7 @@
 (defvar *xm-next-rand* 24492)
 
 (defun %xm-waveform (waveform step)
-  (setf step (mod (%u8 step) #x40))
+  (setf step (mod (%xm-u8 step) #x40))
   (case waveform
     (#.+xm-sine-waveform+ (- (%xm-sinf (/ (* (* 2f0 3.141592f0) (float step 1f0)) (float #x40 1f0)))))
     (#.+xm-ramp-down-waveform+ (/ (float (- #x20 step) 1f0) (float #x20 1f0)))
@@ -441,7 +441,7 @@
          (p1 (aref +xm-amiga-frequencies-table+ a))
          (p2 (aref +xm-amiga-frequencies-table+ (+ a 1))))
     (cond ((> octave 0) (setf p1 (ash p1 (- octave)) p2 (ash p2 (- octave))))
-          ((< octave 0) (setf p1 (%u16 (ash p1 (- octave))) p2 (%u16 (ash p2 (- octave))))))
+          ((< octave 0) (setf p1 (%xm-u16 (ash p1 (- octave))) p2 (%xm-u16 (ash p2 (- octave))))))
     (%xm-lerp (float p1 1f0) (float p2 1f0) (- note (float intnote 1f0)))))
 
 (defun %i8 (x) (- (logand (+ x 128) #xff) 128))
@@ -474,7 +474,7 @@
             (dotimes (i 12)
               (setf p1 (aref table i) p2 (aref table (+ i 1)))
               (cond ((> octave 0) (setf p1 (ash p1 (- octave)) p2 (ash p2 (- octave))))
-                    ((< octave 0) (setf p1 (%u16 (ash p1 (- octave))) p2 (%u16 (ash p2 (- octave))))))
+                    ((< octave 0) (setf p1 (%xm-u16 (ash p1 (- octave))) p2 (%xm-u16 (ash p2 (- octave))))))
               (when (and (<= p2 period) (<= period p1))
                 (setf a i)
                 (return)))
@@ -497,7 +497,7 @@
       (when (< (xc-autovibrato-ticks ch) (xi-vibrato-sweep instr))
         (setf sweep (%xm-lerp 0f0 1f0 (/ (float (xc-autovibrato-ticks ch) 1f0) (float (xi-vibrato-sweep instr) 1f0)))))
       (let ((step (ash (* (xc-autovibrato-ticks ch) (xi-vibrato-rate instr)) -2)))
-        (setf (xc-autovibrato-ticks ch) (%u16 (+ (xc-autovibrato-ticks ch) 1)))
+        (setf (xc-autovibrato-ticks ch) (%xm-u16 (+ (xc-autovibrato-ticks ch) 1)))
         (setf (xc-autovibrato-note-offset ch)
               (* (/ (* (* 0.25f0 (%xm-waveform (xi-vibrato-type instr) step)) (float (xi-vibrato-depth instr) 1f0))
                     (float #xf 1f0))
@@ -569,7 +569,7 @@
 (defun %xm-post-pattern-change (ctx)
   ;; Loop if necessary
   (when (>= (xm-current-table-index ctx) (xm-length ctx))
-    (setf (xm-current-table-index ctx) (%u8 (xm-restart-position ctx))
+    (setf (xm-current-table-index ctx) (%xm-u8 (xm-restart-position ctx))
           (xm-tempo ctx) (xm-default-tempo ctx)
           (xm-bpm ctx) (xm-default-bpm ctx)
           (xm-global-volume ctx) (xm-default-global-volume ctx))))
@@ -718,7 +718,7 @@
       (#xd                                                                ; Dxx: Pattern break
        ;; Jump after playing this line
        (setf (xm-pattern-break ctx) t
-             (xm-jump-row ctx) (%u8 (+ (* (ash param -4) 10) (logand param #x0f)))))
+             (xm-jump-row ctx) (%xm-u8 (+ (* (ash param -4) 10) (logand param #x0f)))))
       (#xe                                                                ; EXy: Extended command
        (case (ash param -4)
          (1 (when (logtest param #x0f) (setf (xc-fine-portamento-up-param ch) (logand param #x0f)))   ; E1y: Fine portamento up
@@ -741,7 +741,7 @@
                   (setf (xc-pattern-loop-count ch) 0
                         (xm-position-jump ctx) nil)
                   ;; Jump to the beginning of the loop
-                  (setf (xc-pattern-loop-count ch) (%u8 (+ (xc-pattern-loop-count ch) 1))
+                  (setf (xc-pattern-loop-count ch) (%xm-u8 (+ (xc-pattern-loop-count ch) 1))
                         (xm-position-jump ctx) t
                         (xm-jump-row ctx) (xc-pattern-loop-origin ch)
                         (xm-jump-dest ctx) (xm-current-table-index ctx)))
@@ -750,7 +750,7 @@
          (7 (setf (xc-tremolo-waveform ch) (logand param 3)                 ; E7y: Set tremolo control
                   (xc-tremolo-waveform-retrigger ch) (not (logbitp 2 param))))
          (#xa (when (logtest param #x0f) (setf (xc-fine-volume-slide-param ch) (logand param #x0f)))   ; EAy: Fine volume slide up
-          (%xm-volume-slide ch (%u8 (ash (xc-fine-volume-slide-param ch) 4))))
+          (%xm-volume-slide ch (%xm-u8 (ash (xc-fine-volume-slide-param ch) 4))))
          (#xb (when (logtest param #x0f) (setf (xc-fine-volume-slide-param ch) (logand param #x0f)))   ; EBy: Fine volume slide down
           (%xm-volume-slide ch (xc-fine-volume-slide-param ch)))
          (#xd                                                               ; EDy: Note delay
@@ -761,7 +761,7 @@
                          (%xm-trigger-note ctx ch flags))
                   (%xm-trigger-note ctx ch (logior flags +xm-trigger-keep-period+ +xm-trigger-keep-sample-position+))))))
          (#xe                                                               ; EEy: Pattern delay
-          (setf (xm-extra-ticks ctx) (%u16 (* (logand (xsl-effect-param (xc-current ch)) #x0f) (xm-tempo ctx)))))))
+          (setf (xm-extra-ticks ctx) (%xm-u16 (* (logand (xsl-effect-param (xc-current ch)) #x0f) (xm-tempo ctx)))))))
       (#xf                                                                ; Fxx: Set tempo/BPM
        (when (> param 0)
          (if (<= param #x1f)
@@ -794,7 +794,7 @@
                (xm-jump-row ctx) 0)
          (%xm-post-pattern-change ctx))
         ((xm-pattern-break ctx)
-         (setf (xm-current-table-index ctx) (%u8 (+ (xm-current-table-index ctx) 1))
+         (setf (xm-current-table-index ctx) (%xm-u8 (+ (xm-current-table-index ctx) 1))
                (xm-current-row ctx) (xm-jump-row ctx)
                (xm-pattern-break ctx) nil
                (xm-jump-row ctx) 0)
@@ -819,12 +819,12 @@
             (counts (xm-row-loop-count ctx)))
         (when (< index (length counts))
           (setf (xm-loop-count ctx) (aref counts index)
-                (aref counts index) (%u8 (+ (aref counts index) 1))))))
+                (aref counts index) (%xm-u8 (+ (aref counts index) 1))))))
     ;; uint8 warning: can increment from 255 to 0, in which case it is still necessary to go the next pattern
-    (setf (xm-current-row ctx) (%u8 (+ (xm-current-row ctx) 1)))
+    (setf (xm-current-row ctx) (%xm-u8 (+ (xm-current-row ctx) 1)))
     (when (and (not (xm-position-jump ctx)) (not (xm-pattern-break ctx))
                (or (>= (xm-current-row ctx) (xp-num-rows cur)) (= (xm-current-row ctx) 0)))
-      (setf (xm-current-table-index ctx) (%u8 (+ (xm-current-table-index ctx) 1))
+      (setf (xm-current-table-index ctx) (%xm-u8 (+ (xm-current-table-index ctx) 1))
             (xm-current-row ctx) (xm-jump-row ctx)   ; This will be 0 most of the time, except when E60 is used
             (xm-jump-row ctx) 0)
       (%xm-post-pattern-change ctx))))
@@ -838,9 +838,9 @@
         (when (xenv-loop-enabled env)
           (let* ((loop-start (aref (xenv-frames env) (xenv-loop-start-point env)))
                  (loop-end (aref (xenv-frames env) (xenv-loop-end-point env)))
-                 (loop-length (%u16 (- loop-end loop-start))))
+                 (loop-length (%xm-u16 (- loop-end loop-start))))
             (when (>= counter loop-end)
-              (setf counter (%u16 (- counter loop-length))))))
+              (setf counter (%xm-u16 (- counter loop-length))))))
         (dotimes (j (- (xenv-num-points env) 1))
           (when (and (<= (aref (xenv-frames env) j) counter) (>= (aref (xenv-frames env) (+ j 1)) counter))
             (setf outval (/ (%xm-envelope-lerp env j (+ j 1) counter) (float #x40 1f0)))
@@ -848,7 +848,7 @@
         ;; Make sure it is safe to increment frame count
         (when (or (not (xc-sustained ch)) (not (xenv-sustain-enabled env))
                   (/= counter (aref (xenv-frames env) (xenv-sustain-point env))))
-          (setf counter (%u16 (+ counter 1))))))
+          (setf counter (%xm-u16 (+ counter 1))))))
   (values counter outval))
 
 (defun %xm-envelopes (ch)
@@ -892,17 +892,17 @@
            (unless (and (= (logand vc #xf0) #x50) (/= vc #x50))
              (setf (xc-volume ch) (/ (float (- vc 16) 1f0) 64f0))))
           (#x60 (%xm-volume-slide ch (logand vc #x0f)))          ; Volume slide down
-          (#x70 (%xm-volume-slide ch (%u8 (ash vc 4))))          ; Volume slide up
+          (#x70 (%xm-volume-slide ch (%xm-u8 (ash vc 4))))          ; Volume slide up
           (#x80 (%xm-volume-slide ch (logand vc #x0f)))          ; Fine volume slide down
-          (#x90 (%xm-volume-slide ch (%u8 (ash vc 4))))          ; Fine volume slide up
-          (#xa0 (setf (xc-vibrato-param ch) (%u8 (logior (logand (xc-vibrato-param ch) #x0f) (ash (logand vc #x0f) 4)))))   ; Set vibrato speed
+          (#x90 (%xm-volume-slide ch (%xm-u8 (ash vc 4))))          ; Fine volume slide up
+          (#xa0 (setf (xc-vibrato-param ch) (%xm-u8 (logior (logand (xc-vibrato-param ch) #x0f) (ash (logand vc #x0f) 4)))))   ; Set vibrato speed
           (#xb0                                                  ; Vibrato
            (setf (xc-vibrato-in-progress ch) nil)
            (%xm-vibrato ctx ch (xc-vibrato-param ch) (prog1 (xc-vibrato-ticks ch)
-                                                       (setf (xc-vibrato-ticks ch) (%u16 (+ (xc-vibrato-ticks ch) 1))))))
+                                                       (setf (xc-vibrato-ticks ch) (%xm-u16 (+ (xc-vibrato-ticks ch) 1))))))
           (#xc0 (when (= tick 0) (setf (xc-panning ch) (/ (float (logand vc #x0f) 1f0) 15f0))))   ; Set panning
           (#xd0 (%xm-panning-slide ch (logand vc #x0f)))         ; Panning slide left
-          (#xe0 (%xm-panning-slide ch (%u8 (ash vc 4))))         ; Panning slide right
+          (#xe0 (%xm-panning-slide ch (%xm-u8 (ash vc 4))))         ; Panning slide right
           (#xf0                                                  ; Tone portamento
            (when (and (= tick 0) (logtest vc #x0f))
              (setf (xc-tone-portamento-param ch) (logior (ash (logand vc #x0f) 4) (logand vc #x0f))))
@@ -926,25 +926,25 @@
                      (%xm-update-frequency ctx ch)
                      (return-from arp)))
                  ;; 0 -> y -> x -> ...
-                 (%xm-arpeggio ctx ch param (%u16 (- tick arp-offset)))))))
+                 (%xm-arpeggio ctx ch param (%xm-u16 (- tick arp-offset)))))))
           (1 (unless (= tick 0) (%xm-pitch-slide ctx ch (- (xc-portamento-up-param ch)))))      ; 1xx: Portamento up
           (2 (unless (= tick 0) (%xm-pitch-slide ctx ch (xc-portamento-down-param ch))))        ; 2xx: Portamento down
           (3 (unless (= tick 0) (%xm-tone-portamento ctx ch)))                                  ; 3xx: Tone portamento
           (4 (unless (= tick 0)                                                                 ; 4xy: Vibrato
                (setf (xc-vibrato-in-progress ch) t)
                (%xm-vibrato ctx ch (xc-vibrato-param ch) (prog1 (xc-vibrato-ticks ch)
-                                                           (setf (xc-vibrato-ticks ch) (%u16 (+ (xc-vibrato-ticks ch) 1)))))))
+                                                           (setf (xc-vibrato-ticks ch) (%xm-u16 (+ (xc-vibrato-ticks ch) 1)))))))
           (5 (unless (= tick 0)                                                                 ; 5xy: Tone portamento + Volume slide
                (%xm-tone-portamento ctx ch)
                (%xm-volume-slide ch (xc-volume-slide-param ch))))
           (6 (unless (= tick 0)                                                                 ; 6xy: Vibrato + Volume slide
                (setf (xc-vibrato-in-progress ch) t)
                (%xm-vibrato ctx ch (xc-vibrato-param ch) (prog1 (xc-vibrato-ticks ch)
-                                                           (setf (xc-vibrato-ticks ch) (%u16 (+ (xc-vibrato-ticks ch) 1)))))
+                                                           (setf (xc-vibrato-ticks ch) (%xm-u16 (+ (xc-vibrato-ticks ch) 1)))))
                (%xm-volume-slide ch (xc-volume-slide-param ch))))
           (7 (unless (= tick 0)                                                                 ; 7xy: Tremolo
                (%xm-tremolo ch (xc-tremolo-param ch) (prog1 (xc-tremolo-ticks ch)
-                                                       (setf (xc-tremolo-ticks ch) (%u8 (+ (xc-tremolo-ticks ch) 1)))))))
+                                                       (setf (xc-tremolo-ticks ch) (%xm-u8 (+ (xc-tremolo-ticks ch) 1)))))))
           (#xa (unless (= tick 0) (%xm-volume-slide ch (xc-volume-slide-param ch))))            ; Axy: Volume slide
           (#xe                                                                                  ; EXy: Extended command
            (case (ash param -4)
@@ -997,7 +997,7 @@
                   (xc-target-volume ch) volume)
             (setf (xc-actual-panning ch) panning
                   (xc-actual-volume ch) volume)))))
-  (setf (xm-current-tick ctx) (%u16 (+ (xm-current-tick ctx) 1)))   ; Ticks increment within the row
+  (setf (xm-current-tick ctx) (%xm-u16 (+ (xm-current-tick ctx) 1)))   ; Ticks increment within the row
   (when (>= (xm-current-tick ctx) (+ (xm-tempo ctx) (xm-extra-ticks ctx)))
     (setf (xm-current-tick ctx) 0
           (xm-extra-ticks ctx) 0))

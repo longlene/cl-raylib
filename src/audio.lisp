@@ -13,9 +13,8 @@
 ;;;   - Play/Stop/Pause/Resume loaded audio
 ;;;
 ;;; Supported file formats: WAV (wav.lisp), OGG (vorbis.lisp), MP3 (mp3.lisp), QOA (qoa.lisp), FLAC (flac.lisp),
-;;; XM (xm.lisp)
+;;; XM (xm.lisp), MOD (mod.lisp)
 ;;; NOTE: SUPPORT_FILEFORMAT_FLAC is enabled (disabled by default in raylib config.h)
-;;; NOTE: MOD format is not supported yet
 ;;; NOTE: Playback device uses PulseAudio through libpulse-simple (see miniaudio.lisp)
 ;;;
 ;;; NOTE: Sample data is stored in typed arrays: u8 -> (unsigned-byte 8), s16 -> (signed-byte 16),
@@ -858,7 +857,28 @@
                  (music-stream music) (load-audio-stream (drflac-sample-rate ctx-flac) sample-size (drflac-channels ctx-flac))
                  (music-frame-count music) (drflac-total-pcm-frame-count ctx-flac)
                  (music-looping music) t)
-           t))))))
+           t))))
+    (:mod
+     (let ((ctx-mod (make-jar-mod-context))
+           (result 0))
+       ;; Copy data to allocated memory for default UnloadMusicStream
+       ;; Memory loaded version for jar_mod_load_file()
+       (when (and (> data-size 0) (< data-size (* 32 1024 1024)))
+         (setf (mod-modfilesize ctx-mod) data-size
+               (mod-modfile ctx-mod) (subseq data 0 data-size))
+         (when (jar-mod-load ctx-mod (mod-modfile ctx-mod) data-size) (setf result data-size)))
+       (if (> result 0)
+           (progn
+             ;; NOTE: Only stereo is supported for MOD
+             (setf (music-ctx-type music) +music-module-mod+
+                   (music-ctx-data music) ctx-mod
+                   (music-stream music) (load-audio-stream (%audio-device-sample-rate) 16 +audio-device-channels+)
+                   (music-frame-count music) (%u32 (jar-mod-max-samples ctx-mod))   ; NOTE: Always 2 channels (stereo)
+                   (music-looping music) t)   ; Looping enabled by default
+             t)
+           (progn
+             (jar-mod-unload ctx-mod)
+             nil))))))
 
 ;; Load music stream from file
 (defun load-music-stream (file-name)
@@ -869,7 +889,8 @@
                      ((is-file-extension file-name ".mp3") :mp3)
                      ((is-file-extension file-name ".xm") :xm)
                      ((is-file-extension file-name ".qoa") :qoa)
-                     ((is-file-extension file-name ".flac") :flac)))
+                     ((is-file-extension file-name ".flac") :flac)
+                     ((is-file-extension file-name ".mod") :mod)))
          (music-loaded (when type
                          (multiple-value-bind (data size) (load-file-data file-name)
                            (and data (%load-music-context music type data size))))))
@@ -894,7 +915,8 @@
                        ((type-p ".mp3" ".MP3") :mp3)
                        ((type-p ".xm" ".XM") :xm)
                        ((type-p ".qoa" ".QOA") :qoa)
-                       ((type-p ".flac" ".FLAC") :flac))))
+                       ((type-p ".flac" ".FLAC") :flac)
+                       ((type-p ".mod" ".MOD") :mod))))
          (music-loaded (when type (%load-music-context music type data data-size))))
     (unless type
       (trace-log +log-warning+ "STREAM: Data format not supported"))
@@ -927,7 +949,8 @@
           ((= (music-ctx-type music) +music-audio-mp3+) (drmp3-uninit (music-ctx-data music)))
           ((= (music-ctx-type music) +music-module-xm+) (jar-xm-free-context (music-ctx-data music)))
           ((= (music-ctx-type music) +music-audio-qoa+) (qoaplay-close (music-ctx-data music)))
-          ((= (music-ctx-type music) +music-audio-flac+) (drflac-close (music-ctx-data music))))))
+          ((= (music-ctx-type music) +music-audio-flac+) (drflac-close (music-ctx-data music)))
+          ((= (music-ctx-type music) +music-module-mod+) (jar-mod-unload (music-ctx-data music))))))
 
 ;; Start music playing (open stream) from beginning
 (defun play-music-stream (music)
@@ -955,7 +978,8 @@
       (#.+music-audio-mp3+ (drmp3-seek-to-start-of-stream ctx))
       (#.+music-module-xm+ (jar-xm-reset ctx))
       (#.+music-audio-qoa+ (qoaplay-rewind ctx))
-      (#.+music-audio-flac+ (drflac-seek-to-first-frame ctx)))))
+      (#.+music-audio-flac+ (drflac-seek-to-first-frame ctx))
+      (#.+music-module-mod+ (jar-mod-seek-start ctx)))))
 
 ;; Seek music to a certain position (in seconds)
 (defun seek-music-stream (music position)
@@ -1069,7 +1093,10 @@
                        (decf frame-count-still-needed frame-count-read)
                        (if (= frame-count-still-needed 0)
                            (return)
-                           (drflac-seek-to-first-frame ctx))))))
+                           (drflac-seek-to-first-frame ctx)))))
+                  (#.+music-module-mod+
+                   ;; NOTE: 3rd parameter (nbsample) specify the number of stereo 16bits samples you want, so sampleCount/2
+                   (jar-mod-fillbuffer ctx pcm-buffer frames-to-stream)))
                 (%update-audio-stream-in-locked-state stream pcm-buffer frames-to-stream))))))
       (bt:release-lock (audio-data-lock *audio*)))))
 

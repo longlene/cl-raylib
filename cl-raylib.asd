@@ -51,6 +51,7 @@
    (:file "vorbis")                ; stb_vorbis.c (used by raudio.c)
    (:file "mp3")                   ; dr_mp3.h (used by raudio.c)
    (:file "xm")                    ; jar_xm.h (used by raudio.c)
+   (:file "mod")                   ; jar_mod.h (used by raudio.c)
    (:file "qoa")                   ; qoa.h + qoaplay.c (used by raudio.c)
    (:file "flac")                  ; dr_flac.h replacement (used by raudio.c)
    (:file "audio")                 ; raudio.c
