@@ -104,12 +104,12 @@
       (file-length stream))
     (error () 0)))
 
-(defun get-file-extension (filename)
-  "Get filename extension - matches raylib GetFileExtension"
-  (let ((dot-pos (position #\. filename :from-end t)))
-    (if dot-pos
-        (string-downcase (subseq filename dot-pos))
-        "")))
+(defun get-file-extension (file-name)
+  "Get pointer to extension for a filename string (includes dot: '.png'), NIL if there is none"
+  (let ((dot (position #\. file-name :from-end t)))
+    (if (or (null dot) (= dot 0))
+        nil
+        (subseq file-name dot))))
 
 (defun get-file-name (file-path)
   "Get filename from path - matches raylib GetFileName"
@@ -122,7 +122,7 @@
   "Check file extension (recommended include point: .png, .wav)
    NOTE: EXT can be a list of extensions separated by ';', comparison is case-insensitive"
   (let ((file-ext (get-file-extension file-name)))
-    (and (plusp (length file-ext))
+    (and file-ext
          (some (lambda (e) (string-equal file-ext e))
                (uiop:split-string ext :separator ";"))
          t)))
@@ -202,98 +202,279 @@
   "Set custom file text saver callback - matches raylib SetSaveFileTextCallback"
   (setf *save-file-text-callback* callback))
 
-;;; Directory Operations
+;;; Directory Operations (raylib rcore.c FileSystem functions)
+
+;; File and directory scan filters
+;; WARNING: Custom file filters can be specified but following raylib IsFileExtension() convention: ".png;.wav;.glb"
+(defparameter +file-filter-tag-all+ "*.*" "Filter to include all file types and directories on scan")
+(defparameter +file-filter-tag-file-only+ "FILES*" "Filter to include all file types on scan (no directories)")
+(defparameter +file-filter-tag-dir-only+ "DIRS*" "Filter to include only directories on scan")
+
+(defun %directory-entries (base-path)
+  "Entries of BASE-PATH (excluding . and ..) as (path-string . directory-p), path is base-path/name"
+  (let ((dir (uiop:ensure-directory-pathname base-path)))
+    (append (mapcar (lambda (f) (cons (format nil "~a/~a" base-path (file-namestring f)) nil))
+                    (uiop:directory-files dir))
+            (mapcar (lambda (d) (cons (format nil "~a/~a" base-path (car (last (pathname-directory d)))) t))
+                    (uiop:subdirectories dir)))))
+
+(defun %scan-directory-files (base-path filter scan-subdirs)
+  "Paths scanned like raylib ScanDirectoryFiles()/GetDirectoryFileCountEx()"
+  (if (directory-exists base-path)
+      (loop for (path . directory-p) in (%directory-entries base-path)
+            if (not directory-p)
+              when (or (null filter) (search +file-filter-tag-all+ filter)
+                       (search +file-filter-tag-file-only+ filter) (is-file-extension path filter))
+                collect path
+              end
+            else
+              when (and filter (or (search +file-filter-tag-all+ filter) (search +file-filter-tag-dir-only+ filter)))
+                collect path
+              end
+              and when scan-subdirs
+                    append (%scan-directory-files path filter scan-subdirs))
+      (progn (trace-log-warning "FILEIO: Directory cannot be opened (~a)" base-path)
+             nil)))
 
 (defun load-directory-files (dir-path)
-  "Load directory file names - matches raylib LoadDirectoryFiles"
-  (handler-case
-    (let ((files '())
-          (count 0))
-      (dolist (file (directory (merge-pathnames "*" dir-path)))
-        (push (namestring file) files)
-        (incf count))
-      (values (reverse files) count))
-    (error (e)
-      (trace-log-warning "FILEIO: [~a] Failed to load directory files: ~a" dir-path e)
-      (values nil 0))))
+  "Load directory filepaths, files and directories, no subdirs scan"
+  (load-directory-files-ex dir-path +file-filter-tag-all+ nil))
 
-(defun load-directory-files-ex (dir-path filter scan-subdirs)
-  "Load directory files with filter - matches raylib LoadDirectoryFilesEx"
-  (declare (ignore scan-subdirs))
-  (handler-case
-    (let ((files '())
-          (count 0))
-      ;; Simple implementation - could be enhanced with proper filtering
-      (dolist (file (directory (merge-pathnames 
-                               (if filter 
-                                   (concatenate 'string "*" filter)
-                                   "*") 
-                               dir-path)))
-        (push (namestring file) files)
-        (incf count)
-        ;; TODO: Add subdirectory scanning if scan-subdirs is true
-        )
-      (values (reverse files) count))
-    (error (e)
-      (trace-log-warning "FILEIO: [~a] Failed to load directory files: ~a" dir-path e)
-      (values nil 0))))
+;; Use "*.*" to include all files and directories on scan
+;; Use "FILES*" to include only files on scan
+;; Use "DIRS*" to include only directories on scan
+(defun load-directory-files-ex (base-path filter scan-subdirs)
+  "Load directory filepaths with extension filtering and recursive directory scan"
+  (let ((files (make-file-path-list)))
+    (if (directory-exists base-path)
+        (let* ((filter (if (and filter (string= filter "")) nil filter))
+               (paths (%scan-directory-files base-path filter scan-subdirs)))
+          (setf (file-path-list-paths files) paths
+                (file-path-list-count files) (length paths)
+                (file-path-list-capacity files) (length paths)))
+        (trace-log-warning "FILEIO: Directory cannot be opened (~a)" base-path))
+    files))
 
 (defun unload-directory-files (files)
-  "Unload directory files - matches raylib UnloadDirectoryFiles (no-op in Lisp)"
+  "Unload filepaths"
   (declare (ignore files))
-  ;; Memory automatically freed by GC
+  ;; NOTE: Memory is managed by the GC
   nil)
+
+(defun get-directory-file-count (dir-path)
+  "Get the file count in a directory"
+  (get-directory-file-count-ex dir-path +file-filter-tag-all+ nil))
+
+;; Use 'DIRS*' in the filter string to include directories in the result
+(defun get-directory-file-count-ex (base-path filter scan-subdirs)
+  "Get the file count in a directory with extension filtering and recursive directory scan"
+  (length (%scan-directory-files base-path filter scan-subdirs)))
 
 ;;; Path utilities
 
+(defun file-exists (file-name)
+  "Check if file exists"
+  (and file-name (probe-file file-name) t))
+
+(defun is-file-hidden (file-path)
+  "Check if file path (file or directory) is hidden by OS"
+  (let* ((slash (position #\/ file-path :from-end t))
+         (base-path (if slash (subseq file-path (1+ slash)) file-path)))
+    (and (plusp (length base-path))
+         (char= (char base-path 0) #\.)
+         (string/= base-path ".")
+         (string/= base-path ".."))))
+
+(defun get-file-mod-time (file-name)
+  "Get file modification time (last write time), as Unix time"
+  (let ((write-date (and (probe-file file-name) (file-write-date file-name))))
+    (if write-date
+        (- write-date 2208988800)       ; Universal time to Unix time
+        0)))
+
 (defun is-path-file (path)
-  "Check if path is a file - matches raylib IsPathFile"
-  (let ((probe (probe-file path)))
-    (and probe (pathname-name probe))))
+  "Check if a given path is a file or a directory"
+  (and (uiop:file-exists-p path)
+       (not (uiop:directory-exists-p path))
+       t))
 
-(defun change-directory (dir)
-  "Change working directory - matches raylib ChangeDirectory"
-  (handler-case
-    (progn
-      ;; Note: Common Lisp doesn't have a standard way to change working directory
-      ;; This is a simplified implementation
-      (trace-log-info "FILEIO: Changed directory to: ~a" dir)
-      t)
-    (error (e)
-      (trace-log-error "FILEIO: Failed to change directory to ~a: ~a" dir e)
-      nil)))
+(defun is-path-directory (path)
+  "Check if a given path point to a directory (raylib: any path that is not a regular file)"
+  (not (is-path-file path)))
 
-;;; Compression utilities (simplified)
+(defun is-path-absolute (path)
+  "Check if provided path is an absolute path"
+  (and path (plusp (length path)) (char= (char path 0) #\/)))
+
+(defun is-file-name-valid (file-name)
+  "Check if fileName is valid for the platform/OS"
+  (let ((valid t))
+    (when (and file-name (plusp (length file-name)))
+      (let ((all-periods t))
+        (loop for ch across file-name
+              ;; Check invalid characters and non-glyph characters
+              do (when (or (find ch "<>:\"/\\|?*") (< (char-code ch) 32))
+                   (setf valid nil)
+                   (loop-finish))
+                 ;; Check if filename is not all periods
+                 (unless (char= ch #\.) (setf all-periods nil)))
+        (when all-periods (setf valid nil))))
+    valid))
+
+;; Create directories (including full path requested), returns 0 on success
+(defun make-directory (dir-path)
+  "Create directories (including full path requested), returns 0 on success"
+  (cond ((or (null dir-path) (string= dir-path "")) -1)        ; Path is not valid
+        ((directory-exists dir-path) 0)                       ; Path already exists (is valid)
+        (t (handler-case (progn (ensure-directories-exist (uiop:ensure-directory-pathname dir-path))
+                                (if (directory-exists dir-path) 0 -1))
+             (error () -1)))))
+
+(defun change-directory (dir-path)
+  "Change working directory, return 0 on success"
+  (if (directory-exists dir-path)
+      (let ((dir (uiop:ensure-directory-pathname (truename dir-path))))
+        (uiop:chdir dir)
+        (setf *default-pathname-defaults* dir)
+        (trace-log-info "SYSTEM: Working Directory: ~a" dir-path)
+        0)
+      (progn (trace-log-warning "SYSTEM: Failed to change to directory: ~a" dir-path)
+             -1)))
+
+;; NOTE: Only rename file name required, not full path
+(defun file-rename (file-name file-rename)
+  "Rename file (if exists), returns 0 on success"
+  (if (file-exists file-name)
+      (handler-case (progn (rename-file (truename file-name) (merge-pathnames file-rename)) 0)
+        (error () -1))
+      -1))
+
+(defun file-remove (file-name)
+  "Remove file (if exists), returns 0 on success"
+  (if (file-exists file-name)
+      (handler-case (progn (delete-file file-name) 0)
+        (error () -1))
+      -1))
+
+;; NOTE: If destination path does not exist, it is created!
+(defun file-copy (src-path dst-path)
+  "Copy file from one path to another, dstPath created if it doesn't exist, returns 0 on success"
+  (multiple-value-bind (src-file-data src-data-size) (load-file-data src-path)
+    ;; Create required paths if they do not exist
+    (let ((result (if (directory-exists (get-directory-path dst-path))
+                      0                                    ; Already exists
+                      (make-directory (get-directory-path dst-path)))))
+      (when (= result 0)                                     ; Directory created successfully or already exists
+        (when (and src-file-data (> src-data-size 0))
+          (setf result (if (save-file-data dst-path src-file-data src-data-size) 0 -1))))
+      result)))
+
+;; NOTE: If dst directories do not exists they are created
+(defun file-move (src-path dst-path)
+  "Move file from one directory to another, dstPath created if it doesn't exist, returns 0 on success"
+  (let ((result -1))
+    (if (file-exists src-path)
+        (progn
+          (setf result (file-copy src-path dst-path))
+          (when (= result 0)
+            ;; Make sure file has been correctly copied before removing
+            (if (and (file-exists dst-path) (= (get-file-length src-path) (get-file-length dst-path)))
+                (progn
+                  (setf result (file-remove src-path))
+                  (unless (= result 0)
+                    (trace-log-warning "FILEIO: [~a] Failed to remove source file after copy" src-path)))
+                (trace-log-warning "FILEIO: [~a] Failed to copy file to [~a]" src-path dst-path))))
+        (trace-log-warning "FILEIO: [~a] Source file does not exist" src-path))
+    result))
+
+(defun file-text-replace (file-name search replacement)
+  "Replace text in an existing file, returns 0 on success"
+  (if (file-exists file-name)
+      (let* ((file-text (load-file-text file-name))
+             (file-text-updated (text-replace file-text search replacement)))
+        (if (save-file-text file-name file-text-updated) 0 -1))
+      -1))
+
+(defun file-text-find-index (file-name search)
+  "Find text in existing file, returns -1 if index not found or index otherwise"
+  (if (file-exists file-name)
+      (let ((index (search search (load-file-text file-name))))
+        (or index -1))
+      -1))
+
+;;; Compression and Encoding (raylib rcore.c)
 
 (defun compress-data (data data-size)
-  "Compress data - simplified implementation"
-  (declare (ignore data data-size))
-  ;; TODO: Implement actual compression (e.g., using deflate)
-  (trace-log-warning "UTILS: Data compression not implemented")
-  (values nil 0))
+  "Compress data (DEFLATE algorithm), returns the compressed data and its size
+   NOTE: raylib uses sdefl, the compressed stream may differ but it is a valid DEFLATE stream"
+  (let ((comp-data (salza2:compress-data (subseq (coerce data '(simple-array (unsigned-byte 8) (*))) 0 data-size)
+                                         'salza2:deflate-compressor)))
+    (trace-log-info "SYSTEM: Compress data: Original size: ~d -> Comp. size: ~d" data-size (length comp-data))
+    (values comp-data (length comp-data))))
 
 (defun decompress-data (comp-data comp-data-size)
-  "Decompress data - simplified implementation" 
-  (declare (ignore comp-data comp-data-size))
-  ;; TODO: Implement actual decompression
-  (trace-log-warning "UTILS: Data decompression not implemented")
-  (values nil 0))
+  "Decompress data (DEFLATE algorithm), returns the data and its size"
+  (handler-case
+      (let ((data (chipz:decompress nil 'chipz:deflate
+                                    (subseq (coerce comp-data '(simple-array (unsigned-byte 8) (*))) 0 comp-data-size))))
+        (trace-log-info "SYSTEM: Decompress data: Comp. size: ~d -> Original size: ~d" comp-data-size (length data))
+        (values data (length data)))
+    (error (e)
+      (trace-log-warning "SYSTEM: Failed to decompress data: ~a" e)
+      (values nil 0))))
 
-;;; Base64 encoding/decoding utilities
-
+;; NOTE: Returns the encoded string and the output size (raylib includes the NULL terminator in it)
 (defun encode-data-base64 (data data-size)
-  "Encode data to Base64 - simplified implementation"
-  (declare (ignore data data-size))
-  ;; TODO: Implement Base64 encoding
-  (trace-log-warning "UTILS: Base64 encoding not implemented")
-  nil)
+  "Encode data to Base64 string"
+  (let* ((table "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
+         (padded-size (* 3 (ceiling data-size 3)))
+         (padding (- padded-size data-size))
+         (encoded (make-string (* 4 (floor padded-size 3)))))
+    (loop for i from 0 below data-size by 3
+          for out from 0 by 4
+          do (let ((pack (logior (ash (aref data i) 16)
+                                 (ash (if (< (+ i 1) data-size) (aref data (+ i 1)) 0) 8)
+                                 (if (< (+ i 2) data-size) (aref data (+ i 2)) 0))))
+               (setf (char encoded out) (char table (ldb (byte 6 18) pack))
+                     (char encoded (+ out 1)) (char table (ldb (byte 6 12) pack))
+                     (char encoded (+ out 2)) (char table (ldb (byte 6 6) pack))
+                     (char encoded (+ out 3)) (char table (ldb (byte 6 0) pack)))))
+    ;; Add required padding bytes
+    (dotimes (p padding) (setf (char encoded (- (length encoded) p 1)) #\=))
+    (values encoded (1+ (length encoded)))))
 
-(defun decode-data-base64 (data)
-  "Decode Base64 data - simplified implementation"
-  (declare (ignore data))
-  ;; TODO: Implement Base64 decoding
-  (trace-log-warning "UTILS: Base64 decoding not implemented")
-  (values nil 0))
+;; NOTE: Returns the decoded data and its size
+(defun decode-data-base64 (text)
+  "Decode Base64 string (expected NULL terminated)"
+  (when (null text) (return-from decode-data-base64 (values nil 0)))
+  (flet ((sixtet (ch)
+           (let ((p (position ch "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")))
+             (or p 0))))
+    (let* ((data-size (length text))
+           (padding (loop for k downfrom (1- data-size) to 0 while (char= (char text k) #\=) count t))
+           (estimated-output-size (- (* 3 (floor data-size 4)) padding))
+           (max-output-size (* 3 (floor data-size 4)))
+           (decoded (make-array max-output-size :element-type '(unsigned-byte 8) :initial-element 0))
+           (output-count 0))
+      (loop for i from 0 below data-size by 4
+            do (when (>= (+ i 2) data-size)
+                 (trace-log-warning "BASE64: Decoding error: Input data size is not valid")
+                 (loop-finish))
+               (let ((pack (logior (ash (sixtet (char text i)) 18)
+                                   (ash (sixtet (char text (+ i 1))) 12)
+                                   (ash (if (and (< (+ i 2) data-size) (char/= (char text (+ i 2)) #\=))
+                                            (sixtet (char text (+ i 2))) 0)
+                                        6)
+                                   (if (and (< (+ i 3) data-size) (char/= (char text (+ i 3)) #\=))
+                                       (sixtet (char text (+ i 3))) 0))))
+                 (when (> (+ output-count 3) max-output-size)
+                   (trace-log-warning "BASE64: Decoding error: Output data size is too small")
+                   (loop-finish))
+                 (setf (aref decoded output-count) (ldb (byte 8 16) pack)
+                       (aref decoded (+ output-count 1)) (ldb (byte 8 8) pack)
+                       (aref decoded (+ output-count 2)) (ldb (byte 8 0) pack))
+                 (incf output-count 3)))
+      (values (subseq decoded 0 (max 0 estimated-output-size)) estimated-output-size))))
 
 ;;; Logging System (moved from logging.lisp)
 ;;; This provides comprehensive logging functionality compatible with raylib

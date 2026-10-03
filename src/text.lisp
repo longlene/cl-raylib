@@ -546,17 +546,19 @@
   "Convert text to lowercase"
   (string-downcase text))
 
-(defun text-replace (text find replace)
-  "Replace all occurrences of 'find' with 'replace' in text"
-  (let ((result text)
-        (find-len (length find)))
-    (loop for pos = (search find result)
-          while pos
-          do (setf result (concatenate 'string
-                                       (subseq result 0 pos)
-                                       replace
-                                       (subseq result (+ pos find-len)))))
-    result))
+(defun text-replace (text search replacement)
+  "Replace text string, occurrences are replaced left to right without rescanning the replacement
+   NOTE: Returns an empty string for an empty or missing search string, like raylib"
+  (if (or (null text) (null search) (string= search ""))
+      ""
+      (with-output-to-string (out)
+        (loop with start = 0
+              for pos = (search search text :start2 start)
+              while pos
+              do (write-string text out :start start :end pos)
+                 (write-string (or replacement "") out)
+                 (setf start (+ pos (length search)))
+              finally (write-string text out :start start)))))
 
 ;;; Additional text utility functions (from rtext.c)
 

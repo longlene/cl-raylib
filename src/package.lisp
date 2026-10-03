@@ -455,7 +455,12 @@
    #:mem-alloc #:mem-realloc #:mem-free #:clamp
    
    ;; File I/O system functions  
-   #:directory-exists #:get-file-length #:get-file-extension #:is-file-extension #:get-file-name
+   #:directory-exists #:get-file-length #:get-file-extension #:is-file-extension
+   #:file-exists #:is-file-hidden #:get-file-mod-time #:is-path-directory #:is-path-absolute
+   #:is-file-name-valid #:make-directory #:file-rename #:file-remove #:file-copy #:file-move
+   #:file-text-replace #:file-text-find-index #:get-directory-file-count #:get-directory-file-count-ex
+   #:load-random-sequence #:unload-random-sequence
+   #:compute-crc32 #:compute-md5 #:compute-sha1 #:compute-sha256 #:get-file-name
    #:get-file-name-without-ext #:get-directory-path #:get-working-directory #:change-directory
    #:load-file-data #:save-file-data #:unload-file-data #:load-file-text #:save-file-text
    #:get-directory-files #:copy-file #:move-file #:delete-file-safe #:file-data

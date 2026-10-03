@@ -159,7 +159,7 @@
   ;; Initialize game loop state (matching C version)
   (setf (core-data-time-frame-counter *core*) 0)
   (setf (core-data-window-should-close *core*) nil)
-  (set-random-seed (get-universal-time))
+  (set-random-seed (- (get-universal-time) 2208988800)) ; Unix time like time(NULL)
   
   ;; Set window ready flag
   (setf (core-data-window-ready *core*) t)
@@ -528,25 +528,189 @@
   (when (> seconds 0.0)
     (sleep seconds)))
 
-;;; Random value generation (from rcore.c)
+;;; Random values generation functions (from rcore.c)
+;;; NOTE: Port of rprand.h (SUPPORT_RPRAND_GENERATOR): Xoshiro128** generator seeded by SplitMix64
 
-(defvar *cl-raylib-random-state* (make-random-state t) "cl-raylib random state")
+(defvar *cl-raylib-random-state* (make-random-state t) "Random state used by the non-raylib random helpers")
+
+(defvar *rprand-seed* #xAABBCCDD "SplitMix64 default seed (aligned to rprand_state)")
+(defvar *rprand-state* (make-array 4 :element-type '(unsigned-byte 32)
+                                     :initial-contents '(#x96ea83c1 #x218b21e5 #xaa91febd #x976414d4))
+  "Xoshiro128** state, initialized by SplitMix64")
+
+(defun %rprand-splitmix64 ()
+  "SplitMix64 generator (uses seed to generate rprand_state)"
+  (let ((z (setf *rprand-seed* (logand (+ *rprand-seed* #x9e3779b97f4a7c15) #xffffffffffffffff))))
+    (setf z (logand (* (logxor z (ash z -30)) #xbf58476d1ce4e5b9) #xffffffffffffffff))
+    (setf z (logand (* (logxor z (ash z -27)) #x94d049bb133111eb) #xffffffffffffffff))
+    (logxor z (ash z -31))))
+
+(defun %rprand-xoshiro ()
+  "Xoshiro128** generator (uses global rprand_state)"
+  (flet ((rotl (x k) (logand (logior (ash x k) (ash x (- k 32))) #xffffffff)))
+    (let* ((s *rprand-state*)
+           (result (logand (* (rotl (logand (* (aref s 1) 5) #xffffffff) 7) 9) #xffffffff))
+           (tt (logand (ash (aref s 1) 9) #xffffffff)))
+      (setf (aref s 2) (logxor (aref s 2) (aref s 0))
+            (aref s 3) (logxor (aref s 3) (aref s 1))
+            (aref s 1) (logxor (aref s 1) (aref s 2))
+            (aref s 0) (logxor (aref s 0) (aref s 3))
+            (aref s 2) (logxor (aref s 2) tt)
+            (aref s 3) (rotl (aref s 3) 11))
+      result)))
 
 (defun set-random-seed (seed)
-  "Set random seed for reproducible sequences"
-  (setf *cl-raylib-random-state* (make-random-state nil))
-  ;; Initialize with seed by calling random multiple times
-  (let ((*random-state* *cl-raylib-random-state*))
-    (loop repeat (mod seed 10000) do (random 1.0))))
+  "Set the seed for the random number generator"
+  (setf *rprand-seed* (logand seed #xffffffffffffffff))
+  ;; To generate the Xoshiro128** state, we use SplitMix64 generator first
+  ;; We generate 4 pseudo-random 64bit numbers that we combine using their LSB|MSB
+  (setf (aref *rprand-state* 0) (ldb (byte 32 0) (%rprand-splitmix64))
+        (aref *rprand-state* 1) (ldb (byte 32 32) (%rprand-splitmix64))
+        (aref *rprand-state* 2) (ldb (byte 32 0) (%rprand-splitmix64))
+        (aref *rprand-state* 3) (ldb (byte 32 32) (%rprand-splitmix64)))
+  (setf *cl-raylib-random-state* #+sbcl (sb-ext:seed-random-state (logand seed #xffffffff)) #-sbcl (make-random-state t))
+  nil)
 
 (defun get-random-value (min max)
-  "Get random integer between min and max (inclusive) - matches raylib GetRandomValue"
-  (when (> min max)
-    ;; Swap if min > max (raylib behavior)
-    (rotatef min max))
-  
-  (let ((*random-state* *cl-raylib-random-state*))
-    (+ min (random (1+ (- max min))))))
+  "Get a random value between min and max (both included)"
+  (when (> min max) (rotatef min max))
+  (+ (mod (%rprand-xoshiro) (1+ (abs (- max min)))) min))
+
+;; NOTE: Returns a vector of COUNT values, NIL if COUNT is greater than the range
+(defun load-random-sequence (count min max)
+  "Load random values sequence, no values repeated"
+  (if (> count (1+ (abs (- max min))))
+      (progn (trace-log-warning "Sequence count required is greater than range provided")
+             nil)
+      (let ((sequence (make-array count :initial-element 0))
+            (i 0))
+        (loop while (< i count)
+              do (let ((value (+ (mod (%rprand-xoshiro) (1+ (abs (- max min)))) min)))
+                   (unless (find value sequence :end i)
+                     (setf (aref sequence i) value)
+                     (incf i))))
+        sequence)))
+
+(defun unload-random-sequence (sequence)
+  "Unload random values sequence"
+  (declare (ignore sequence))
+  nil)
+
+;;; Hashing functions (from rcore.c)
+
+(defun compute-crc32 (data data-size)
+  "Compute CRC32 hash code"
+  (let ((crc #xffffffff))
+    (dotimes (i data-size)
+      (setf crc (logxor (ash crc -8)
+                        (let ((c (logxor (aref data i) (logand crc #xff))))
+                          (dotimes (k 8 c)
+                            (setf c (if (logbitp 0 c) (logxor #xedb88320 (ash c -1)) (ash c -1))))))))
+    (logxor crc #xffffffff)))
+
+(defun %u32+ (&rest values) (logand (reduce #'+ values) #xffffffff))
+(defun %rotl32 (x c) (logand (logior (ash x c) (ash x (- c 32))) #xffffffff))
+(defun %rotr32 (x c) (logand (logior (ash x (- c)) (ash x (- 32 c))) #xffffffff))
+
+(defun %hash-message (data data-size big-endian-length)
+  "MD5/SHA message padding: data, 0x80, zeros and the 64bit bit length"
+  (let* ((new-size (* 64 (1+ (floor (+ data-size 8) 64))))
+         (msg (make-array new-size :element-type '(unsigned-byte 8) :initial-element 0))
+         (bits (* 8 data-size)))
+    (replace msg data :end2 data-size)
+    (setf (aref msg data-size) 128)
+    (dotimes (k 8)
+      (setf (aref msg (if big-endian-length (- new-size 1 k) (+ (- new-size 8) k))) (ldb (byte 8 (* 8 k)) bits)))
+    msg))
+
+;; NOTE: Returns a vector of 4 unsigned 32bit words
+(defun compute-md5 (data data-size)
+  "Compute MD5 hash code, returns static int[4] (16 bytes)"
+  (let ((r #(7 12 17 22 7 12 17 22 7 12 17 22 7 12 17 22 5 9 14 20 5 9 14 20 5 9 14 20 5 9 14 20
+             4 11 16 23 4 11 16 23 4 11 16 23 4 11 16 23 6 10 15 21 6 10 15 21 6 10 15 21 6 10 15 21))
+        (k (let ((v (make-array 64)))
+             (dotimes (i 64 v) (setf (aref v i) (floor (* (abs (sin (float (1+ i) 1d0))) (expt 2 32)))))))
+        (hash (vector #x67452301 #xefcdab89 #x98badcfe #x10325476))
+        (msg (%hash-message data data-size nil)))
+    (loop for offset from 0 below (length msg) by 64
+          do (let ((w (make-array 16))
+                   (a (aref hash 0)) (b (aref hash 1)) (c (aref hash 2)) (d (aref hash 3)))
+               (dotimes (i 16) (setf (aref w i) (%u32-le msg (+ offset (* i 4)))))
+               (dotimes (i 64)
+                 (multiple-value-bind (f g)
+                     (cond ((< i 16) (values (logior (logand b c) (logand (lognot b) d)) i))
+                           ((< i 32) (values (logior (logand d b) (logand (lognot d) c)) (mod (1+ (* 5 i)) 16)))
+                           ((< i 48) (values (logxor b c d) (mod (+ (* 3 i) 5) 16)))
+                           (t (values (logxor c (logior b (lognot d))) (mod (* 7 i) 16))))
+                   (let ((temp d))
+                     (setf d c
+                           c b
+                           b (%u32+ b (%rotl32 (%u32+ a (logand f #xffffffff) (aref k i) (aref w g)) (aref r i)))
+                           a temp))))
+               (setf (aref hash 0) (%u32+ (aref hash 0) a) (aref hash 1) (%u32+ (aref hash 1) b)
+                     (aref hash 2) (%u32+ (aref hash 2) c) (aref hash 3) (%u32+ (aref hash 3) d))))
+    hash))
+
+;; NOTE: Returns a vector of 5 unsigned 32bit words
+(defun compute-sha1 (data data-size)
+  "Compute SHA1 hash code, returns static int[5] (20 bytes)"
+  (let ((hash (vector #x67452301 #xEFCDAB89 #x98BADCFE #x10325476 #xC3D2E1F0))
+        (msg (%hash-message data data-size t)))
+    (loop for offset from 0 below (length msg) by 64
+          do (let ((w (make-array 80)))
+               (dotimes (i 16) (setf (aref w i) (%u32-be msg (+ offset (* i 4)))))
+               (loop for i from 16 below 80
+                     do (setf (aref w i) (%rotl32 (logxor (aref w (- i 3)) (aref w (- i 8))
+                                                          (aref w (- i 14)) (aref w (- i 16)))
+                                                  1)))
+               (let ((a (aref hash 0)) (b (aref hash 1)) (c (aref hash 2)) (d (aref hash 3)) (e (aref hash 4)))
+                 (dotimes (i 80)
+                   (multiple-value-bind (f k)
+                       (cond ((< i 20) (values (logior (logand b c) (logand (lognot b) d)) #x5A827999))
+                             ((< i 40) (values (logxor b c d) #x6ED9EBA1))
+                             ((< i 60) (values (logior (logand b c) (logand b d) (logand c d)) #x8F1BBCDC))
+                             (t (values (logxor b c d) #xCA62C1D6)))
+                     (let ((temp (%u32+ (%rotl32 a 5) (logand f #xffffffff) e k (aref w i))))
+                       (setf e d d c c (%rotl32 b 30) b a a temp))))
+                 (setf (aref hash 0) (%u32+ (aref hash 0) a) (aref hash 1) (%u32+ (aref hash 1) b)
+                       (aref hash 2) (%u32+ (aref hash 2) c) (aref hash 3) (%u32+ (aref hash 3) d)
+                       (aref hash 4) (%u32+ (aref hash 4) e)))))
+    hash))
+
+;; NOTE: Returns a vector of 8 unsigned 32bit words
+(defun compute-sha256 (data data-size)
+  "Compute SHA256 hash code, returns static int[8] (32 bytes)"
+  (let ((k #(#x428a2f98 #x71374491 #xb5c0fbcf #xe9b5dba5 #x3956c25b #x59f111f1 #x923f82a4 #xab1c5ed5
+             #xd807aa98 #x12835b01 #x243185be #x550c7dc3 #x72be5d74 #x80deb1fe #x9bdc06a7 #xc19bf174
+             #xe49b69c1 #xefbe4786 #x0fc19dc6 #x240ca1cc #x2de92c6f #x4a7484aa #x5cb0a9dc #x76f988da
+             #x983e5152 #xa831c66d #xb00327c8 #xbf597fc7 #xc6e00bf3 #xd5a79147 #x06ca6351 #x14292967
+             #x27b70a85 #x2e1b2138 #x4d2c6dfc #x53380d13 #x650a7354 #x766a0abb #x81c2c92e #x92722c85
+             #xa2bfe8a1 #xa81a664b #xc24b8b70 #xc76c51a3 #xd192e819 #xd6990624 #xf40e3585 #x106aa070
+             #x19a4c116 #x1e376c08 #x2748774c #x34b0bcb5 #x391c0cb3 #x4ed8aa4a #x5b9cca4f #x682e6ff3
+             #x748f82ee #x78a5636f #x84c87814 #x8cc70208 #x90befffa #xa4506ceb #xbef9a3f7 #xc67178f2))
+        (hash (vector #x6a09e667 #xbb67ae85 #x3c6ef372 #xa54ff53a #x510e527f #x9b05688c #x1f83d9ab #x5be0cd19))
+        (msg (%hash-message data data-size t)))
+    (loop for offset from 0 below (length msg) by 64
+          do (let ((w (make-array 64)))
+               (dotimes (i 16) (setf (aref w i) (%u32-be msg (+ offset (* i 4)))))
+               (loop for i from 16 below 64
+                     do (let ((s0 (logxor (%rotr32 (aref w (- i 15)) 7) (%rotr32 (aref w (- i 15)) 18) (ash (aref w (- i 15)) -3)))
+                              (s1 (logxor (%rotr32 (aref w (- i 2)) 17) (%rotr32 (aref w (- i 2)) 19) (ash (aref w (- i 2)) -10))))
+                          (setf (aref w i) (%u32+ (aref w (- i 16)) s0 (aref w (- i 7)) s1))))
+               (let ((a (aref hash 0)) (b (aref hash 1)) (c (aref hash 2)) (d (aref hash 3))
+                     (e (aref hash 4)) (f (aref hash 5)) (g (aref hash 6)) (h (aref hash 7)))
+                 (dotimes (i 64)
+                   (let* ((s1 (logxor (%rotr32 e 6) (%rotr32 e 11) (%rotr32 e 25)))
+                          (ch (logxor (logand e f) (logand (logxor e #xffffffff) g)))
+                          (temp1 (%u32+ h s1 ch (aref k i) (aref w i)))
+                          (s0 (logxor (%rotr32 a 2) (%rotr32 a 13) (%rotr32 a 22)))
+                          (maj (logxor (logand a b) (logand a c) (logand b c)))
+                          (temp2 (%u32+ s0 maj)))
+                     (setf h g g f f e e (%u32+ d temp1) d c c b b a a (%u32+ temp1 temp2))))
+                 (loop for v in (list a b c d e f g h)
+                       for idx from 0
+                       do (setf (aref hash idx) (%u32+ (aref hash idx) v))))))
+    hash))
 
 ;;; Scissor mode functions
 (defun begin-scissor-mode (x y width height)

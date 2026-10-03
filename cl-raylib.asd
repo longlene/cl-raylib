@@ -18,7 +18,8 @@
                #:flexi-streams
                #:skippy
                #:zpng
-               #:chipz)
+               #:chipz
+               #:salza2)
   :serial t
   :pathname "src"
   :components
