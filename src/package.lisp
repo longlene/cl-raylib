@@ -331,6 +331,7 @@
    #:+key-left-shift+ #:+key-left-control+ #:+key-left-alt+
 
    ;; Mouse constants
+   #:+mouse-left-button+ #:+mouse-right-button+ #:+mouse-middle-button+
    #:+mouse-button-left+ #:+mouse-button-right+ #:+mouse-button-middle+
    #:+mouse-button-side+ #:+mouse-button-extra+ #:+mouse-button-forward+
    #:+mouse-button-back+

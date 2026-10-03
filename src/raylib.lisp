@@ -596,6 +596,11 @@
 (defconstant +mouse-button-forward+ 5)
 (defconstant +mouse-button-back+ 6)
 
+;; Add backwards compatibility support for deprecated names
+(defconstant +mouse-left-button+ +mouse-button-left+)
+(defconstant +mouse-right-button+ +mouse-button-right+)
+(defconstant +mouse-middle-button+ +mouse-button-middle+)
+
 ;; Mouse cursor types
 (defconstant +mouse-cursor-default+ 0)
 (defconstant +mouse-cursor-arrow+ 1)
