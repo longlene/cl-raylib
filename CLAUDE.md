@@ -17,7 +17,7 @@ raylib/src/rgestures.h -> cl-raylib/src/gestures.lisp
 raylib/src/rlgl.h -> cl-raylib/src/gl.lisp
 raylib/src/raylib.h -> cl-raylib/src/raylib.lisp
 raylib/src/raymath.h -> cl-raylib/src/math.lisp
-raylib/src/rcamera.h -> cl-raylib/src/camera.lisp + cl-raylib/src/camera3d.lisp
+raylib/src/rcamera.h -> cl-raylib/src/camera3d.lisp
 raylib/src/rmodels.c -> cl-raylib/src/models.lisp
 raylib/src/external/par_shapes.h (subset used by rmodels.c) -> cl-raylib/src/par-shapes.lisp
 raylib/src/external/tinyobj_loader_c.h -> cl-raylib/src/tinyobj.lisp

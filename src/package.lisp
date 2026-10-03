@@ -32,17 +32,17 @@
    
    ;; Camera3D functions
    #:camera3d #:make-camera3d #:camera3d-position #:camera3d-target #:camera3d-up
-   #:camera3d-fovy #:camera3d-projection #:make-camera-3d #:camera3d-default
-   #:camera3d-first-person #:camera3d-third-person #:get-camera-matrix
-   #:get-camera-projection-matrix #:rl-set-clip-planes #:rl-get-cull-distance-near #:rl-get-cull-distance-far #:camera3d-get-forward #:camera3d-get-right
-   #:camera3d-get-up #:camera3d-move-forward #:camera3d-move-right #:camera3d-move-up
-   #:camera3d-rotate-yaw #:camera3d-rotate-pitch #:camera3d-rotate-roll
-   #:set-camera-mode #:update-camera #:camera3d-set-position #:camera3d-set-target
-   #:camera3d-set-up #:camera3d-set-fovy #:camera3d-get-view-ray
+   #:camera3d-fovy #:camera3d-projection #:get-camera-matrix
+   #:rl-set-clip-planes #:rl-get-cull-distance-near #:rl-get-cull-distance-far
+   ;; rcamera.h
+   #:get-camera-forward #:get-camera-up #:get-camera-right
+   #:camera-move-forward #:camera-move-up #:camera-move-right #:camera-move-to-target
+   #:camera-yaw #:camera-pitch #:camera-roll
+   #:get-camera-view-matrix #:get-camera-projection-matrix #:update-camera #:update-camera-pro
    #:get-world-to-screen #:begin-mode-3d #:end-mode-3d #:with-mode-3d
    
    ;; Ray functions
-   #:ray #:make-ray #:ray-position #:ray-direction #:get-mouse-ray #:get-camera-ray
+   #:ray #:make-ray #:ray-position #:ray-direction #:get-mouse-ray
    #:get-screen-to-world-ray #:get-screen-to-world-ray-ex
    
    ;; Ray collision functions
