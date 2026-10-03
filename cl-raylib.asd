@@ -42,7 +42,8 @@
    (:file "shapes3d")
    (:file "collision")             ; Collision detection (stateless, matches raylib design)
    (:file "models")                ; 3D models and meshes (matching raylib rmodels.c)
-   (:file "text")                  ; Text rendering system (fixed implementation)
+   (:file "truetype")              ; stb_truetype.h + stb_rect_pack.h (used by rtext.c)
+   (:file "text")                  ; rtext.c
    (:file "audio")                 ; Audio system
    (:file "raygui")                ; GUI system (immediate mode GUI)
    (:file "macro")))

@@ -504,8 +504,8 @@
    
    ;; Font management functions
    #:get-font-default #:is-font-valid #:load-font-default #:unload-font-default
-   #:init-font-system #:init-text-system #:cleanup-text-system #:init-font-bitmap #:load-font #:load-font-ex #:load-font-from-image
-   #:load-font-from-memory #:unload-font #:is-font-ready
+ #:load-font #:load-font-ex #:load-font-from-image
+   #:load-font-from-memory #:unload-font
    
    ;; Glyph functions
    #:get-glyph-index #:get-glyph-info #:get-glyph-atlas-rec
@@ -515,7 +515,11 @@
    #:draw-fps
    
    ;; Text measurement functions
-   #:measure-text #:measure-text-ex
+   #:measure-text #:measure-text-ex #:measure-text-codepoints #:set-text-line-spacing
+   #:+font-default+ #:+font-bitmap+ #:+font-sdf+
+   #:text-remove-spaces #:get-text-between #:text-replace-alloc #:text-replace-between
+   #:text-replace-between-alloc #:text-insert-alloc #:load-text-lines #:unload-text-lines
+   #:load-utf8 #:unload-utf8 #:codepoint-to-utf8 #:load-codepoints
    
    ;; Font atlas functions
    #:gen-image-font-atlas #:load-font-data #:unload-font-data #:export-font-as-code

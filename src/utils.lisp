@@ -136,11 +136,16 @@
         filename)))
 
 (defun get-directory-path (file-path)
-  "Get directory path from file path - matches raylib GetDirectoryPath"
-  (let ((slash-pos (position #\/ file-path :from-end t)))
-    (if slash-pos
-        (subseq file-path 0 (1+ slash-pos))
-        "./")))
+  "Get full path for a given fileName with path (uses static string)"
+  ;; In case provided path does not contain a root drive letter (C:\, D:\)
+  ;; nor leading path separator (\, /), add the current directory path to dirPath
+  (let* ((relative (and (not (and (> (length file-path) 1) (char= (char file-path 1) #\:)))
+                        (not (and (> (length file-path) 0) (member (char file-path 0) '(#\\ #\/))))))
+         (last-slash (position-if (lambda (c) (member c '(#\\ #\/))) file-path :from-end t)))
+    (cond ((null last-slash) (if relative "./" ""))
+          ;; The last and only slash is the leading one: path is in a root directory
+          ((= last-slash 0) (subseq file-path 0 1))
+          (t (concatenate 'string (if relative "./" "") (subseq file-path 0 last-slash))))))
 
 (defun get-prev-directory-path (dir-path)
   "Get previous directory path - matches raylib GetPrevDirectoryPath"

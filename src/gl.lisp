@@ -1046,14 +1046,34 @@ void main() {
         (trace-log-warning "TEXTURE: [ID ~d] Failed to update for current texture format (~d)" id format)))
   (gl:bind-texture :texture-2d 0))
 
+(defmacro %rl-without-gl-error-checks (&body body)
+  "Run BODY ignoring OpenGL errors, as rlgl does (cl-opengl signals them by default)"
+  `(multiple-value-prog1
+       (let ((cl-opengl-bindings::*in-begin* t)) ,@body)
+     ;; Drain the error flags so they are not reported by the next checked GL call
+     (loop repeat 8 until (zerop (cffi:foreign-funcall "glGetError" :unsigned-int)))))
+
 (defun rl-gen-texture-mipmaps (id width height format)
-  "Generate mipmap data for selected texture, returns the number of mipmap levels"
+  "Generate mipmap data for selected texture, returns the number of mipmap levels (NIL on failure)
+NOTE: Follows the GRAPHICS_API_OPENGL_33 path (GL errors are not checked, as in C)"
   (declare (ignore format))
-  (gl:bind-texture :texture-2d id)
-  (gl:generate-mipmap :texture-2d)
-  (gl:bind-texture :texture-2d 0)
-  (let ((mipmaps (1+ (floor (log (float (max width height))) (log 2.0)))))
-    (trace-log-info "TEXTURE: [ID ~d] Mipmaps generated automatically, total: ~d" id mipmaps)
+  (let ((mipmaps nil)
+        ;; Check if texture is power-of-two (POT)
+        (tex-is-pot (and (> width 0) (= (logand width (1- width)) 0)
+                         (> height 0) (= (logand height (1- height)) 0)))
+        (tex-npot t))                   ; RLGL.ExtSupported.texNPOT, always available on desktop OpenGL 3.3
+    (%gl:bind-texture :texture-2d id)
+    (if (or tex-is-pot tex-npot)
+        (progn
+          (%rl-without-gl-error-checks
+            (%gl:generate-mipmap :texture-2d)) ; Generate mipmaps automatically
+          ;; NOTE: C computes log(0) = -inf for empty textures (undefined int conversion), use 1 level
+          (setf mipmaps (if (> (max width height) 0)
+                            (+ 1 (floor (log (float (max width height) 1d0)) (log 2d0)))
+                            1))
+          (trace-log-info "TEXTURE: [ID ~d] Mipmaps generated automatically, total: ~d" id mipmaps))
+        (trace-log-warning "TEXTURE: [ID ~d] Failed to generate mipmaps" id))
+    (%gl:bind-texture :texture-2d 0)
     mipmaps))
 
 (defun rl-unload-texture (id)

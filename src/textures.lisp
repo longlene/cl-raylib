@@ -3066,9 +3066,11 @@
 ;; NOTE: Updates the texture mipmaps count (C passes Texture2D *)
 (defun gen-texture-mipmaps (texture)
   "Generate GPU mipmaps for a texture"
-  (setf (texture-mipmaps texture)
-        (rl-gen-texture-mipmaps (texture-id texture) (texture-width texture) (texture-height texture)
-                                (texture-format texture)))
+  ;; NOTE: NPOT textures support check inside function
+  ;; On WebGL (OpenGL ES 2.0) NPOT textures support is limited
+  (let ((mipmaps (rl-gen-texture-mipmaps (texture-id texture) (texture-width texture) (texture-height texture)
+                                         (texture-format texture))))
+    (when mipmaps (setf (texture-mipmaps texture) mipmaps)))
   nil)
 
 (defun set-texture-filter (texture filter)

@@ -21,6 +21,7 @@ raylib/src/rcamera.h -> cl-raylib/src/camera.lisp + cl-raylib/src/camera3d.lisp
 raylib/src/rmodels.h -> cl-raylib/src/models.lisp
 raylib/src/rshapes.h -> cl-raylib/src/shapes.lisp
 raylib/src/rtext.h -> cl-raylib/src/text.lisp
+raylib/src/external/stb_truetype.h + stb_rect_pack.h -> cl-raylib/src/truetype.lisp
 raylib/src/rtextures.h -> cl-raylib/src/textures.lisp
 raylib/src/utils.h -> cl-raylib/src/utils.lisp
 

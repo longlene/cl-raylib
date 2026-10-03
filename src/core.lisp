@@ -1675,39 +1675,3 @@ NOTE: Recording is by default done at EndDrawing(), before PollInputEvents()"
         ;; Event type: INPUT_GESTURE
         (record +input-gesture+ "INPUT_GESTURE" (gestures-data-current *gestures*) 0 0))))
   (values))
-
-;;; Text formatting (from rcore.c TextFormat)
-
-(defun text-format (format-string &rest args)
-  "Format text with variables (raylib TextFormat equivalent)"
-  ;; Handle raylib-style format specifiers
-  (let ((cl-format-string (convert-raylib-format-to-cl format-string)))
-    (apply #'format nil cl-format-string args)))
-
-(defun convert-raylib-format-to-cl (raylib-format)
-  "Convert raylib format specifiers to Common Lisp format"
-  ;; Simple string replacement without regex for basic cases
-  (let ((result raylib-format))
-    ;; Convert %i to ~d (integer)
-    (setf result (substitute-string result "%i" "~d"))
-    ;; Convert %d to ~d (integer)  
-    (setf result (substitute-string result "%d" "~d"))
-    ;; Convert %f to ~f (float)
-    (setf result (substitute-string result "%f" "~f"))
-    ;; Convert %s to ~a (string)
-    (setf result (substitute-string result "%s" "~a"))
-    ;; Convert %c to ~c (character)
-    (setf result (substitute-string result "%c" "~c"))
-    result))
-
-(defun substitute-string (string old new)
-  "Replace all occurrences of OLD with NEW in STRING"
-  (let ((result string)
-        (old-len (length old)))
-    (loop for pos = (search old result)
-          while pos
-          do (setf result (concatenate 'string
-                                       (subseq result 0 pos)
-                                       new
-                                       (subseq result (+ pos old-len)))))
-    result))
