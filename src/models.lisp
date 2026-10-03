@@ -3002,10 +3002,6 @@ CAP-FACES is a list of (c w1 w2 w3 w4), MIDDLE-FACES a list of (w1 w2 w3 w4)"
                               (transform-scale pose) (vector3-multiply (transform-scale pose) (transform-scale parent-pose)))))))))))
         (values animations num-anims)))))
 
-(defun %unsupported-model-format (file-name)
-  (trace-log +log-warning+ "MODEL: [~a] Model file format loading not implemented yet" file-name)
-  (make-model))
-
 
 ;; Load image from different glTF provided methods (uri, path, buffer_view)
 (defun %load-image-from-cgltf-image (cgltf-image tex-path)
@@ -3811,5 +3807,348 @@ CAP-FACES is a list of (c w1 w2 w3 w4), MIDDLE-FACES a list of (w1 w2 w3 w4)"
 
         (values animations anim-count)))))
 
-(defun %load-m3d (file-name) (%unsupported-model-format file-name))
-(defun %load-model-animations-m3d (file-name) (declare (ignore file-name)) (values nil 0))
+;; Hook LoadFileData() calls to M3D loaders
+(defun %m3d-loaderhook (fn)
+  (load-file-data (%m3d-octets-string fn)))
+
+(defun %m3d-name32 (name)
+  "snprintf(char[32], \"%s\", NAME) of a M3D (latin-1 kept bytes) string"
+  (let ((bytes (map '(vector (unsigned-byte 8)) #'char-code (or name ""))))
+    (babel:octets-to-string bytes :end (min (length bytes) 31) :encoding :utf-8 :errorp nil)))
+
+(defun %m3d-color (color)
+  "memcpy() of an uint32_t color into a Color (r in the lowest byte)"
+  (list (ldb (byte 8 0) color) (ldb (byte 8 8) color) (ldb (byte 8 16) color) (ldb (byte 8 24) color)))
+
+(defun %m3d-vertex-vec3 (m3d index &optional (scale 1.0))
+  (let ((v (aref (m3d-vertex m3d) index)))
+    (vec3 (* (m3dv-x v) scale) (* (m3dv-y v) scale) (* (m3dv-z v) scale))))
+
+(defun %m3d-vertex-quaternion (m3d index)
+  (let ((v (aref (m3d-vertex m3d) index)))
+    (vec4 (m3dv-x v) (m3dv-y v) (m3dv-z v) (m3dv-w v))))
+
+(defun %m3d-bone-to-model-space (pose parent-pose)
+  "Child bones are stored in parent bone relative space, convert that into model space"
+  (setf (transform-rotation pose) (quaternion-multiply (transform-rotation parent-pose) (transform-rotation pose))
+        (transform-translation pose) (vector3-rotate-by-quaternion (transform-translation pose) (transform-rotation parent-pose))
+        (transform-translation pose) (vector3-add (transform-translation pose) (transform-translation parent-pose))
+        (transform-scale pose) (vector3-multiply (transform-scale pose) (transform-scale parent-pose))))
+
+(defun %m3d-no-bone-transform ()
+  (make-transform :translation (vec3 0.0 0.0 0.0) :rotation (vec4 0.0 0.0 0.0 1.0) :scale (vec3 1.0 1.0 1.0)))
+
+;; Load M3D mesh data
+(defun %load-m3d (file-name)
+  (let ((model (make-model))
+        (mi #xfffffffe)                 ; int mi = -2, compared as unsigned
+        (vcolor nil))
+    (multiple-value-bind (file-data data-size) (load-file-data file-name)
+      (declare (ignore data-size))
+      (unless file-data (return-from %load-m3d model))
+
+      (let ((m3d (m3d-load file-data #'%m3d-loaderhook)))
+        (if (or (null m3d) (m3d-err-isfatal (m3d-errcode m3d)))
+            (progn
+              (trace-log +log-warning+ "MODEL: [~a] Failed to load M3D data, error code ~d" file-name (if m3d (m3d-errcode m3d) -2))
+              (return-from %load-m3d model))
+            (trace-log +log-info+ "MODEL: [~a] M3D data loaded successfully: ~d faces/~d materials" file-name
+                       (m3d-numface m3d) (m3d-nummaterial m3d)))
+
+        ;; Check if face is found, if not, probably just a material library
+        (when (zerop (m3d-numface m3d)) (return-from %load-m3d model))
+
+        (let ((mesh-count 0) (material-count 0)
+              (faces (m3d-face m3d))
+              (vertices (m3d-vertex m3d))
+              (scale (m3d-scale m3d))
+              (skinned (and (plusp (m3d-numbone m3d)) (plusp (m3d-numskin m3d)))))
+          (if (> (m3d-nummaterial m3d) 0)
+              (progn
+                (setf mesh-count (m3d-nummaterial m3d) material-count (m3d-nummaterial m3d))
+                (trace-log +log-info+ "MODEL: model has ~d material meshes" material-count))
+              (progn
+                (setf mesh-count 1 material-count 0)
+                (trace-log +log-info+ "MODEL: No materials, putting all meshes in a default material")))
+
+          ;; A default material is always required, so adding +1
+          (incf material-count)
+
+          ;; NOTE: Faces must be in non-decreasing materialid order, sorting is not needed,
+          ;; valid M3D model files should already be sorted (Check PR #3363 #3385)
+
+          (let ((meshes (make-array mesh-count :adjustable t :fill-pointer mesh-count))
+                (mesh-material (make-array mesh-count :adjustable t :fill-pointer mesh-count :initial-element 0))
+                (materials (make-array (+ material-count 1) :initial-element nil)))
+            (dotimes (i mesh-count) (setf (aref meshes i) (make-mesh)))
+            (setf (model-mesh-count model) mesh-count
+                  (model-material-count model) material-count)
+
+            ;; Map no material to index 0 with default shader, everything else materialid + 1
+            (setf (aref materials 0) (load-material-default))
+
+            (let ((k -1) (l 0))
+              (dotimes (i (m3d-numface m3d))
+                (let ((face (aref faces i)))
+                  ;; Materials are grouped together
+                  (when (/= mi (m3df-materialid face))
+                    ;; There should be only one material switch per material kind,
+                    ;; but be bulletproof for non-optimal model files
+                    (when (>= (+ k 1) (model-mesh-count model))
+                      (incf (model-mesh-count model))
+                      (vector-push-extend (make-mesh) meshes)
+                      (vector-push-extend 0 mesh-material))
+
+                    (incf k)
+                    (setf mi (m3df-materialid face))
+
+                    ;; Only allocate colors VertexBuffer if there's a color vertex in the model for this material batch
+                    ;; if all colors are fully transparent black for all vertices of this material, then assuming no vertex colors
+                    (setf l 0 vcolor nil)
+                    (loop for j from i below (m3d-numface m3d)
+                          while (= mi (m3df-materialid (aref faces j)))
+                          do (let ((fv (m3df-vertex (aref faces j))))
+                               (when (or (zerop (m3dv-color (aref vertices (aref fv 0))))
+                                         (zerop (m3dv-color (aref vertices (aref fv 1))))
+                                         (zerop (m3dv-color (aref vertices (aref fv 2)))))
+                                 (setf vcolor t)))
+                             (incf l))
+
+                    (let* ((mesh (aref meshes k))
+                           (vertex-count (* l 3)))
+                      (setf (mesh-vertex-count mesh) vertex-count
+                            (mesh-triangle-count mesh) l
+                            (mesh-vertices mesh) (%floats (* vertex-count 3))
+                            (mesh-texcoords mesh) (%floats (* vertex-count 2))
+                            (mesh-normals mesh) (%floats (* vertex-count 3)))
+
+                      ;; If no map is provided, or colors are defined, allocate storage for vertex colors
+                      ;; M3D specs only consider vertex colors if no material is provided, however raylib uses both and mixes the colors
+                      (when (or (= mi +m3d-undef+) vcolor)
+                        (setf (mesh-colors mesh) (make-array (* vertex-count 4) :element-type '(unsigned-byte 8) :initial-element 0)))
+
+                      ;; If no map is provided and vertex colors are allocated, set them to white
+                      (when (and (= mi +m3d-undef+) (mesh-colors mesh))
+                        (fill (mesh-colors mesh) 255))
+
+                      (when skinned
+                        (setf (mesh-bone-indices mesh) (make-array (* vertex-count 4) :element-type '(unsigned-byte 8) :initial-element 0)
+                              (mesh-bone-weights mesh) (%floats (* vertex-count 4))
+                              ;; NOTE: SUPPORT_GPU_SKINNING is disabled: vertex buffers for CPU skinning
+                              (mesh-anim-vertices mesh) (%floats (* vertex-count 3))
+                              (mesh-anim-normals mesh) (%floats (* vertex-count 3)))))
+
+                    (setf (aref mesh-material k) (%i32 (logand (+ mi 1) #xffffffff)))
+                    (setf l 0))
+
+                  ;; Process meshes per material, add triangles
+                  (let* ((mesh (aref meshes k))
+                         (fv (m3df-vertex face))
+                         (ft (m3df-texcoord face))
+                         (fnorm (m3df-normal face)))
+                    (float-features:with-float-traps-masked t
+                      (dotimes (c 3)
+                        (let ((v (aref vertices (aref fv c))))
+                          (setf (aref (mesh-vertices mesh) (+ (* l 9) (* c 3) 0)) (* (m3dv-x v) scale)
+                                (aref (mesh-vertices mesh) (+ (* l 9) (* c 3) 1)) (* (m3dv-y v) scale)
+                                (aref (mesh-vertices mesh) (+ (* l 9) (* c 3) 2)) (* (m3dv-z v) scale)))))
+
+                    ;; Without vertex color (full transparency), using the default color
+                    (when (mesh-colors mesh)
+                      (dotimes (c 3)
+                        (let ((color (m3dv-color (aref vertices (aref fv c)))))
+                          (when (logtest color #xff000000)
+                            (loop for b from 0 for byte in (%m3d-color color)
+                                  do (setf (aref (mesh-colors mesh) (+ (* l 12) (* c 4) b)) byte))))))
+
+                    (when (/= (aref ft 0) +m3d-undef+)
+                      (dotimes (c 3)
+                        (let ((uv (svref (m3d-tmap m3d) (aref ft c))))
+                          (setf (aref (mesh-texcoords mesh) (+ (* l 6) (* c 2) 0)) (car uv)
+                                (aref (mesh-texcoords mesh) (+ (* l 6) (* c 2) 1)) (- 1.0 (cdr uv))))))
+
+                    (when (/= (aref fnorm 0) +m3d-undef+)
+                      (dotimes (c 3)
+                        (let ((v (aref vertices (aref fnorm c))))
+                          (setf (aref (mesh-normals mesh) (+ (* l 9) (* c 3) 0)) (m3dv-x v)
+                                (aref (mesh-normals mesh) (+ (* l 9) (* c 3) 1)) (m3dv-y v)
+                                (aref (mesh-normals mesh) (+ (* l 9) (* c 3) 2)) (m3dv-z v)))))
+
+                    ;; Add skin (vertex / bone weight pairs)
+                    (when skinned
+                      (dotimes (n 3)
+                        (let ((skinid (%i32 (m3dv-skinid (aref vertices (aref fv n))))))
+                          ;; Check if there is a skin for this mesh
+                          (if (and (/= skinid -1) (< skinid (m3d-numskin m3d)))
+                              (let ((skin (svref (m3d-skin m3d) skinid)))
+                                (dotimes (j 4)
+                                  (setf (aref (mesh-bone-indices mesh) (+ (* l 12) (* n 4) j)) (logand (aref (m3ds-boneid skin) j) #xff)
+                                        (aref (mesh-bone-weights mesh) (+ (* l 12) (* n 4) j)) (aref (m3ds-weight skin) j))))
+                              ;; Boneless meshes with skeletal animations are not supported, so
+                              ;; putting all vertices without a bone into a special "no bone" bone
+                              (setf (aref (mesh-bone-indices mesh) (+ (* l 12) (* n 4))) (logand (m3d-numbone m3d) #xff)
+                                    (aref (mesh-bone-weights mesh) (+ (* l 12) (* n 4))) 1.0))))))
+                  (incf l))))
+
+            ;; Load materials
+            (dotimes (i (m3d-nummaterial m3d))
+              (let ((material (load-material-default)))
+                (setf (aref materials (+ i 1)) material)
+                (flet ((mmap (index) (%material-map material index)))
+                  (loop for prop across (m3dm-props (aref (m3d-material m3d) i))
+                        do (let ((type (m3dp-type prop)) (value (m3dp-value prop)))
+                             (cond
+                               ((= type +m3dp-kd+)
+                                (setf (material-map-color (mmap +material-map-diffuse+)) (%m3d-color value)
+                                      (material-map-value (mmap +material-map-diffuse+)) 0.0))
+                               ((= type +m3dp-ks+)
+                                (setf (material-map-color (mmap +material-map-specular+)) (%m3d-color value)))
+                               ((= type +m3dp-ns+)
+                                (setf (material-map-value (mmap +material-map-specular+)) (%m3d-prop-float value)))
+                               ((= type +m3dp-ke+)
+                                (setf (material-map-color (mmap +material-map-emission+)) (%m3d-color value)
+                                      (material-map-value (mmap +material-map-emission+)) 0.0))
+                               ((= type +m3dp-pm+)
+                                (setf (material-map-value (mmap +material-map-metalness+)) (%m3d-prop-float value)))
+                               ((= type +m3dp-pr+)
+                                (setf (material-map-value (mmap +material-map-roughness+)) (%m3d-prop-float value)))
+                               ((= type +m3dp-ps+)
+                                (setf (material-map-color (mmap +material-map-normal+)) (copy-list +white+)
+                                      (material-map-value (mmap +material-map-normal+)) (%m3d-prop-float value)))
+                               ((>= type 128)
+                                (let* ((texture (aref (m3d-texture m3d) value))
+                                       (tx (m3dtx-image texture))
+                                       (image (if tx
+                                                  (make-image :data (image-data tx) :width (logand (image-width tx) #xffff)
+                                                              :height (logand (image-height tx) #xffff) :mipmaps 1
+                                                              :format (image-pixel-format tx))
+                                                  (make-image :data nil :width 0 :height 0 :mipmaps 1
+                                                              :format +pixelformat-uncompressed-grayscale+)))
+                                       (map-index (case type
+                                                    (#.+m3dp-map-kd+ +material-map-diffuse+)
+                                                    (#.+m3dp-map-ks+ +material-map-specular+)
+                                                    (#.+m3dp-map-ke+ +material-map-emission+)
+                                                    (#.+m3dp-map-km+ +material-map-normal+)
+                                                    (#.+m3dp-map-ka+ +material-map-occlusion+)
+                                                    (#.+m3dp-map-pm+ +material-map-roughness+))))
+                                  (when map-index
+                                    (setf (material-map-texture (mmap map-index)) (load-texture-from-image image)))))))))))
+
+            ;; Load bones
+            (when (plusp (m3d-numbone m3d))
+              (let* ((bone-count (+ (m3d-numbone m3d) 1))
+                     (bones (make-array bone-count))
+                     (bind-pose (make-array bone-count)))
+                (dotimes (i bone-count) (setf (svref bind-pose i) (make-transform)))
+                (setf (model-skeleton model) (make-model-skeleton :bone-count bone-count :bones bones :bind-pose bind-pose))
+                (dotimes (i (m3d-numbone m3d))
+                  (let* ((m3d-bone (svref (m3d-bone m3d) i))
+                         (parent (%i32 (m3db-parent m3d-bone)))
+                         (pose (make-transform :translation (%m3d-vertex-vec3 m3d (m3db-pos m3d-bone) scale)
+                                               ;; NOTE: If the orientation quaternion is not normalized, then that's encoding scaling
+                                               :rotation (quaternion-normalize (%m3d-vertex-quaternion m3d (m3db-ori m3d-bone)))
+                                               :scale (vec3 1.0 1.0 1.0))))
+                    (setf (svref bones i) (make-bone-info :name (%m3d-name32 (m3db-name m3d-bone)) :parent parent)
+                          (svref bind-pose i) pose)
+                    ;; Child bones are stored in parent bone relative space, convert that into model space
+                    (when (>= parent 0)
+                      (%m3d-bone-to-model-space pose (svref bind-pose parent)))))
+                ;; Add a special "no bone" bone
+                (setf (svref bones (m3d-numbone m3d)) (make-bone-info :name "NO BONE" :parent -1)
+                      (svref bind-pose (m3d-numbone m3d)) (%m3d-no-bone-transform))))
+
+            ;; Load bone-pose default mesh into animation vertices. These will be updated when UpdateModelAnimation gets
+            ;; called, but not before, however DrawMesh uses these if they exist (so not good if they are left empty)
+            (when skinned
+              (let ((bone-count (model-skeleton-bone-count (model-skeleton model))))
+                (loop for mesh across meshes
+                      do (setf (mesh-bone-count mesh) bone-count)
+                         ;; Initialize vertex buffers for CPU skinning
+                         (when (mesh-anim-vertices mesh)
+                           (replace (mesh-anim-vertices mesh) (mesh-vertices mesh))
+                           (replace (mesh-anim-normals mesh) (mesh-normals mesh))))
+                ;; Initialize runtime animation data: current pose and bone matrices
+                (setf (model-current-pose model)
+                      (let ((v (make-array bone-count)))
+                        (dotimes (j bone-count v)
+                          (setf (aref v j) (make-transform :translation (vec3 0.0 0.0 0.0) :rotation (vec4 0.0 0.0 0.0 0.0)
+                                                           :scale (vec3 0.0 0.0 0.0)))))
+                      (model-bone-matrices model)
+                      (let ((v (make-array bone-count)))
+                        (dotimes (j bone-count v) (setf (aref v j) (matrix-identity)))))))
+
+            (setf (model-meshes model) (coerce meshes 'simple-vector)
+                  (model-mesh-material model) (coerce mesh-material 'simple-vector)
+                  (model-materials model) materials)
+            (m3d-free m3d)))))
+    model))
+
+(defun %m3d-prop-float (value)
+  "prop->value.fnum: the property value as a float (union with the integer values)"
+  (if (floatp value) value (sb-kernel:make-single-float (%i32 value))))
+
+(defconstant +m3d-animdelay+ 17 "Animation frames delay, (~1000 ms/60 FPS = 16.666666 ms)")
+
+;; Load M3D animation data
+(defun %load-model-animations-m3d (file-name)
+  (let ((animations nil) (anim-count 0))
+    (multiple-value-bind (file-data data-size) (load-file-data file-name)
+      (declare (ignore data-size))
+      (when file-data
+        (let ((m3d (m3d-load file-data #'%m3d-loaderhook)))
+          (if (or (null m3d) (m3d-err-isfatal (m3d-errcode m3d)))
+              (progn
+                (trace-log +log-warning+ "MODEL: [~a] Failed to load M3D data, error code ~d" file-name (if m3d (m3d-errcode m3d) -2))
+                (return-from %load-model-animations-m3d (values nil 0)))
+              (trace-log +log-info+ "MODEL: [~a] M3D data loaded successfully: ~d animations, ~d bones, ~d skins" file-name
+                         (m3d-numaction m3d) (m3d-numbone m3d) (m3d-numskin m3d)))
+
+          ;; No animation or bones, exit out. skins are not required because some people use one animation for N models
+          (when (or (zerop (m3d-numaction m3d)) (zerop (m3d-numbone m3d)))
+            (return-from %load-model-animations-m3d (values nil 0)))
+
+          (let ((numbone (m3d-numbone m3d))
+                (scale (m3d-scale m3d)))
+            (setf anim-count (m3d-numaction m3d)
+                  animations (make-array anim-count))
+            (dotimes (a anim-count)
+              (let* ((action (aref (m3d-action m3d) a))
+                     (keyframe-count (floor (m3da-durationmsec action) +m3d-animdelay+))
+                     (keyframe-poses (make-array keyframe-count))
+                     (bones (make-array (+ numbone 1)))
+                     (animation (make-model-animation :bone-count (+ numbone 1)
+                                                      :keyframe-count keyframe-count
+                                                      :keyframe-poses keyframe-poses
+                                                      :name (%m3d-name32 (m3da-name action)))))
+                (setf (svref animations a) animation)
+                ;; NOTE: C prints the unsigned durationmsec with %f
+                (trace-log +log-info+ "MODEL: [~a] Loaded animation: ~a | Frames: ~d | Duration: ~as" file-name
+                           (model-animation-name animation) keyframe-count (%sprintf "%f" (float (m3da-durationmsec action) 1.0)))
+
+                (dotimes (i numbone)
+                  (let ((bone (svref (m3d-bone m3d) i)))
+                    (setf (svref bones i) (make-bone-info :name (%m3d-name32 (m3db-name bone)) :parent (%i32 (m3db-parent bone))))))
+
+                ;; A special, never transformed "no bone" bone, used for boneless vertices
+                (setf (svref bones numbone) (make-bone-info :name "NO BONE" :parent -1))
+
+                ;; M3D stores frames at arbitrary intervals with sparse skeletons; Full skeletons is required at
+                ;; regular intervals, so let the M3D SDK do the heavy lifting and calculate interpolated bones
+                (dotimes (i keyframe-count)
+                  (let ((poses (make-array (+ numbone 1)))
+                        (pose (m3d-pose m3d a (* i +m3d-animdelay+))))
+                    (dotimes (j (+ numbone 1)) (setf (svref poses j) (make-transform)))
+                    (setf (svref keyframe-poses i) poses)
+                    (when pose
+                      (dotimes (j numbone)
+                        (let ((transform (make-transform :translation (%m3d-vertex-vec3 m3d (m3db-pos (aref pose j)) scale)
+                                                         :rotation (quaternion-normalize (%m3d-vertex-quaternion m3d (m3db-ori (aref pose j))))
+                                                         :scale (vec3 1.0 1.0 1.0))))
+                          (setf (svref poses j) transform)
+                          ;; Child bones are stored in parent bone relative space, convert that into model space
+                          (when (>= (bone-info-parent (svref bones j)) 0)
+                            (%m3d-bone-to-model-space transform (svref poses (bone-info-parent (svref bones j)))))))
+                      ;; Default transform for the "no bone" bone
+                      (setf (svref poses numbone) (%m3d-no-bone-transform)))))))
+            (m3d-free m3d)))))
+    (values animations anim-count)))
