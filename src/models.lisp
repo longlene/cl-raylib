@@ -2697,6 +2697,65 @@ CAP-FACES is a list of (c w1 w2 w3 w4), MIDDLE-FACES a list of (w1 w2 w3 w4)"
       (when (/= (%chdir current-dir) 0)
         (trace-log +log-warning+ "MODEL: [~a] Failed to change working directory" current-dir)))
     model))
+;; Load VOX (MagicaVoxel) mesh data
+(defun %load-vox (file-name)
+  (let ((model (make-model))
+        (nbvertices 0)
+        (meshescount 0))
+    ;; Read vox file into buffer
+    (multiple-value-bind (file-data data-size) (load-file-data file-name)
+      (unless file-data
+        (trace-log +log-warning+ "MODEL: [~a] Failed to load VOX file" file-name)
+        (return-from %load-vox model))
+
+      ;; Read and build voxarray description
+      (let* ((voxarray (make-vox-array-3d))
+             (ret (vox-load-from-memory file-data data-size voxarray)))
+        (if (/= ret +vox-success+)
+            (progn
+              ;; Error
+              (trace-log +log-warning+ "MODEL: [~a] Failed to load VOX data" file-name)
+              (return-from %load-vox model))
+            (progn
+              ;; Success: Compute meshes count
+              (setf nbvertices (truncate (length (voxa-vertices voxarray)) 3)
+                    meshescount (+ 1 (truncate nbvertices 65536)))
+              (trace-log +log-info+ "MODEL: [~a] VOX data loaded successfully : ~d vertices/~d meshes" file-name nbvertices meshescount)))
+
+        ;; Build models from meshes
+        (setf (model-transform model) (matrix-identity)
+              (model-mesh-count model) meshescount
+              (model-meshes model) (let ((v (make-array meshescount))) (dotimes (i meshescount v) (setf (aref v i) (make-mesh))))
+              (model-mesh-material model) (make-array meshescount :initial-element 0)
+              (model-material-count model) 1
+              (model-materials model) (vector (load-material-default)))
+
+        ;; Init model meshes
+        (let ((vertices-remain nbvertices)
+              (vertices-max 65532)      ; 5461 voxels x 12 vertices per voxel -> 65532 (must be inf 65536)
+              ;; 6*4 = 12 vertices per voxel
+              (first-vertex 0)
+              (all-indices (voxa-indices voxarray)))
+          (dotimes (i meshescount)
+            (let* ((mesh (aref (model-meshes model) i))
+                   (vertex-count (min vertices-max vertices-remain)))
+              ;; Copy vertices
+              (setf (mesh-vertex-count mesh) vertex-count
+                    (mesh-vertices mesh) (subseq (voxa-vertices voxarray) (* 3 first-vertex) (* 3 (+ first-vertex vertex-count)))
+                    ;; Copy normals
+                    (mesh-normals mesh) (subseq (voxa-normals voxarray) (* 3 first-vertex) (* 3 (+ first-vertex vertex-count)))
+                    ;; Copy indices
+                    ;; NOTE: All the voxarray indices are copied to every mesh, like C
+                    (mesh-indices mesh) (coerce all-indices '(simple-array (unsigned-byte 16) (*)))
+                    (mesh-triangle-count mesh) (* (truncate vertex-count 4) 2)
+                    ;; Copy colors
+                    (mesh-colors mesh) (subseq (voxa-colors voxarray) (* 4 first-vertex) (* 4 (+ first-vertex vertex-count))))
+              ;; First material index
+              (setf (aref (model-mesh-material model) i) 0)
+              (decf vertices-remain vertices-max)
+              (incf first-vertex vertices-max))))))
+    model))
+
 ;;; IQM file data readers (little endian, 0 past the end of the data like a zeroed buffer)
 (defun %iqm-u8 (data offset)
   (if (< -1 offset (length data)) (aref data offset) 0))
@@ -2948,7 +3007,6 @@ CAP-FACES is a list of (c w1 w2 w3 w4), MIDDLE-FACES a list of (w1 w2 w3 w4)"
   (make-model))
 
 (defun %load-gltf (file-name) (%unsupported-model-format file-name))
-(defun %load-vox (file-name) (%unsupported-model-format file-name))
 (defun %load-m3d (file-name) (%unsupported-model-format file-name))
 (defun %load-model-animations-gltf (file-name) (declare (ignore file-name)) (values nil 0))
 (defun %load-model-animations-m3d (file-name) (declare (ignore file-name)) (values nil 0))
