@@ -27,18 +27,7 @@
 ;;;----------------------------------------------------------------------------------
 ;;; Module Internal Functions
 ;;;----------------------------------------------------------------------------------
-(declaim (inline %x %y %vertex %polar))
-
-(defun %x (v) (float (if (consp v) (first v) (vx v)) 1.0))
-(defun %y (v) (float (if (consp v) (second v) (vy v)) 1.0))
-
-(defun %rec (rec)
-  "Return rectangle x, y, width, height as single-floats"
-  (if (consp rec)
-      (values (float (first rec) 1.0) (float (second rec) 1.0)
-              (float (third rec) 1.0) (float (fourth rec) 1.0))
-      (values (rectangle-x rec) (rectangle-y rec)
-              (rectangle-width rec) (rectangle-height rec))))
+(declaim (inline %vertex %polar))
 
 (defun %color (color)
   "rlColor4ub() from a color list or keyword"

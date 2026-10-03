@@ -45,7 +45,7 @@
   (format t "~%=== Color Demo ===~%")
   
   (let ((red-color +red+)
-        (custom-color (color 128 64 192 255)))
+        (custom-color (make-color 128 64 192 255)))
     
     (format t "Red color: ~a~%" red-color)
     (format t "Custom color: ~a~%" custom-color)
@@ -55,7 +55,7 @@
     ;; HSV conversion
     (let ((hsv (color-to-hsv red-color)))
       (format t "Red in HSV: ~a~%" hsv)
-      (format t "HSV back to RGB: ~a~%" (color-from-hsv (first hsv) (second hsv) (third hsv))))
+      (format t "HSV back to RGB: ~a~%" (color-from-hsv (vx hsv) (vy hsv) (vz hsv))))
     ))
 
 ;; Run the demo

@@ -8,14 +8,63 @@
   (width 0.0 :type single-float)
   (height 0.0 :type single-float))
 
+;;; Argument helpers shared by the drawing modules: Vector2 arguments accept a vec2
+;;; or an (x y) list, Rectangle arguments a rectangle struct or an (x y w h) list
+(declaim (inline %x %y))
+(defun %x (v) (float (if (consp v) (first v) (vx v)) 1.0))
+(defun %y (v) (float (if (consp v) (second v) (vy v)) 1.0))
+
+(defun %rec (rec)
+  "Return rectangle x, y, width, height as single-floats"
+  (if (consp rec)
+      (values (float (first rec) 1.0) (float (second rec) 1.0)
+              (float (third rec) 1.0) (float (fourth rec) 1.0))
+      (values (rectangle-x rec) (rectangle-y rec)
+              (rectangle-width rec) (rectangle-height rec))))
+
+;;; Pixel formats (raylib PixelFormat enum)
+;;; NOTE: Support depends on OpenGL version and platform
+(defconstant +pixelformat-uncompressed-grayscale+ 1 "8 bit per pixel (no alpha)")
+(defconstant +pixelformat-uncompressed-gray-alpha+ 2 "8*2 bpp (2 channels)")
+(defconstant +pixelformat-uncompressed-r5g6b5+ 3 "16 bpp")
+(defconstant +pixelformat-uncompressed-r8g8b8+ 4 "24 bpp")
+(defconstant +pixelformat-uncompressed-r5g5b5a1+ 5 "16 bpp (1 bit alpha)")
+(defconstant +pixelformat-uncompressed-r4g4b4a4+ 6 "16 bpp (4 bit alpha)")
+(defconstant +pixelformat-uncompressed-r8g8b8a8+ 7 "32 bpp")
+(defconstant +pixelformat-uncompressed-r32+ 8 "32 bpp (1 channel - float)")
+(defconstant +pixelformat-uncompressed-r32g32b32+ 9 "32*3 bpp (3 channels - float)")
+(defconstant +pixelformat-uncompressed-r32g32b32a32+ 10 "32*4 bpp (4 channels - float)")
+(defconstant +pixelformat-uncompressed-r16+ 11 "16 bpp (1 channel - half float)")
+(defconstant +pixelformat-uncompressed-r16g16b16+ 12 "16*3 bpp (3 channels - half float)")
+(defconstant +pixelformat-uncompressed-r16g16b16a16+ 13 "16*4 bpp (4 channels - half float)")
+(defconstant +pixelformat-compressed-dxt1-rgb+ 14 "4 bpp (no alpha)")
+(defconstant +pixelformat-compressed-dxt1-rgba+ 15 "4 bpp (1 bit alpha)")
+(defconstant +pixelformat-compressed-dxt3-rgba+ 16 "8 bpp")
+(defconstant +pixelformat-compressed-dxt5-rgba+ 17 "8 bpp")
+(defconstant +pixelformat-compressed-etc1-rgb+ 18 "4 bpp")
+(defconstant +pixelformat-compressed-etc2-rgb+ 19 "4 bpp")
+(defconstant +pixelformat-compressed-etc2-eac-rgba+ 20 "8 bpp")
+(defconstant +pixelformat-compressed-pvrt-rgb+ 21 "4 bpp")
+(defconstant +pixelformat-compressed-pvrt-rgba+ 22 "4 bpp")
+(defconstant +pixelformat-compressed-astc-4x4-rgba+ 23 "8 bpp")
+(defconstant +pixelformat-compressed-astc-8x8-rgba+ 24 "2 bpp")
+(defconstant +pixelformat-uncompressed-rgba+ 7 "32-bit RGBA (alias for compatibility)")
+
 ;;; Image structure (CPU-side data)
-(defstruct image
-  "Image data structure for CPU-side operations"
+;;; NOTE: The format and mipmaps slots are named PIXEL-FORMAT and MIPMAP-COUNT so that
+;;; IMAGE-FORMAT and IMAGE-MIPMAPS can be raylib's ImageFormat() and ImageMipmaps();
+;;; (image-format image) with one argument still reads the format
+(defstruct (image (:constructor %make-image))
+  "Image, pixel data stored in CPU memory (RAM), data layout given by pixel-format"
   (data nil :type (or null (simple-array (unsigned-byte 8) (*))))
   (width 0 :type fixnum)
   (height 0 :type fixnum)
-  (mipmaps 1 :type fixnum)
-  (format +pixelformat-uncompressed-rgba+ :type fixnum))
+  (mipmap-count 1 :type fixnum)
+  (pixel-format +pixelformat-uncompressed-r8g8b8a8+ :type fixnum))
+
+(defun make-image (&key data (width 0) (height 0) (mipmaps 1) (format +pixelformat-uncompressed-r8g8b8a8+))
+  "Create an image structure"
+  (%make-image :data data :width width :height height :mipmap-count mipmaps :pixel-format format))
 
 ;;; Texture structure (GPU-side data)
 (defstruct texture
@@ -136,7 +185,7 @@
   "Material structure matching raylib Material"
   (shader nil :type (or null shader))                                    ; Material shader
   (maps (make-array +max-material-maps+ :initial-element nil) :type simple-vector) ; Material maps array
-  (params (make-array 4 :initial-element 0.0 :element-type 'single-float) :type simple-vector)) ; Material generic parameters
+  (params (make-array 4 :initial-element 0.0 :element-type 'single-float) :type (simple-array single-float (4)))) ; Material generic parameters
 
 
 ;;; Model structure

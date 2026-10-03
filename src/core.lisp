@@ -324,8 +324,8 @@
   "Clear background with specified color"
   (let* ((actual-color (keyword-to-color color))
          (normalized (color-normalize actual-color)))
-    (%gl:clear-color (first normalized) (second normalized)
-                     (third normalized) (fourth normalized))
+    (%gl:clear-color (vx normalized) (vy normalized)
+                     (vz normalized) (vw normalized))
     (%gl:clear +gl-color-buffer-bit+)))
 
 ;;; FPS calculation parameters (matches raylib FPS macro definitions)

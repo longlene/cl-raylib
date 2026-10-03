@@ -241,6 +241,47 @@
    #:image-color-tint #:image-color-grayscale #:image-color-invert
    #:image-flip-vertical #:image-flip-horizontal
    #:unload-image #:get-pixel #:set-pixel
+   #:is-image-valid #:gen-image-text #:image-crop #:image-format #:image-text #:image-text-ex
+   #:image-from-channel #:image-resize #:image-resize-nn #:image-resize-canvas #:image-to-pot
+   #:image-alpha-crop #:image-alpha-clear #:image-alpha-mask #:image-alpha-premultiply
+   #:image-blur-gaussian #:image-kernel-convolution #:image-mipmaps #:image-dither
+   #:image-rotate #:image-rotate-cw #:image-rotate-ccw
+   #:image-color-contrast #:image-color-brightness #:image-color-replace
+   #:load-image-colors #:load-image-palette #:unload-image-colors #:unload-image-palette
+   #:get-image-alpha-border #:get-image-color
+
+   ;; Image drawing functions
+   #:image-clear-background #:image-draw-pixel #:image-draw-pixel-v
+   #:image-draw-line #:image-draw-line-v #:image-draw-line-ex #:image-draw-line-strip
+   #:image-draw-triangle #:image-draw-triangle-gradient #:image-draw-triangle-lines
+   #:image-draw-triangle-fan #:image-draw-triangle-strip
+   #:image-draw-rectangle #:image-draw-rectangle-v #:image-draw-rectangle-rec #:image-draw-rectangle-pro
+   #:image-draw-rectangle-lines #:image-draw-rectangle-lines-ex #:image-draw-rectangle-gradient-ex
+   #:image-draw-circle #:image-draw-circle-v #:image-draw-circle-lines #:image-draw-circle-lines-v
+   #:image-draw-circle-gradient
+   #:image-draw-image #:image-draw-image-ex #:image-draw-image-rec #:image-draw-image-pro
+   #:image-draw-text #:image-draw-text-ex #:image-draw-text-pro
+
+   ;; Color/pixel related functions
+   #:color-is-equal #:color-to-int #:color-normalize #:color-from-normalized #:color-tint
+   #:color-brightness #:color-contrast #:color-lerp #:get-color
+   #:get-pixel-color #:set-pixel-color #:get-pixel-data-size
+   #:+pink+ #:+darkbrown+
+
+   ;; Pixel formats
+   #:+pixelformat-uncompressed-grayscale+ #:+pixelformat-uncompressed-gray-alpha+
+   #:+pixelformat-uncompressed-r5g6b5+ #:+pixelformat-uncompressed-r8g8b8+
+   #:+pixelformat-uncompressed-r5g5b5a1+ #:+pixelformat-uncompressed-r4g4b4a4+
+   #:+pixelformat-uncompressed-r8g8b8a8+ #:+pixelformat-uncompressed-r32+
+   #:+pixelformat-uncompressed-r32g32b32+ #:+pixelformat-uncompressed-r32g32b32a32+
+   #:+pixelformat-uncompressed-r16+ #:+pixelformat-uncompressed-r16g16b16+
+   #:+pixelformat-uncompressed-r16g16b16a16+
+   #:+pixelformat-compressed-dxt1-rgb+ #:+pixelformat-compressed-dxt1-rgba+
+   #:+pixelformat-compressed-dxt3-rgba+ #:+pixelformat-compressed-dxt5-rgba+
+   #:+pixelformat-compressed-etc1-rgb+ #:+pixelformat-compressed-etc2-rgb+
+   #:+pixelformat-compressed-etc2-eac-rgba+ #:+pixelformat-compressed-pvrt-rgb+
+   #:+pixelformat-compressed-pvrt-rgba+ #:+pixelformat-compressed-astc-4x4-rgba+
+   #:+pixelformat-compressed-astc-8x8-rgba+ #:+pixelformat-uncompressed-rgba+
    
    ;; GPU Texture functions
    #:init-texture-system #:load-texture-from-image #:load-texture 
@@ -317,6 +358,16 @@
    ;; Key constants
    #:+key-null+ #:+key-space+ #:+key-escape+ #:+key-enter+ #:+key-tab+ #:+key-backspace+
    #:+key-insert+ #:+key-delete+ #:+key-right+ #:+key-left+ #:+key-down+ #:+key-up+
+   #:+key-apostrophe+ #:+key-comma+ #:+key-minus+ #:+key-period+ #:+key-slash+
+   #:+key-zero+ #:+key-one+ #:+key-two+ #:+key-three+ #:+key-four+ #:+key-five+
+   #:+key-six+ #:+key-seven+ #:+key-eight+ #:+key-nine+ #:+key-semicolon+ #:+key-equal+
+   #:+key-page-up+ #:+key-page-down+ #:+key-home+ #:+key-end+ #:+key-caps-lock+
+   #:+key-scroll-lock+ #:+key-num-lock+ #:+key-print-screen+ #:+key-pause+
+   #:+key-left-super+ #:+key-right-shift+ #:+key-right-control+ #:+key-right-alt+ #:+key-right-super+
+   #:+mouse-cursor-default+ #:+mouse-cursor-arrow+ #:+mouse-cursor-ibeam+ #:+mouse-cursor-crosshair+
+   #:+mouse-cursor-pointing-hand+ #:+mouse-cursor-resize-ew+ #:+mouse-cursor-resize-ns+
+   #:+mouse-cursor-resize-nwse+ #:+mouse-cursor-resize-nesw+ #:+mouse-cursor-resize-all+
+   #:+mouse-cursor-not-allowed+
    #:+key-a+ #:+key-b+ #:+key-c+ #:+key-d+ #:+key-e+ #:+key-f+ #:+key-g+ #:+key-h+
    #:+key-i+ #:+key-j+ #:+key-k+ #:+key-l+ #:+key-m+ #:+key-n+ #:+key-o+ #:+key-p+
    #:+key-q+ #:+key-r+ #:+key-s+ #:+key-t+ #:+key-u+ #:+key-v+ #:+key-w+ #:+key-x+

@@ -357,10 +357,10 @@
           (setf (aref vertex-data (+ base-index 7)) (vy2 texcoord))
           
           ;; Color (4 floats)
-          (setf (aref vertex-data (+ base-index 8)) (first color))
-          (setf (aref vertex-data (+ base-index 9)) (second color))
-          (setf (aref vertex-data (+ base-index 10)) (third color))
-          (setf (aref vertex-data (+ base-index 11)) (fourth color))))
+          (setf (aref vertex-data (+ base-index 8)) (vx color))
+          (setf (aref vertex-data (+ base-index 9)) (vy color))
+          (setf (aref vertex-data (+ base-index 10)) (vz color))
+          (setf (aref vertex-data (+ base-index 11)) (vw color))))
       
       ;; Upload vertex data using cffi with-pointer-to-vector-data
       (cffi:with-pointer-to-vector-data (vertex-ptr vertex-data)

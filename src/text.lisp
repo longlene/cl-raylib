@@ -215,7 +215,14 @@
                   (setf (rectangle-y (aref rectangles i)) 
                         (float (+ chars-divisor (* current-line (+ chars-height chars-divisor))))))
                 ;; else currentPosX = testPosX;
-                (setf current-pos-x test-pos-x)))))
+                (setf current-pos-x test-pos-x))
+
+            ;; Fill character image data from fontClear data
+            ;; defaultFont.glyphs[i].image = ImageFromImage(imFont, defaultFont.recs[i]);
+            (setf (glyph-info-image (aref glyphs i))
+                  (image-from-image (make-image :data *default-font-data* :width atlas-width :height atlas-height
+                                                :mipmaps 1 :format +pixelformat-uncompressed-gray-alpha+)
+                                    (aref rectangles i))))))
       
       ;; defaultFont.baseSize = (int)defaultFont.recs[0].height;
       (let ((base-size (round (rectangle-height (aref rectangles 0)))))

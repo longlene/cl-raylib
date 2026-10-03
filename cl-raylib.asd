@@ -12,7 +12,9 @@
                #:3d-quaternions
                #:alexandria
                #:uiop
-               #:imago)
+               #:imago
+               #:ieee-floats
+               #:babel)
   :serial t
   :pathname "src"
   :components
