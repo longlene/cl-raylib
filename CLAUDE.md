@@ -20,6 +20,7 @@ raylib/src/raymath.h -> cl-raylib/src/math.lisp
 raylib/src/rcamera.h -> cl-raylib/src/camera.lisp + cl-raylib/src/camera3d.lisp
 raylib/src/rmodels.c -> cl-raylib/src/models.lisp
 raylib/src/external/par_shapes.h (subset used by rmodels.c) -> cl-raylib/src/par-shapes.lisp
+raylib/src/external/tinyobj_loader_c.h -> cl-raylib/src/tinyobj.lisp
 raylib/src/rshapes.h -> cl-raylib/src/shapes.lisp
 raylib/src/rtext.h -> cl-raylib/src/text.lisp
 raylib/src/external/stb_truetype.h + stb_rect_pack.h -> cl-raylib/src/truetype.lisp

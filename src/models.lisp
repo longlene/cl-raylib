@@ -1231,13 +1231,51 @@ CAP-FACES is a list of (c w1 w2 w3 w4), MIDDLE-FACES a list of (w1 w2 w3 w4)"
     ;; NOTE: Text data size exported is determined by '\0' (NULL) character
     (save-file-text file-name (get-output-stream-string out))))
 
+;; Process obj materials
+(defun %process-materials-obj (materials mats material-count)
+  ;; Init model mats
+  (dotimes (m material-count)
+    ;; Init material to default
+    ;; NOTE: Uses default shader, which only supports MATERIAL_MAP_DIFFUSE
+    (setf (aref materials m) (load-material-default))
+    (when mats
+      (let ((material (aref materials m))
+            (mat (aref mats m)))
+        (flet ((mmap (i) (%material-map material i))
+               (color (rgb) (list (%u8 (* (aref rgb 0) 255.0)) (%u8 (* (aref rgb 1) 255.0)) (%u8 (* (aref rgb 2) 255.0)) 255)))
+          ;; Get default texture, in case no texture is defined
+          ;; NOTE: rlgl default texture is a 1x1 pixel UNCOMPRESSED_R8G8B8A8
+          (setf (material-map-texture (mmap +material-map-diffuse+))
+                (make-texture :id (rl-get-texture-id-default) :width 1 :height 1 :mipmaps 1
+                              :format +pixelformat-uncompressed-r8g8b8a8+))
+
+          (if (tobjm-diffuse-texname mat)
+              (setf (material-map-texture (mmap +material-map-diffuse+)) (load-texture (tobjm-diffuse-texname mat))) ; map_Kd
+              (setf (material-map-color (mmap +material-map-diffuse+)) (color (tobjm-diffuse mat)))) ; float diffuse[3]
+          (setf (material-map-value (mmap +material-map-diffuse+)) 0.0)
+
+          (when (tobjm-specular-texname mat)
+            (setf (material-map-texture (mmap +material-map-specular+)) (load-texture (tobjm-specular-texname mat)))) ; map_Ks
+          (setf (material-map-color (mmap +material-map-specular+)) (color (tobjm-specular mat)) ; float specular[3]
+                (material-map-value (mmap +material-map-specular+)) 0.0)
+
+          (when (tobjm-bump-texname mat)
+            (setf (material-map-texture (mmap +material-map-normal+)) (load-texture (tobjm-bump-texname mat)))) ; map_bump, bump
+          (setf (material-map-color (mmap +material-map-normal+)) (copy-list +white+)
+                (material-map-value (mmap +material-map-normal+)) (float (tobjm-shininess mat) 1.0))
+
+          (setf (material-map-color (mmap +material-map-emission+)) (color (tobjm-emission mat))) ; float emission[3]
+
+          (when (tobjm-displacement-texname mat)
+            (setf (material-map-texture (mmap +material-map-height+)) (load-texture (tobjm-displacement-texname mat))))))))) ; disp
+
 ;; Load materials from model file
 (defun load-materials (file-name)
   "Load materials from model file, returns a vector of materials"
   (let ((materials (vector))
         (count 0))
     (when (is-file-extension file-name ".mtl")
-      (multiple-value-bind (mats result) (%tinyobj-parse-mtl-file file-name)
+      (multiple-value-bind (mats result) (tinyobj-parse-mtl-file file-name)
         (unless (eq result :success) (trace-log +log-warning+ "MATERIAL: [~a] Failed to parse materials file" file-name))
         (setf count (length mats)
               materials (make-array count))
@@ -2495,18 +2533,422 @@ CAP-FACES is a list of (c w1 w2 w3 w4), MIDDLE-FACES a list of (w1 w2 w3 w4)"
 ;;;----------------------------------------------------------------------------------
 ;;; Model file formats loading
 ;;;----------------------------------------------------------------------------------
-;; TODO: OBJ/MTL (tinyobj_loader_c), IQM, GLTF (cgltf), VOX and M3D loaders
+
+(defun %chdir (dir)
+  "CHDIR(dir), returns 0 on success"
+  (handler-case
+      (let ((path (uiop:ensure-directory-pathname (truename dir))))
+        (uiop:chdir path)
+        (setf *default-pathname-defaults* path)
+        0)
+    (error () -1)))
+
+(defun %load-file-text-bytes (file-name)
+  "LoadFileText() as an octet vector (up to the first NUL), NIL on failure"
+  (multiple-value-bind (data size) (load-file-data file-name)
+    (when (and data (> size 0))
+      (subseq data 0 (or (position 0 data) size)))))
+
+;; Load OBJ mesh data
+;; Notes to keep in mind:
+;;  - A mesh is created for every material present in the obj file
+;;  - The model.meshCount is therefore the materialCount returned from tinyobj
+;;  - The mesh is automatically triangulated by tinyobj
+(defun %load-obj (file-name)
+  (let ((model (make-model :transform (matrix-identity)))
+        (file-text (%load-file-text-bytes file-name)))
+    (unless file-text
+      (trace-log +log-warning+ "MODEL: [~a] Unable to read obj file" file-name)
+      (return-from %load-obj model))
+
+    (let ((current-dir (get-working-directory)) ; Save current working directory
+          (working-dir (get-directory-path file-name))) ; Switch to OBJ directory for material path correctness
+      (when (/= (%chdir working-dir) 0)
+        (trace-log +log-warning+ "MODEL: [~a] Failed to change working directory" working-dir))
+
+      (multiple-value-bind (obj-attributes obj-shapes obj-materials ret)
+          (tinyobj-parse-obj file-text (length file-text) +tinyobj-flag-triangulate+)
+        (unless (eq ret :success)
+          (trace-log +log-warning+ "MODEL: Unable to read obj data ~a" file-name)
+          (return-from %load-obj model))
+
+        (let* ((obj-shape-count (length obj-shapes))
+               (obj-material-count (length obj-materials))
+               (num-faces (tobja-num-faces obj-attributes))
+               (material-ids (tobja-material-ids obj-attributes))
+               (face-num-verts (tobja-face-num-verts obj-attributes))
+               (next-shape 1)
+               (last-material -1)
+               (mesh-index 0)
+               ;; Count meshes
+               (next-shape-end (tobja-num-face-num-verts obj-attributes)))
+          (flet ((reset-walk ()
+                   (setf next-shape 1
+                         last-material -1
+                         mesh-index 0
+                         next-shape-end (tobja-num-face-num-verts obj-attributes))
+                   ;; See how many verts till the next shape
+                   (when (> obj-shape-count 1) (setf next-shape-end (tobjs-face-offset (aref obj-shapes next-shape)))))
+                 (next-shape-p (face-id)
+                   ;; Try to find the last vert in the next shape
+                   (when (>= face-id next-shape-end)
+                     (incf next-shape)
+                     (setf next-shape-end (if (< next-shape obj-shape-count)
+                                              (tobjs-face-offset (aref obj-shapes next-shape))
+                                              ;; This is actually the total number of face verts in the file, not faces
+                                              (tobja-num-face-num-verts obj-attributes)))
+                     t)))
+            (reset-walk)
+            ;; Walk all the faces
+            (dotimes (face-id num-faces)
+              (cond ((next-shape-p face-id) (incf mesh-index))
+                    ;; If this is a new material, a new mesh is allocated
+                    ((and (/= last-material -1) (/= (aref material-ids face-id) last-material)) (incf mesh-index)))
+              (setf last-material (aref material-ids face-id)))
+
+            ;; Allocate the base meshes and materials
+            (setf (model-mesh-count model) (+ mesh-index 1)
+                  (model-meshes model) (let ((v (make-array (model-mesh-count model))))
+                                         (dotimes (i (length v) v) (setf (aref v i) (make-mesh)))))
+            (if (> obj-material-count 0)
+                (setf (model-material-count model) obj-material-count
+                      (model-materials model) (make-array obj-material-count))
+                ;; Allocate at least one material
+                (setf (model-material-count model) 1
+                      (model-materials model) (make-array 1)))
+            (setf (model-mesh-material model) (make-array (model-mesh-count model) :initial-element 0))
+
+            ;; See how many verts are in each mesh
+            (let ((local-mesh-vertex-counts (make-array (model-mesh-count model) :initial-element 0))
+                  (local-mesh-vertex-count 0))
+              (reset-walk)
+              ;; Walk all the faces
+              (dotimes (face-id num-faces)
+                (let ((new-mesh nil))   ; Is a new mesh required?
+                  (cond ((next-shape-p face-id) (setf new-mesh t))
+                        ((and (/= last-material -1) (/= (aref material-ids face-id) last-material)) (setf new-mesh t)))
+                  (setf last-material (aref material-ids face-id))
+                  (when new-mesh
+                    (setf (aref local-mesh-vertex-counts mesh-index) local-mesh-vertex-count
+                          local-mesh-vertex-count 0)
+                    (incf mesh-index))
+                  (incf local-mesh-vertex-count (aref face-num-verts face-id))))
+              (setf (aref local-mesh-vertex-counts mesh-index) local-mesh-vertex-count)
+
+              (dotimes (i (model-mesh-count model))
+                ;; Allocate the buffers for each mesh
+                (let ((vertex-count (aref local-mesh-vertex-counts i))
+                      (mesh (aref (model-meshes model) i)))
+                  (setf (mesh-vertex-count mesh) vertex-count
+                        (mesh-triangle-count mesh) (truncate vertex-count 3)
+                        (mesh-vertices mesh) (%floats (* vertex-count 3))
+                        (mesh-normals mesh) (%floats (* vertex-count 3))
+                        (mesh-texcoords mesh) (%floats (* vertex-count 2))
+                        (mesh-colors mesh) (make-array (* vertex-count 4) :element-type '(unsigned-byte 8) :initial-element 0)))))
+
+            ;; Fill meshes
+            (let ((face-vert-index 0)
+                  (local-mesh-vertex-count 0)
+                  (faces (tobja-faces obj-attributes))
+                  (vertices (tobja-vertices obj-attributes))
+                  (normals (tobja-normals obj-attributes))
+                  (texcoords (tobja-texcoords obj-attributes)))
+              (reset-walk)
+              ;; Walk all the faces
+              (dotimes (face-id num-faces)
+                (let ((new-mesh (next-shape-p face-id))) ; Is a new mesh required?
+                  ;; If this is a new material, a new mesh is allocated
+                  (when (and (/= last-material -1) (/= (aref material-ids face-id) last-material)) (setf new-mesh t))
+                  (setf last-material (aref material-ids face-id))
+                  (when new-mesh
+                    (setf local-mesh-vertex-count 0)
+                    (incf mesh-index))
+                  (let ((mat-id (if (and (>= last-material 0) (< last-material obj-material-count)) last-material 0))
+                        (mesh (aref (model-meshes model) mesh-index)))
+                    (setf (aref (model-mesh-material model) mesh-index) mat-id)
+                    (dotimes (f (aref face-num-verts face-id))
+                      (destructuring-bind (vert-index texcord-index normal-index) (svref faces face-vert-index)
+                        ;; NOTE: Out-of-range indices from malformed files are skipped, keeping zeroed values
+                        (when (and (>= vert-index 0) (< vert-index (tobja-num-vertices obj-attributes)))
+                          (dotimes (i 3)
+                            (setf (aref (mesh-vertices mesh) (+ (* local-mesh-vertex-count 3) i)) (aref vertices (+ (* vert-index 3) i)))))
+                        (when (and (> (tobja-num-texcoords obj-attributes) 0) (/= texcord-index +tinyobj-invalid-index+)
+                                   (>= texcord-index 0) (< texcord-index (tobja-num-texcoords obj-attributes)))
+                          (dotimes (i 2)
+                            (setf (aref (mesh-texcoords mesh) (+ (* local-mesh-vertex-count 2) i)) (aref texcoords (+ (* texcord-index 2) i))))
+                          (setf (aref (mesh-texcoords mesh) (+ (* local-mesh-vertex-count 2) 1))
+                                (- 1.0 (aref (mesh-texcoords mesh) (+ (* local-mesh-vertex-count 2) 1)))))
+                        (if (and (> (tobja-num-normals obj-attributes) 0) (/= normal-index +tinyobj-invalid-index+)
+                                 (>= normal-index 0) (< normal-index (tobja-num-normals obj-attributes)))
+                            (dotimes (i 3)
+                              (setf (aref (mesh-normals mesh) (+ (* local-mesh-vertex-count 3) i)) (aref normals (+ (* normal-index 3) i))))
+                            (setf (aref (mesh-normals mesh) (+ (* local-mesh-vertex-count 3) 0)) 0.0
+                                  (aref (mesh-normals mesh) (+ (* local-mesh-vertex-count 3) 1)) 1.0
+                                  (aref (mesh-normals mesh) (+ (* local-mesh-vertex-count 3) 2)) 0.0))
+                        (dotimes (i 4) (setf (aref (mesh-colors mesh) (+ (* local-mesh-vertex-count 4) i)) 255))
+                        (incf face-vert-index)
+                        (incf local-mesh-vertex-count)))))))
+
+            (if (> obj-material-count 0)
+                (%process-materials-obj (model-materials model) obj-materials obj-material-count)
+                (setf (aref (model-materials model) 0) (load-material-default)))))) ; Set default material for the mesh
+
+      ;; Restore current working directory
+      (when (/= (%chdir current-dir) 0)
+        (trace-log +log-warning+ "MODEL: [~a] Failed to change working directory" current-dir)))
+    model))
+;;; IQM file data readers (little endian, 0 past the end of the data like a zeroed buffer)
+(defun %iqm-u8 (data offset)
+  (if (< -1 offset (length data)) (aref data offset) 0))
+(defun %iqm-u16 (data offset)
+  (logior (%iqm-u8 data offset) (ash (%iqm-u8 data (+ offset 1)) 8)))
+(defun %iqm-u32 (data offset)
+  (logior (%iqm-u16 data offset) (ash (%iqm-u16 data (+ offset 2)) 16)))
+(defun %iqm-s32 (data offset)
+  (%i32 (%iqm-u32 data offset)))
+(defun %iqm-f32 (data offset)
+  (ieee-floats:decode-float32 (%iqm-u32 data offset)))
+(defun %iqm-name (data offset &optional (length 32))
+  "char[LENGTH] copied from DATA as a string (up to the first NUL)"
+  (let ((bytes (make-array length :element-type '(unsigned-byte 8))))
+    (dotimes (i length) (setf (aref bytes i) (%iqm-u8 data (+ offset i))))
+    (babel:octets-to-string bytes :end (or (position 0 bytes) length) :encoding :utf-8 :errorp nil)))
+
+(defconstant +iqm-version+ 2 "Only IQM version 2 supported")
+(defparameter +iqm-magic+ "INTERQUAKEMODEL" "IQM file magic number")
+
+;; IQM header fields (unsigned int) offsets
+(defmacro %iqm-header (data field)
+  (let ((index (position field '(version data-size flags num-text ofs-text num-meshes ofs-meshes
+                                 num-vertexarrays num-vertexes ofs-vertexarrays num-triangles ofs-triangles ofs-adjacency
+                                 num-joints ofs-joints num-poses ofs-poses num-anims ofs-anims
+                                 num-frames num-framechannels ofs-frames ofs-bounds num-comment ofs-comment
+                                 num-extensions ofs-extensions))))
+    `(%iqm-u32 ,data ,(+ 16 (* 4 index)))))
+
+(defun %iqm-check-header (data file-name)
+  "Check IQM magic and version, returns T if valid"
+  (cond ((not (and (>= (length data) 16)
+                   ;; memcmp(magic, IQM_MAGIC, sizeof(IQM_MAGIC)) (16 bytes including NUL)
+                   (loop for i below 16
+                         always (= (aref data i) (if (< i 15) (char-code (char +iqm-magic+ i)) 0)))))
+         (trace-log +log-warning+ "MODEL: [~a] IQM file is not a valid model" file-name)
+         nil)
+        ((/= (%iqm-header data version) +iqm-version+)
+         (trace-log +log-warning+ "MODEL: [~a] IQM file version not supported (~d)" file-name (%iqm-header data version))
+         nil)
+        (t t)))
+
+;; Load IQM mesh data
+(defun %load-iqm (file-name)
+  (let ((model (make-model))
+        (file-data (load-file-data file-name)))
+    ;; In case file can not be read, return an empty model
+    (unless file-data (return-from %load-iqm model))
+
+    (let ((base-path (get-directory-path file-name)))
+      ;; Read IQM header
+      (unless (%iqm-check-header file-data file-name) (return-from %load-iqm model))
+
+      (let* ((d file-data)
+             (num-meshes (%iqm-header d num-meshes))
+             (ofs-meshes (%iqm-header d ofs-meshes))
+             (ofs-text (%iqm-header d ofs-text))
+             (num-vertexes (%iqm-header d num-vertexes))
+             ;; Meshes data processing: IQMMesh { name, material, first_vertex, num_vertexes, first_triangle, num_triangles }
+             (imesh (coerce (loop for i below num-meshes
+                                  collect (loop for k below 6 collect (%iqm-u32 d (+ ofs-meshes (* i 24) (* k 4)))))
+                            'vector)))
+        (setf (model-mesh-count model) num-meshes
+              (model-meshes model) (let ((v (make-array num-meshes))) (dotimes (i num-meshes v) (setf (aref v i) (make-mesh))))
+              (model-material-count model) num-meshes
+              (model-materials model) (make-array num-meshes)
+              (model-mesh-material model) (make-array num-meshes :initial-element 0))
+
+        (dotimes (i num-meshes)
+          (destructuring-bind (name material first-vertex num-vert first-triangle num-triangles) (aref imesh i)
+            (declare (ignore first-vertex first-triangle))
+            (let ((name (%iqm-name d (+ ofs-text name)))
+                  (material (%iqm-name d (+ ofs-text material)))
+                  (mesh (aref (model-meshes model) i)))
+              (setf (aref (model-materials model) i) (load-material-default))
+              (when (> (length material) 0)
+                (setf (material-map-texture (%material-map (aref (model-materials model) i) +material-map-albedo+))
+                      (load-texture (format nil "~a/~a" base-path material))))
+
+              (setf (aref (model-mesh-material model) i) i)
+
+              (trace-log +log-debug+ "MODEL: [~a] mesh name (~a), material (~a)" file-name name material)
+
+              (setf (mesh-vertex-count mesh) num-vert
+                    (mesh-vertices mesh) (%floats (* num-vert 3))       ; Default vertex positions
+                    (mesh-normals mesh) (%floats (* num-vert 3))        ; Default vertex normals
+                    (mesh-texcoords mesh) (%floats (* num-vert 2))      ; Default vertex texcoords
+                    (mesh-bone-indices mesh) (make-array (* num-vert 4) :element-type '(unsigned-byte 8) :initial-element 0) ; Up-to 4 bones supported!
+                    (mesh-bone-weights mesh) (%floats (* num-vert 4))   ; Up-to 4 bones supported!
+                    (mesh-triangle-count mesh) num-triangles
+                    (mesh-indices mesh) (make-array (* num-triangles 3) :element-type '(unsigned-byte 16) :initial-element 0)
+                    ;; Animated vertex data, processed for rendering
+                    ;; NOTE: Animated vertex should be re-uploaded to GPU (if not using GPU skinning)
+                    (mesh-anim-vertices mesh) (%floats (* num-vert 3))
+                    (mesh-anim-normals mesh) (%floats (* num-vert 3))))))
+
+        ;; Triangles data processing
+        (let ((ofs-triangles (%iqm-header d ofs-triangles)))
+          (dotimes (m num-meshes)
+            (destructuring-bind (name material first-vertex num-vert first-triangle num-triangles) (aref imesh m)
+              (declare (ignore name material num-vert))
+              (let ((tcounter 0)
+                    (indices (mesh-indices (aref (model-meshes model) m))))
+                (loop for i from first-triangle below (+ first-triangle num-triangles)
+                      do (flet ((vertex (k) (logand (- (%iqm-u32 d (+ ofs-triangles (* i 12) (* k 4))) first-vertex) #xffff)))
+                           ;; IQM triangles indexes are stored in counter-clockwise, but raylib processes the index in linear order,
+                           ;; expecting they point to the counter-clockwise vertex triangle, so triangle indexes need to be reversed
+                           ;; NOTE: raylib renders vertex data in counter-clockwise order (standard convention) by default
+                           (setf (aref indices (+ tcounter 2)) (vertex 0)
+                                 (aref indices (+ tcounter 1)) (vertex 1)
+                                 (aref indices tcounter) (vertex 2))
+                           (incf tcounter 3)))))))
+
+        ;; Vertex arrays data processing: IQMVertexArray { type, flags, format, size, offset }
+        (let ((ofs-vertexarrays (%iqm-header d ofs-vertexarrays)))
+          (dotimes (i (%iqm-header d num-vertexarrays))
+            (let ((type (%iqm-u32 d (+ ofs-vertexarrays (* i 20))))
+                  (offset (%iqm-u32 d (+ ofs-vertexarrays (* i 20) 16))))
+              (flet ((copy-attribute (components reader accessor &optional anim-accessor)
+                       (dotimes (m num-meshes)
+                         (let* ((first-vertex (third (aref imesh m)))
+                                (num-vert (fourth (aref imesh m)))
+                                (mesh (aref (model-meshes model) m))
+                                (target (funcall accessor mesh))
+                                (anim (when anim-accessor (funcall anim-accessor mesh)))
+                                (v-counter 0))
+                           (loop for k from (* first-vertex components) below (* (+ first-vertex num-vert) components)
+                                 do (let ((value (if (< k (* num-vertexes components)) (funcall reader k) 0)))
+                                      (setf (aref target v-counter) value)
+                                      (when anim (setf (aref anim v-counter) value))
+                                      (incf v-counter)))))))
+                (case type
+                  (0 (copy-attribute 3 (lambda (k) (%iqm-f32 d (+ offset (* k 4)))) #'mesh-vertices #'mesh-anim-vertices)) ; IQM_POSITION
+                  (2 (copy-attribute 3 (lambda (k) (%iqm-f32 d (+ offset (* k 4)))) #'mesh-normals #'mesh-anim-normals)) ; IQM_NORMAL
+                  (1 (copy-attribute 2 (lambda (k) (%iqm-f32 d (+ offset (* k 4)))) #'mesh-texcoords)) ; IQM_TEXCOORD
+                  (4 (copy-attribute 4 (lambda (k) (%iqm-u8 d (+ offset k))) #'mesh-bone-indices)) ; IQM_BLENDINDEXES
+                  (5 (copy-attribute 4 (lambda (k) (/ (float (%iqm-u8 d (+ offset k)) 1.0) 255.0)) #'mesh-bone-weights)) ; IQM_BLENDWEIGHTS
+                  (6 (dotimes (m num-meshes)                           ; IQM_COLOR
+                       (let ((mesh (aref (model-meshes model) m)))
+                         (setf (mesh-colors mesh) (make-array (* (mesh-vertex-count mesh) 4) :element-type '(unsigned-byte 8) :initial-element 0))))
+                     (copy-attribute 4 (lambda (k) (%iqm-u8 d (+ offset k))) #'mesh-colors)))))))
+
+        ;; Bones (joints) data processing: IQMJoint { name, parent, translate[3], rotate[4], scale[3] }
+        (let* ((num-joints (%iqm-header d num-joints))
+               (ofs-joints (%iqm-header d ofs-joints))
+               (bones (make-array num-joints))
+               (bind-pose (make-array num-joints)))
+          (dotimes (i num-joints)
+            (let ((o (+ ofs-joints (* i 48))))
+              (flet ((f (k) (%iqm-f32 d (+ o 8 (* k 4)))))
+                ;; Bones
+                (setf (aref bones i) (make-bone-info :name (%iqm-name d (+ ofs-text (%iqm-u32 d o)))
+                                                     :parent (%iqm-s32 d (+ o 4))))
+                ;; Bind pose (base pose)
+                (setf (aref bind-pose i) (make-transform :translation (vec3 (f 0) (f 1) (f 2))
+                                                         :rotation (vec4 (f 3) (f 4) (f 5) (f 6))
+                                                         :scale (vec3 (f 7) (f 8) (f 9)))))))
+          (setf (model-skeleton model) (make-model-skeleton :bone-count num-joints :bones bones :bind-pose bind-pose))
+
+          (%build-pose-from-parent-joints bones num-joints bind-pose)
+
+          ;; Initialize runtime animation data: current pose and bone matrices
+          (setf (model-current-pose model)
+                (let ((v (make-array num-joints)))
+                  (dotimes (j num-joints v)
+                    (setf (aref v j) (make-transform :translation (vec3 0.0 0.0 0.0) :rotation (vec4 0.0 0.0 0.0 0.0)
+                                                     :scale (vec3 0.0 0.0 0.0)))))
+                (model-bone-matrices model)
+                (let ((v (make-array num-joints)))
+                  (dotimes (j num-joints v) (setf (aref v j) (matrix-identity))))))))
+    model))
+
+;; Load IQM animation data
+(defun %load-model-animations-iqm (file-name)
+  (let ((file-data (load-file-data file-name)))
+    (unless file-data (return-from %load-model-animations-iqm (values nil 0)))
+    (unless (%iqm-check-header file-data file-name) (return-from %load-model-animations-iqm (values nil 0)))
+
+    (let* ((d file-data)
+           (num-poses (%iqm-header d num-poses))
+           (ofs-poses (%iqm-header d ofs-poses))
+           (num-anims (%iqm-header d num-anims))
+           (ofs-anims (%iqm-header d ofs-anims))
+           (ofs-text (%iqm-header d ofs-text))
+           (num-framechannels (%iqm-header d num-framechannels))
+           (num-frames (%iqm-header d num-frames))
+           (ofs-frames (%iqm-header d ofs-frames))
+           ;; IQMPose { parent, mask, channeloffset[10], channelscale[10] }
+           (poses (coerce (loop for i below num-poses
+                                collect (let ((o (+ ofs-poses (* i 88))))
+                                          (list (%iqm-s32 d o) (%iqm-u32 d (+ o 4))
+                                                (coerce (loop for k below 10 collect (%iqm-f32 d (+ o 8 (* k 4)))) 'vector)
+                                                (coerce (loop for k below 10 collect (%iqm-f32 d (+ o 48 (* k 4)))) 'vector))))
+                          'vector))
+           (animations (make-array num-anims)))
+      (flet ((framedata (k)
+               (if (< k (* num-frames num-framechannels)) (%iqm-u16 d (+ ofs-frames (* k 2))) 0)))
+        (dotimes (a num-anims)
+          ;; IQMAnim { name, first_frame, num_frames, framerate, flags }
+          (let* ((o (+ ofs-anims (* a 20)))
+                 (first-frame (%iqm-u32 d (+ o 4)))
+                 (anim-num-frames (%iqm-u32 d (+ o 8)))
+                 (framerate (%iqm-f32 d (+ o 12)))
+                 (keyframe-poses (make-array anim-num-frames))
+                 (animation (make-model-animation :bone-count num-poses
+                                                  :keyframe-count anim-num-frames
+                                                  :keyframe-poses keyframe-poses
+                                                  :name (%iqm-name d (+ ofs-text (%iqm-u32 d o)))))
+                 (dcounter (* first-frame num-framechannels)))
+            (setf (aref animations a) animation)
+
+            (trace-log +log-info+ "MODEL: [~a] Loaded animation: ~a | Frames: ~d | Framerate: ~a" file-name
+                       (model-animation-name animation) anim-num-frames (%sprintf "%f" framerate))
+
+            (dotimes (frame anim-num-frames)
+              (setf (aref keyframe-poses frame)
+                    (let ((v (make-array num-poses))) (dotimes (i num-poses v) (setf (aref v i) (make-transform))))))
+
+            (dotimes (frame anim-num-frames)
+              (dotimes (i num-poses)
+                (destructuring-bind (parent mask channeloffset channelscale) (aref poses i)
+                  (declare (ignore parent))
+                  (let ((values (make-array 10 :element-type 'single-float)))
+                    (dotimes (c 10)
+                      (setf (aref values c) (aref channeloffset c))
+                      (when (logtest mask (ash 1 c))
+                        (setf (aref values c) (+ (aref values c) (* (float (framedata dcounter) 1.0) (aref channelscale c))))
+                        (incf dcounter)))
+                    (let ((pose (aref (aref keyframe-poses frame) i)))
+                      (setf (transform-translation pose) (vec3 (aref values 0) (aref values 1) (aref values 2))
+                            (transform-rotation pose) (quaternion-normalize (vec4 (aref values 3) (aref values 4) (aref values 5) (aref values 6)))
+                            (transform-scale pose) (vec3 (aref values 7) (aref values 8) (aref values 9))))))))
+
+            (dotimes (frame anim-num-frames)
+              (let ((frame-poses (aref keyframe-poses frame)))
+                (dotimes (i num-poses)
+                  (let ((parent (first (aref poses i))))
+                    (when (>= parent 0)
+                      (let ((pose (aref frame-poses i))
+                            (parent-pose (aref frame-poses parent)))
+                        (setf (transform-rotation pose) (quaternion-multiply (transform-rotation parent-pose) (transform-rotation pose))
+                              (transform-translation pose) (vector3-rotate-by-quaternion (transform-translation pose) (transform-rotation parent-pose))
+                              (transform-translation pose) (vector3-add (transform-translation pose) (transform-translation parent-pose))
+                              (transform-scale pose) (vector3-multiply (transform-scale pose) (transform-scale parent-pose)))))))))))
+        (values animations num-anims)))))
+
 (defun %unsupported-model-format (file-name)
   (trace-log +log-warning+ "MODEL: [~a] Model file format loading not implemented yet" file-name)
   (make-model))
 
-(defun %load-obj (file-name) (%unsupported-model-format file-name))
-(defun %load-iqm (file-name) (%unsupported-model-format file-name))
 (defun %load-gltf (file-name) (%unsupported-model-format file-name))
 (defun %load-vox (file-name) (%unsupported-model-format file-name))
 (defun %load-m3d (file-name) (%unsupported-model-format file-name))
-(defun %load-model-animations-iqm (file-name) (declare (ignore file-name)) (values nil 0))
 (defun %load-model-animations-gltf (file-name) (declare (ignore file-name)) (values nil 0))
 (defun %load-model-animations-m3d (file-name) (declare (ignore file-name)) (values nil 0))
-(defun %tinyobj-parse-mtl-file (file-name) (declare (ignore file-name)) (values nil :error))
-(defun %process-materials-obj (materials mats count) (declare (ignore materials mats count)) nil)
