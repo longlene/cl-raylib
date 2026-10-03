@@ -12,9 +12,10 @@
 ;;;   - Format wave data (sample rate, size, channels)
 ;;;   - Play/Stop/Pause/Resume loaded audio
 ;;;
-;;; Supported file formats: WAV (wav.lisp), OGG (vorbis.lisp), MP3 (mp3.lisp), QOA (qoa.lisp), FLAC (flac.lisp)
+;;; Supported file formats: WAV (wav.lisp), OGG (vorbis.lisp), MP3 (mp3.lisp), QOA (qoa.lisp), FLAC (flac.lisp),
+;;; XM (xm.lisp)
 ;;; NOTE: SUPPORT_FILEFORMAT_FLAC is enabled (disabled by default in raylib config.h)
-;;; NOTE: XM and MOD formats are not supported yet
+;;; NOTE: MOD format is not supported yet
 ;;; NOTE: Playback device uses PulseAudio through libpulse-simple (see miniaudio.lisp)
 ;;;
 ;;; NOTE: Sample data is stored in typed arrays: u8 -> (unsigned-byte 8), s16 -> (signed-byte 16),
@@ -823,6 +824,18 @@
                (music-frame-count music) (drmp3-get-pcm-frame-count ctx-mp3)
                (music-looping music) t)   ; Looping enabled by default
          t)))
+    (:xm
+     (let ((ctx-xm (jar-xm-create-context-safe data data-size (%audio-device-sample-rate))))
+       (when ctx-xm   ; XM AUDIO.System.context created successfully
+         (jar-xm-set-max-loop-count ctx-xm 0)   ; Set infinite number of loops
+         ;; NOTE: Only stereo is supported for XM
+         (setf (music-ctx-type music) +music-module-xm+
+               (music-ctx-data music) ctx-xm
+               (music-stream music) (load-audio-stream (%audio-device-sample-rate) 32 +audio-device-channels+)
+               (music-frame-count music) (jar-xm-get-remaining-samples ctx-xm)   ; NOTE: Always 2 channels (stereo)
+               (music-looping music) t)   ; Looping enabled by default
+         (jar-xm-reset ctx-xm)   ; Make sure to start at the beginning of the song
+         t)))
     (:qoa
      (let ((ctx-qoa (when (and data (> data-size 0)) (qoaplay-open-memory data data-size))))
        (when ctx-qoa
@@ -854,6 +867,7 @@
          (type (cond ((is-file-extension file-name ".wav") :wav)
                      ((is-file-extension file-name ".ogg") :ogg)
                      ((is-file-extension file-name ".mp3") :mp3)
+                     ((is-file-extension file-name ".xm") :xm)
                      ((is-file-extension file-name ".qoa") :qoa)
                      ((is-file-extension file-name ".flac") :flac)))
          (music-loaded (when type
@@ -878,6 +892,7 @@
                  (cond ((type-p ".wav" ".WAV") :wav)
                        ((type-p ".ogg" ".OGG") :ogg)
                        ((type-p ".mp3" ".MP3") :mp3)
+                       ((type-p ".xm" ".XM") :xm)
                        ((type-p ".qoa" ".QOA") :qoa)
                        ((type-p ".flac" ".FLAC") :flac))))
          (music-loaded (when type (%load-music-context music type data data-size))))
@@ -910,6 +925,7 @@
     (cond ((= (music-ctx-type music) +music-audio-wav+) (drwav-uninit (music-ctx-data music)))
           ((= (music-ctx-type music) +music-audio-ogg+) (stb-vorbis-close (music-ctx-data music)))
           ((= (music-ctx-type music) +music-audio-mp3+) (drmp3-uninit (music-ctx-data music)))
+          ((= (music-ctx-type music) +music-module-xm+) (jar-xm-free-context (music-ctx-data music)))
           ((= (music-ctx-type music) +music-audio-qoa+) (qoaplay-close (music-ctx-data music)))
           ((= (music-ctx-type music) +music-audio-flac+) (drflac-close (music-ctx-data music))))))
 
@@ -937,6 +953,7 @@
       (#.+music-audio-wav+ (drwav-seek-to-first-pcm-frame ctx))
       (#.+music-audio-ogg+ (stb-vorbis-seek-start ctx))
       (#.+music-audio-mp3+ (drmp3-seek-to-start-of-stream ctx))
+      (#.+music-module-xm+ (jar-xm-reset ctx))
       (#.+music-audio-qoa+ (qoaplay-rewind ctx))
       (#.+music-audio-flac+ (drflac-seek-to-first-frame ctx)))))
 
@@ -979,6 +996,7 @@
            ;; NOTE: The temp buffer format is the format provided by the decoder
            (pcm-format (cond ((= (music-ctx-type music) +music-audio-qoa+) +ma-format-f32+)
                              ((= (music-ctx-type music) +music-audio-mp3+) +ma-format-f32+)
+                             ((= (music-ctx-type music) +music-module-xm+) +ma-format-f32+)
                              ((and (= (music-ctx-type music) +music-audio-wav+) (= (audio-stream-sample-size stream) 32))
                               +ma-format-f32+)
                              (t +ma-format-s16+)))
@@ -1038,6 +1056,9 @@
                        (if (= frame-count-still-needed 0)
                            (return)
                            (drmp3-seek-to-start-of-stream ctx)))))
+                  (#.+music-module-xm+
+                   ;; NOTE: Internally considering 2 channels generation, so sampleCount/2
+                   (jar-xm-generate-samples ctx pcm-buffer frames-to-stream))
                   (#.+music-audio-qoa+
                    (incf frame-count-read-total (qoaplay-decode ctx pcm-buffer frames-to-stream)))
                   (#.+music-audio-flac+
@@ -1085,6 +1106,10 @@
   "Get current music time played (in seconds)"
   (let ((seconds-played 0f0)
         (stream (music-stream music)))
+    (when (and (audio-stream-buffer stream) (= (music-ctx-type music) +music-module-xm+))
+      (let ((frames-played (nth-value 3 (jar-xm-get-position (music-ctx-data music)))))
+        (return-from get-music-time-played
+          (/ (float frames-played 1f0) (float (audio-stream-sample-rate stream) 1f0)))))
     (when (and (audio-stream-buffer stream) (> (music-frame-count music) 0))
       (%with-audio-lock
         (let* ((buffer (audio-stream-buffer stream))

@@ -28,6 +28,7 @@ raylib/src/external/miniaudio.h (data conversion subset + PulseAudio device) -> 
 raylib/src/external/dr_wav.h -> cl-raylib/src/wav.lisp
 raylib/src/external/stb_vorbis.c -> cl-raylib/src/vorbis.lisp
 raylib/src/external/dr_mp3.h -> cl-raylib/src/mp3.lisp
+raylib/src/external/jar_xm.h -> cl-raylib/src/xm.lisp
 raylib/src/external/qoa.h + qoaplay.c -> cl-raylib/src/qoa.lisp
 raylib/src/external/dr_flac.h -> cl-raylib/src/flac.lisp (own decoder, dr_flac output semantics)
 raylib/src/utils.h -> cl-raylib/src/utils.lisp
