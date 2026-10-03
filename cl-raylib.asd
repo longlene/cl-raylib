@@ -34,6 +34,7 @@
    (:file "camera3d")
    (:file "color")
    (:file "textures")
+   (:file "sdefl")                 ; external/sdefl.h (used by rcore.c)
    (:file "utils")                 ; Utility functions and logging system (required for raylib compatibility)
    (:file "shapes")
    (:file "par-shapes")            ; external/par_shapes.h (used by rmodels.c)

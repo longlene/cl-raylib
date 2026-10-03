@@ -472,11 +472,10 @@
 ;;; Compression and Encoding (raylib rcore.c)
 
 (defun compress-data (data data-size)
-  "Compress data (DEFLATE algorithm), returns the compressed data and its size
-   NOTE: raylib uses sdefl, the compressed stream may differ but it is a valid DEFLATE stream"
-  (let ((comp-data (salza2:compress-data (subseq (coerce data '(simple-array (unsigned-byte 8) (*))) 0 data-size)
-                                         'salza2:deflate-compressor)))
-    (trace-log-info "SYSTEM: Compress data: Original size: ~d -> Comp. size: ~d" data-size (length comp-data))
+  "Compress data (DEFLATE algorithm), returns the compressed data and its size"
+  ;; Compression level 8, same as stbiw
+  (let ((comp-data (sdeflate data data-size 8)))
+    (trace-log +log-info+ "SYSTEM: Compress data: Original size: ~d -> Comp. size: ~d" data-size (length comp-data))
     (values comp-data (length comp-data))))
 
 (defun decompress-data (comp-data comp-data-size)

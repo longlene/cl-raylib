@@ -37,6 +37,7 @@ raylib/src/external/jar_xm.h -> cl-raylib/src/xm.lisp
 raylib/src/external/jar_mod.h -> cl-raylib/src/mod.lisp
 raylib/src/external/qoa.h + qoaplay.c -> cl-raylib/src/qoa.lisp
 raylib/src/external/dr_flac.h -> cl-raylib/src/flac.lisp (own decoder, dr_flac output semantics)
+raylib/src/external/sdefl.h -> cl-raylib/src/sdefl.lisp
 raylib/src/utils.h -> cl-raylib/src/utils.lisp
 
 ```
