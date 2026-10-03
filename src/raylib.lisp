@@ -327,33 +327,35 @@
 ;;; Audio structures (matches raylib audio types)
 
 ;;; Wave structure - audio wave data (matches raylib Wave)
+;;; NOTE: DATA is a typed array depending on SAMPLE-SIZE: 8 -> (unsigned-byte 8),
+;;; 16 -> (signed-byte 16), 32 -> single-float
 (defstruct wave
   "Wave data structure for audio waveform (matches raylib Wave)"
   (frame-count 0 :type fixnum)                  ; Total number of frames (considering channels)
-  (sample-rate 44100 :type fixnum)              ; Frequency (samples per second)
-  (sample-size 16 :type fixnum)                 ; Bit depth (bits per sample): 8, 16, 32
-  (channels 2 :type fixnum)                     ; Number of channels (1-mono, 2-stereo, ...)
-  (data nil :type (or null (simple-array (unsigned-byte 8) (*))))) ; Buffer data pointer
+  (sample-rate 0 :type fixnum)                  ; Frequency (samples per second)
+  (sample-size 0 :type fixnum)                  ; Bit depth (bits per sample): 8, 16, 32 (24 not supported)
+  (channels 0 :type fixnum)                     ; Number of channels (1-mono, 2-stereo, ...)
+  (data nil))                                   ; Buffer data
 
 ;;; Audio Stream structure (matches raylib AudioStream)
 (defstruct audio-stream
-  "Audio stream for custom audio streaming (matches raylib AudioStream)" 
+  "Audio stream for custom audio streaming (matches raylib AudioStream)"
   (buffer nil)                                  ; Pointer to internal data used by the audio system
   (processor nil)                               ; Pointer to internal data processor, useful for audio effects
-  (sample-rate 44100 :type fixnum)              ; Frequency (samples per second)
-  (sample-size 16 :type fixnum)                 ; Bit depth (bits per sample): 8, 16, 32
-  (channels 2 :type fixnum))                    ; Number of channels (1-mono, 2-stereo, ...)
+  (sample-rate 0 :type fixnum)                  ; Frequency (samples per second)
+  (sample-size 0 :type fixnum)                  ; Bit depth (bits per sample): 8, 16, 32 (24 not supported)
+  (channels 0 :type fixnum))                    ; Number of channels (1-mono, 2-stereo, ...)
 
 ;;; Sound structure (matches raylib Sound)
 (defstruct sound
   "Sound structure for short audio samples (matches raylib Sound)"
-  (stream nil :type (or null audio-stream))     ; Audio stream
+  (stream (make-audio-stream) :type audio-stream) ; Audio stream
   (frame-count 0 :type fixnum))                 ; Total number of frames (considering channels)
 
 ;;; Music structure (matches raylib Music)
 (defstruct music
   "Music structure for long audio streams (matches raylib Music)"
-  (stream nil :type (or null audio-stream))     ; Audio stream
+  (stream (make-audio-stream) :type audio-stream) ; Audio stream
   (frame-count 0 :type fixnum)                  ; Total number of frames (considering channels)
   (looping nil :type boolean)                   ; Music looping enable
   (ctx-type 0 :type fixnum)                     ; Type of music context (audio filetype)

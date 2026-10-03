@@ -7,6 +7,8 @@
                #:cl-glu
                #:glfw
                #:float-features
+               #:cffi
+               #:bordeaux-threads
                #:3d-matrices
                #:3d-vectors
                #:3d-transforms
@@ -44,6 +46,10 @@
    (:file "models")                ; 3D models and meshes (matching raylib rmodels.c)
    (:file "truetype")              ; stb_truetype.h + stb_rect_pack.h (used by rtext.c)
    (:file "text")                  ; rtext.c
-   (:file "audio")                 ; Audio system
+   (:file "miniaudio")             ; miniaudio.h subset: data conversion + PulseAudio playback device
+   (:file "wav")                   ; dr_wav.h (used by raudio.c)
+   (:file "qoa")                   ; qoa.h + qoaplay.c (used by raudio.c)
+   (:file "flac")                  ; dr_flac.h replacement (used by raudio.c)
+   (:file "audio")                 ; raudio.c
    (:file "raygui")                ; GUI system (immediate mode GUI)
    (:file "macro")))

@@ -626,81 +626,43 @@
    #:wave #:sound #:music #:audio-stream
    #:make-wave #:make-sound #:make-music #:make-audio-stream
    #:wave-frame-count #:wave-sample-rate #:wave-sample-size #:wave-channels #:wave-data
-   #:sound-playing #:sound-looping #:sound-volume #:sound-pitch #:sound-pan #:sound-source
-   #:music-playing #:music-looping #:music-volume #:music-pitch #:music-time-played #:music-time-length
-   
-   ;; Audio device management
+   #:sound-stream #:sound-frame-count
+   #:music-stream #:music-frame-count #:music-looping #:music-ctx-type #:music-ctx-data
+   #:audio-stream-buffer #:audio-stream-processor #:audio-stream-sample-rate
+   #:audio-stream-sample-size #:audio-stream-channels
+
+   ;; Audio device management (raudio.c)
    #:init-audio-device #:close-audio-device #:is-audio-device-ready
    #:set-master-volume #:get-master-volume
-   
+
    ;; Wave/Sound loading and management
-   #:load-wave #:load-wave-from-memory #:load-wave-from-wav #:load-wave-from-ogg #:load-wave-from-mp3 #:load-wave-from-flac
-   #:create-dummy-wave #:is-wave-valid #:is-wave-ready #:unload-wave
-   #:load-sound #:load-sound-from-wave #:is-sound-valid #:is-sound-ready #:update-sound #:unload-sound
+   #:load-wave #:load-wave-from-memory #:is-wave-valid #:unload-wave
+   #:load-sound #:load-sound-from-wave #:load-sound-alias #:is-sound-valid #:update-sound
+   #:unload-sound #:unload-sound-alias
    #:export-wave #:export-wave-as-code
-   
-   ;; Sound playing management
+
+   ;; Wave/Sound management
    #:play-sound #:stop-sound #:pause-sound #:resume-sound #:is-sound-playing
-   #:set-sound-volume #:set-sound-pitch #:set-sound-pan #:stop-all-sounds
-   
+   #:set-sound-volume #:set-sound-pitch #:set-sound-pan
+   #:wave-copy #:wave-crop #:wave-format #:load-wave-samples #:unload-wave-samples
+
    ;; Music management
-   #:load-music-stream #:is-music-valid #:is-music-ready #:unload-music-stream
+   #:load-music-stream #:load-music-stream-from-memory #:is-music-valid #:unload-music-stream
    #:play-music-stream #:is-music-stream-playing #:update-music-stream
    #:stop-music-stream #:pause-music-stream #:resume-music-stream
-   #:seek-music-stream #:set-music-volume #:set-music-pitch #:set-music-pan #:set-music-looping
+   #:seek-music-stream #:set-music-volume #:set-music-pitch #:set-music-pan
    #:get-music-time-length #:get-music-time-played
-   
-   ;; Audio stream management
-   #:load-audio-stream #:is-audio-stream-ready #:unload-audio-stream
+
+   ;; AudioStream management
+   #:load-audio-stream #:is-audio-stream-valid #:unload-audio-stream
    #:update-audio-stream #:is-audio-stream-processed
    #:play-audio-stream #:pause-audio-stream #:resume-audio-stream
    #:is-audio-stream-playing #:stop-audio-stream
    #:set-audio-stream-volume #:set-audio-stream-pitch #:set-audio-stream-pan
-   
-   ;; Audio system utilities
-   #:set-audio-buffer-size #:get-audio-buffer-size #:update-audio-system
-   #:get-audio-system-info #:cleanup-audio-system
-   
-   ;; 3D Audio structures
-   #:audio-listener #:sound-3d #:reverb-zone
-   #:make-audio-listener #:make-sound-3d #:make-reverb-zone
-   #:audio-listener-position #:audio-listener-velocity #:audio-listener-forward
-   #:audio-listener-up #:audio-listener-right
-   #:sound-3d-sound #:sound-3d-position #:sound-3d-velocity #:sound-3d-min-distance
-   #:sound-3d-max-distance #:sound-3d-rolloff-factor
-   
-   ;; Audio listener management
-   #:set-audio-listener #:get-audio-listener #:set-listener-position
-   #:set-listener-velocity #:set-listener-orientation #:update-listener-from-camera
-   
-   ;; 3D Sound management
-   #:create-sound-3d #:remove-sound-3d #:set-sound-3d-position #:set-sound-3d-velocity
-   #:set-sound-3d-distance-model #:set-sound-3d-cone #:play-sound-3d #:stop-sound-3d
-   #:is-sound-3d-playing #:sound-3d-calculated-volume #:sound-3d-calculated-pan
-   
-   ;; 3D Audio calculations
-   #:calculate-3d-audio-parameters #:calculate-distance-attenuation
-   #:calculate-directional-gain #:calculate-doppler-effect
-   
-   ;; Reverb and environmental audio
-   #:create-reverb-zone #:remove-reverb-zone #:calculate-reverb-effect
-   
-   ;; 3D Audio system control
-   #:set-3d-audio-distance-model #:set-doppler-factor #:set-speed-of-sound
-   #:get-3d-audio-info #:init-3d-audio-system #:cleanup-3d-audio-system
-   #:update-3d-audio-system
-   
-   ;; 3D Audio global variables
-   #:*distance-model* #:*doppler-factor* #:*speed-of-sound*
-   
-   ;; Audio codec system
-   #:audio-codec-info #:make-audio-codec-info #:register-audio-codec
-   #:get-codec-by-extension #:get-codec-by-name #:is-codec-enabled
-   #:decode-audio-file #:encode-audio-file #:decoded-audio-data #:make-decoded-audio-data
-   #:init-audio-codec-system #:cleanup-audio-codec-system
-   #:get-supported-audio-formats #:get-audio-codec-info #:cache-audio-data
-   #:clear-audio-cache #:get-cache-info #:detect-audio-format
-   
+   #:set-audio-stream-buffer-size-default #:set-audio-stream-callback
+   #:attach-audio-stream-processor #:detach-audio-stream-processor
+   #:attach-audio-mixed-processor #:detach-audio-mixed-processor
+
    ;; Compression system
    #:compression-format-info #:make-compression-format-info #:register-compression-format
    #:get-compression-format-by-name #:get-compression-format-by-extension
