@@ -14,7 +14,11 @@
                #:uiop
                #:imago
                #:ieee-floats
-               #:babel)
+               #:babel
+               #:flexi-streams
+               #:skippy
+               #:zpng
+               #:chipz)
   :serial t
   :pathname "src"
   :components
@@ -27,8 +31,8 @@
    (:file "camera2d")              ; 2D camera system (matches raylib Camera2D)
    (:file "camera3d")
    (:file "color")
-   (:file "textures")
    (:file "gl")                    ; OpenGL abstraction layer (matches raylib rlgl.h functionality)
+   (:file "textures")
    (:file "shaders")               ; Shader system (matches raylib rlgl.c shader functionality)
    (:file "utils")                 ; Utility functions and logging system (required for raylib compatibility)
    (:file "window")

@@ -118,6 +118,15 @@
         (subseq file-path (1+ slash-pos))
         file-path)))
 
+(defun is-file-extension (file-name ext)
+  "Check file extension (recommended include point: .png, .wav)
+   NOTE: EXT can be a list of extensions separated by ';', comparison is case-insensitive"
+  (let ((file-ext (get-file-extension file-name)))
+    (and (plusp (length file-ext))
+         (some (lambda (e) (string-equal file-ext e))
+               (uiop:split-string ext :separator ";"))
+         t)))
+
 (defun get-file-name-without-ext (file-path)
   "Get filename without extension - matches raylib GetFileNameWithoutExt"
   (let* ((filename (get-file-name file-path))

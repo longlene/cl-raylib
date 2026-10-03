@@ -28,6 +28,11 @@
 (defconstant +cubemap-layout-cross-three-by-four+ 3) ; Layout is defined by a 3x4 cross with cubemap faces
 (defconstant +cubemap-layout-cross-four-by-three+ 4) ; Layout is defined by a 4x3 cross with cubemap faces
 
+;;; N-patch layout
+(defconstant +npatch-nine-patch+ 0 "Npatch layout: 3x3 tiles")
+(defconstant +npatch-three-patch-vertical+ 1 "Npatch layout: 1x3 tiles")
+(defconstant +npatch-three-patch-horizontal+ 2 "Npatch layout: 3x1 tiles")
+
 ;;; Global texture management
 (defvar *texture-id-counter* 1 "OpenGL texture ID counter")
 (defvar *current-texture-id* 0 "Currently bound texture ID")
@@ -450,77 +455,660 @@
     out))
 
 ;;;------------------------------------------------------------------------------------
+;;; Image file decoders/encoders
+;;; NOTE: raylib uses stb_image/stb_image_write/qoi.h; here PNG/JPG/TGA/PNM go through
+;;; imago, GIF through skippy, PNG writing through zpng, BMP and QOI are implemented here.
+;;; Decoded images keep the component count stb_image would report (1..4 channels)
+;;;------------------------------------------------------------------------------------
+
+(defun %u32-le (data offset)
+  (logior (aref data offset) (ash (aref data (+ offset 1)) 8)
+          (ash (aref data (+ offset 2)) 16) (ash (aref data (+ offset 3)) 24)))
+
+(defun %u32-be (data offset)
+  (logior (ash (aref data offset) 24) (ash (aref data (+ offset 1)) 16)
+          (ash (aref data (+ offset 2)) 8) (aref data (+ offset 3))))
+
+(defun %s32-le (data offset)
+  (let ((u (%u32-le data offset)))
+    (if (>= u #x80000000) (- u #x100000000) u)))
+
+(defun %channels->format (channels)
+  (case channels
+    (1 +pixelformat-uncompressed-grayscale+)
+    (2 +pixelformat-uncompressed-gray-alpha+)
+    (3 +pixelformat-uncompressed-r8g8b8+)
+    (t +pixelformat-uncompressed-r8g8b8a8+)))
+
+(defun %format->channels (format)
+  "Channels used by the image exporters, 0 when data needs a Color array conversion"
+  (alexandria:switch (format)
+    (+pixelformat-uncompressed-grayscale+ 1)
+    (+pixelformat-uncompressed-gray-alpha+ 2)
+    (+pixelformat-uncompressed-r8g8b8+ 3)
+    (+pixelformat-uncompressed-r8g8b8a8+ 4)
+    (t 0)))
+
+(defun %rgba->channels (rgba count channels)
+  "Pack COUNT R8G8B8A8 pixels into CHANNELS components per pixel (gray uses the red component)"
+  (if (= channels 4)
+      rgba
+      (let ((out (%make-octets (* count channels))))
+        (dotimes (i count out)
+          (let ((s (* i 4)) (d (* i channels)))
+            (case channels
+              (1 (setf (aref out d) (aref rgba s)))
+              (2 (setf (aref out d) (aref rgba s) (aref out (1+ d)) (aref rgba (+ s 3))))
+              (3 (setf (aref out d) (aref rgba s) (aref out (+ d 1)) (aref rgba (+ s 1))
+                       (aref out (+ d 2)) (aref rgba (+ s 2))))))))))
+
+(defun %imago->image (imago-image channels)
+  "Convert an imago image to an image with CHANNELS components per pixel"
+  (let* ((rgb (if (typep imago-image 'imago:rgb-image) imago-image (imago:convert-to-rgb imago-image)))
+         (width (imago:image-width rgb))
+         (height (imago:image-height rgb))
+         (rgba (%make-octets (* width height 4))))
+    (dotimes (y height)
+      (dotimes (x width)
+        (let ((pixel (imago:image-pixel rgb x y)))
+          (%put-rgba rgba (+ (* y width) x) (imago:color-red pixel) (imago:color-green pixel)
+                     (imago:color-blue pixel) (imago:color-alpha pixel)))))
+    (make-image :data (%rgba->channels rgba (* width height) channels) :width width :height height
+                :mipmaps 1 :format (%channels->format channels))))
+
+(defun %load-png (data)
+  "Decode a PNG file"
+  (let ((offset 8)
+        width height depth color-type interlace
+        palette transparency
+        (idat (make-array 0 :element-type '(unsigned-byte 8) :adjustable t :fill-pointer 0)))
+    ;; Read chunks
+    (loop while (< (+ offset 8) (length data))
+          do (let* ((len (%u32-be data offset))
+                    (type (map 'string #'code-char (subseq data (+ offset 4) (+ offset 8))))
+                    (start (+ offset 8)))
+               (cond ((string= type "IHDR")
+                      (setf width (%u32-be data start)
+                            height (%u32-be data (+ start 4))
+                            depth (aref data (+ start 8))
+                            color-type (aref data (+ start 9))
+                            interlace (aref data (+ start 12))))
+                     ((string= type "PLTE") (setf palette (subseq data start (+ start len))))
+                     ((string= type "tRNS") (setf transparency (subseq data start (+ start len))))
+                     ((string= type "IDAT") (loop for k from start below (+ start len)
+                                                  do (vector-push-extend (aref data k) idat)))
+                     ((string= type "IEND") (loop-finish)))
+               (incf offset (+ len 12))))
+    (let* ((img-n (case color-type (0 1) (2 3) (3 1) (4 2) (6 4)))
+           (raw (chipz:decompress nil 'chipz:zlib (coerce idat '(simple-array (unsigned-byte 8) (*)))))
+           (samples (make-array (* width height img-n) :element-type '(unsigned-byte 16)))
+           (filter-bpp (max 1 (floor (* img-n depth) 8)))
+           (pos 0))
+      ;; Unfilter one (sub)image and store its samples in the full image
+      (flet ((decode-pass (pass-w pass-h x0 y0 dx dy)
+               (when (and (> pass-w 0) (> pass-h 0))
+                 (let* ((stride (ceiling (* pass-w img-n depth) 8))
+                        (prev (%make-octets stride))
+                        (cur (%make-octets stride)))
+                   (dotimes (row pass-h)
+                     (let ((filter (aref raw pos)))
+                       (incf pos)
+                       (dotimes (k stride)
+                         (let* ((x (aref raw (+ pos k)))
+                                (a (if (>= k filter-bpp) (aref cur (- k filter-bpp)) 0))
+                                (b (aref prev k))
+                                (c (if (>= k filter-bpp) (aref prev (- k filter-bpp)) 0)))
+                           (setf (aref cur k)
+                                 (logand #xff
+                                         (+ x (case filter
+                                                (0 0)
+                                                (1 a)
+                                                (2 b)
+                                                (3 (floor (+ a b) 2))
+                                                (4 (let* ((p (- (+ a b) c))
+                                                          (pa (abs (- p a))) (pb (abs (- p b))) (pc (abs (- p c))))
+                                                     (cond ((and (<= pa pb) (<= pa pc)) a)
+                                                           ((<= pb pc) b)
+                                                           (t c))))
+                                                (t 0)))))))
+                       (incf pos stride)
+                       ;; Unpack samples
+                       (dotimes (px pass-w)
+                         (dotimes (ch img-n)
+                           (let* ((sample-index (+ (* px img-n) ch))
+                                  (value (case depth
+                                           (8 (aref cur sample-index))
+                                           (16 (logior (ash (aref cur (* sample-index 2)) 8)
+                                                       (aref cur (1+ (* sample-index 2)))))
+                                           (t (let ((bit (* sample-index depth)))
+                                                (ldb (byte depth (- 8 depth (mod bit 8)))
+                                                     (aref cur (floor bit 8))))))))
+                             (setf (aref samples (+ (* (+ (* (+ y0 (* row dy)) width) (+ x0 (* px dx))) img-n) ch))
+                                   value))))
+                       (rotatef prev cur)))))))
+        (if (= interlace 1)
+            ;; Adam7 interlacing
+            (loop for (x0 y0 dx dy) in '((0 0 8 8) (4 0 8 8) (0 4 4 8) (2 0 4 4) (0 2 2 4) (1 0 2 2) (0 1 1 2))
+                  do (decode-pass (ceiling (- width x0) dx) (ceiling (- height y0) dy) x0 y0 dx dy))
+            (decode-pass width height 0 0 1 1)))
+      ;; Convert samples to 8 bit output
+      (let* ((key (when (and transparency (member color-type '(0 2)))
+                    (loop for k from 0 below (* 2 img-n) by 2
+                          collect (logand (logior (ash (aref transparency k) 8) (aref transparency (1+ k)))
+                                          (1- (ash 1 depth))))))
+             (out-n (cond ((= color-type 3) (if transparency 4 3))
+                          (key (1+ img-n))
+                          (t img-n)))
+             (count (* width height))
+             (out (%make-octets (* count out-n)))
+             (scale (if (= color-type 3) 1 (case depth (1 255) (2 85) (4 17) (t 1)))))
+        (dotimes (i count)
+          (let ((o (* i out-n)))
+            (if (= color-type 3)
+                (let ((index (aref samples i)))
+                  (dotimes (c 3)
+                    (setf (aref out (+ o c)) (if (< (+ (* index 3) c) (length palette))
+                                                 (aref palette (+ (* index 3) c)) 0)))
+                  (when transparency
+                    (setf (aref out (+ o 3)) (if (< index (length transparency)) (aref transparency index) 255))))
+                (progn
+                  (dotimes (c img-n)
+                    (let ((v (aref samples (+ (* i img-n) c))))
+                      (setf (aref out (+ o c)) (if (= depth 16) (ash v -8) (* v scale)))))
+                  (when key
+                    (setf (aref out (+ o img-n))
+                          (if (loop for c from 0 below img-n
+                                    always (= (aref samples (+ (* i img-n) c)) (nth c key)))
+                              0 255)))))))
+        (make-image :data out :width width :height height :mipmaps 1 :format (%channels->format out-n))))))
+
+(defun %read-imago-from-memory (reader file-data)
+  "Decode FILE-DATA with an imago stream reader
+   NOTE: imago readers require a file stream (they use file-length), so data goes through a temporary file"
+  (uiop:with-temporary-file (:stream out :pathname path :element-type '(unsigned-byte 8))
+    (write-sequence file-data out)
+    (finish-output out)
+    (with-open-file (in path :element-type '(unsigned-byte 8))
+      (funcall reader in))))
+
+(defun %load-bmp (data)
+  "Decode an uncompressed BMP file (1/4/8 bit paletted, 16/24/32 bit)"
+  (let* ((pixel-offset (%u32-le data 10))
+         (header-size (%u32-le data 14))
+         (os2 (= header-size 12))
+         (width (if os2 (logior (aref data 18) (ash (aref data 19) 8)) (%s32-le data 18)))
+         (raw-height (if os2 (logior (aref data 20) (ash (aref data 21) 8)) (%s32-le data 22)))
+         (bpp (if os2 (logior (aref data 24) (ash (aref data 25) 8)) (logior (aref data 28) (ash (aref data 29) 8))))
+         (compression (if os2 0 (%u32-le data 30)))
+         (flip (> raw-height 0))
+         (height (abs raw-height))
+         (mr 0) (mg 0) (mb 0) (ma 0))
+    (unless (member compression '(0 3))
+      (trace-log-warning "IMAGE: BMP compressed data not supported")
+      (return-from %load-bmp nil))
+    ;; Channel masks (stb_image defaults when not provided)
+    (case bpp
+      (16 (setf mr #x7c00 mg #x03e0 mb #x001f))
+      (32 (setf mr #x00ff0000 mg #x0000ff00 mb #x000000ff ma #xff000000)))
+    (when (= compression 3)
+      (setf mr (%u32-le data 54) mg (%u32-le data 58) mb (%u32-le data 62)
+            ma (if (>= header-size 56) (%u32-le data 66) 0)))
+    (let* ((channels (if (and (> bpp 8) (/= ma 0)) 4 3))
+           (palette-offset (+ 14 header-size))
+           (palette-entry (if os2 3 4))
+           (stride (* 4 (ceiling (* width bpp) 32)))
+           (rgba (%make-octets (* width height 4)))
+           (all-alpha-zero t))
+      (flet ((channel (value mask)
+               ;; Extract the masked bits and scale them to 8 bits
+               (if (zerop mask) 0
+                   (let* ((shift (loop for s from 0 below 32 until (logbitp s mask) finally (return s)))
+                          (bits (integer-length (ash mask (- shift))))
+                          (v (ldb (byte bits shift) value)))
+                     (if (>= bits 8) (ash v (- 8 bits)) (floor (* v 255) (1- (ash 1 bits))))))))
+        (dotimes (row height)
+          (let ((src (+ pixel-offset (* (if flip (- height 1 row) row) stride))))
+            (dotimes (x width)
+              (let ((i (+ (* row width) x)))
+                (if (<= bpp 8)
+                    (let* ((bit-offset (* x bpp))
+                           (byte (aref data (+ src (floor bit-offset 8))))
+                           (index (ldb (byte bpp (- 8 bpp (mod bit-offset 8))) byte))
+                           (p (+ palette-offset (* index palette-entry))))
+                      (%put-rgba rgba i (aref data (+ p 2)) (aref data (+ p 1)) (aref data p) 255))
+                    (let* ((bytes (floor bpp 8))
+                           (o (+ src (* x bytes)))
+                           (value (loop for k below bytes sum (ash (aref data (+ o k)) (* 8 k)))))
+                      (if (= bpp 24)
+                          (%put-rgba rgba i (aref data (+ o 2)) (aref data (+ o 1)) (aref data o) 255)
+                          (let ((a (if (zerop ma) 255 (channel value ma))))
+                            (unless (zerop a) (setf all-alpha-zero nil))
+                            (%put-rgba rgba i (channel value mr) (channel value mg) (channel value mb) a)))))))))
+        ;; If all alpha values are zero the alpha channel is ignored (stb_image behaviour)
+        (when (and (= channels 4) all-alpha-zero)
+          (loop for k from 3 below (length rgba) by 4 do (setf (aref rgba k) 255))))
+      (make-image :data (%rgba->channels rgba (* width height) channels) :width width :height height
+                  :mipmaps 1 :format (%channels->format channels)))))
+
+(defun %qoi-hash (r g b a)
+  (mod (+ (* r 3) (* g 5) (* b 7) (* a 11)) 64))
+
+(defun %load-qoi (data)
+  "Decode a QOI file (https://qoiformat.org)"
+  (unless (and (>= (length data) 22) (string= (map 'string #'code-char (subseq data 0 4)) "qoif"))
+    (return-from %load-qoi nil))
+  (let* ((width (%u32-be data 4))
+         (height (%u32-be data 8))
+         (channels (aref data 12))
+         (pixels (%make-octets (* width height channels)))
+         (index (make-array 64 :initial-element nil))
+         (r 0) (g 0) (b 0) (a 255)
+         (run 0)
+         (p 14)
+         (chunks-len (- (length data) 8)))
+    (dotimes (i (* width height))
+      (cond ((> run 0) (decf run))
+            ((< p chunks-len)
+             (let ((b1 (aref data p)))
+               (incf p)
+               (cond ((= b1 #xfe)                         ; QOI_OP_RGB
+                      (setf r (aref data p) g (aref data (+ p 1)) b (aref data (+ p 2)))
+                      (incf p 3))
+                     ((= b1 #xff)                         ; QOI_OP_RGBA
+                      (setf r (aref data p) g (aref data (+ p 1)) b (aref data (+ p 2)) a (aref data (+ p 3)))
+                      (incf p 4))
+                     ((= (logand b1 #xc0) #x00)           ; QOI_OP_INDEX
+                      (destructuring-bind (ir ig ib ia) (or (aref index b1) '(0 0 0 0))
+                        (setf r ir g ig b ib a ia)))
+                     ((= (logand b1 #xc0) #x40)           ; QOI_OP_DIFF
+                      (setf r (logand (+ r (- (ldb (byte 2 4) b1) 2)) #xff)
+                            g (logand (+ g (- (ldb (byte 2 2) b1) 2)) #xff)
+                            b (logand (+ b (- (ldb (byte 2 0) b1) 2)) #xff)))
+                     ((= (logand b1 #xc0) #x80)           ; QOI_OP_LUMA
+                      (let* ((b2 (aref data p))
+                             (vg (- (logand b1 #x3f) 32)))
+                        (incf p)
+                        (setf r (logand (+ r vg -8 (ldb (byte 4 4) b2)) #xff)
+                              g (logand (+ g vg) #xff)
+                              b (logand (+ b vg -8 (ldb (byte 4 0) b2)) #xff))))
+                     (t (setf run (logand b1 #x3f))))     ; QOI_OP_RUN
+               (setf (aref index (%qoi-hash r g b a)) (list r g b a)))))
+      (let ((o (* i channels)))
+        (setf (aref pixels o) r (aref pixels (+ o 1)) g (aref pixels (+ o 2)) b)
+        (when (= channels 4) (setf (aref pixels (+ o 3)) a))))
+    (make-image :data pixels :width width :height height :mipmaps 1
+                :format (if (= channels 4) +pixelformat-uncompressed-r8g8b8a8+ +pixelformat-uncompressed-r8g8b8+))))
+
+(defun %encode-qoi (data width height channels)
+  "Encode pixel DATA (3 or 4 channels) as a QOI file"
+  (let ((out (make-array (+ 22 (* width height (1+ channels))) :element-type '(unsigned-byte 8)
+                                                               :fill-pointer 0 :adjustable t))
+        (index (make-array 64 :initial-element nil))
+        (pr 0) (pg 0) (pb 0) (pa 255)
+        (run 0)
+        (count (* width height)))
+    (flet ((put (&rest bytes) (dolist (b bytes) (vector-push-extend b out)))
+           (put32 (v) (dotimes (k 4) (vector-push-extend (ldb (byte 8 (- 24 (* k 8))) v) out))))
+      (put (char-code #\q) (char-code #\o) (char-code #\i) (char-code #\f))
+      (put32 width) (put32 height)
+      (put channels 0)                  ; QOI_SRGB
+      (dotimes (i count)
+        (let* ((o (* i channels))
+               (r (aref data o)) (g (aref data (+ o 1))) (b (aref data (+ o 2)))
+               (a (if (= channels 4) (aref data (+ o 3)) pa)))
+          (if (and (= r pr) (= g pg) (= b pb) (= a pa))
+              (progn
+                (incf run)
+                (when (or (= run 62) (= i (1- count)))
+                  (put (logior #xc0 (1- run)))
+                  (setf run 0)))
+              (let ((h (%qoi-hash r g b a)))
+                (when (> run 0)
+                  (put (logior #xc0 (1- run)))
+                  (setf run 0))
+                (if (equal (aref index h) (list r g b a))
+                    (put h)
+                    (progn
+                      (setf (aref index h) (list r g b a))
+                      (if (= a pa)
+                          (let* ((vr (- (logand (- r pr) #xff) (if (> (logand (- r pr) #xff) 127) 256 0)))
+                                 (vg (- (logand (- g pg) #xff) (if (> (logand (- g pg) #xff) 127) 256 0)))
+                                 (vb (- (logand (- b pb) #xff) (if (> (logand (- b pb) #xff) 127) 256 0)))
+                                 (vg-r (- vr vg))
+                                 (vg-b (- vb vg)))
+                            (cond ((and (< -3 vr 2) (< -3 vg 2) (< -3 vb 2))
+                                   (put (logior #x40 (ash (+ vr 2) 4) (ash (+ vg 2) 2) (+ vb 2))))
+                                  ((and (< -9 vg-r 8) (< -33 vg 32) (< -9 vg-b 8))
+                                   (put (logior #x80 (+ vg 32)) (logior (ash (+ vg-r 8) 4) (+ vg-b 8))))
+                                  (t (put #xfe r g b))))
+                          (put #xff r g b a))))))
+          (setf pr r pg g pb b pa a)))
+      (put 0 0 0 0 0 0 0 1))           ; Padding
+    (coerce out '(simple-array (unsigned-byte 8) (*)))))
+
+(defun %gif-frames (data &optional (max-frames most-positive-fixnum))
+  "Decode GIF frames composited like stb_image (R8G8B8A8), returns (values frames width height)"
+  (let* ((stream (flexi-streams:with-input-from-sequence (in data) (skippy:read-data-stream in)))
+         (width (skippy:width stream))
+         (height (skippy:height stream))
+         (canvas (%make-octets (* width height 4)))
+         (frames nil))
+    (loop for gif-image across (skippy:images stream)
+          for n from 0 below max-frames
+          do (let* ((table (or (skippy:color-table gif-image) (skippy:color-table stream)))
+                    (transparent (skippy:transparency-index gif-image))
+                    (left (skippy:left-position gif-image))
+                    (top (skippy:top-position gif-image))
+                    (w (skippy:width gif-image))
+                    (h (skippy:height gif-image))
+                    (pixels (skippy:image-data gif-image))
+                    (previous (when (eq (skippy:disposal-method gif-image) :restore-previous)
+                                (copy-seq canvas))))
+               (dotimes (y h)
+                 (dotimes (x w)
+                   (let ((index (aref pixels (+ (* y w) x)))
+                         (cx (+ left x)) (cy (+ top y)))
+                     (when (and (< cx width) (< cy height) (not (eql index transparent)))
+                       (multiple-value-bind (r g b) (skippy:color-rgb (skippy:color-table-entry table index))
+                         (%put-rgba canvas (+ (* cy width) cx) r g b 255))))))
+               (push (copy-seq canvas) frames)
+               ;; Frame disposal
+               (case (skippy:disposal-method gif-image)
+                 (:restore-background
+                  (dotimes (y h)
+                    (dotimes (x w)
+                      (let ((cx (+ left x)) (cy (+ top y)))
+                        (when (and (< cx width) (< cy height))
+                          (%put-rgba canvas (+ (* cy width) cx) 0 0 0 0))))))
+                 (:restore-previous (setf canvas previous)))))
+    (values (nreverse frames) width height)))
+
+(defun %load-gif (data)
+  (multiple-value-bind (frames width height) (%gif-frames data 1)
+    (when frames
+      (make-image :data (first frames) :width width :height height :mipmaps 1
+                  :format +pixelformat-uncompressed-r8g8b8a8+))))
+
+(defun %file-type-p (file-type &rest extensions)
+  (and file-type (member file-type extensions :test #'string-equal)))
+
+;;;------------------------------------------------------------------------------------
 ;;; Image loading functions
 ;;;------------------------------------------------------------------------------------
 
-(defun load-image (filename)
-  "Load image from file using imago library"
-  (handler-case
-      (when (probe-file filename)
-        (trace-log-info "FILEIO: [~a] File loaded successfully" filename)
-        (let* ((imago-image (imago:read-image filename))
-               (width (imago:image-width imago-image))
-               (height (imago:image-height imago-image))
-               (pixel-count (* width height))
-               (data (make-array (* pixel-count 4) :element-type '(unsigned-byte 8))))
+(defun load-image (file-name)
+  "Load image from file into CPU memory (RAM)"
+  (multiple-value-bind (file-data data-size) (load-file-data file-name)
+    (if file-data
+        (load-image-from-memory (get-file-extension file-name) file-data data-size)
+        (make-image :width 0 :height 0 :mipmaps 0 :format 0))))
 
-          (trace-log-info "IMAGE: Data loaded successfully (~dx~d | R8G8B8A8 | 1 mipmaps)" width height)
+(defun load-image-raw (file-name width height format header-size)
+  "Load image from RAW file data"
+  (let ((image (make-image :width 0 :height 0 :mipmaps 0 :format 0)))
+    (multiple-value-bind (file-data data-size) (load-file-data file-name)
+      (when file-data
+        (let ((size (get-pixel-data-size width height format))
+              (offset 0))
+          (when (<= size data-size)       ; Security check
+            ;; Offset file data to expected raw image by header size
+            (when (and (> header-size 0) (<= (+ header-size size) data-size))
+              (setf offset header-size))
+            (setf image (make-image :data (subseq file-data offset (+ offset size))
+                                    :width width :height height :mipmaps 1 :format format))))))
+    image))
 
-          ;; Convert imago image to RGBA format
-          (typecase imago-image
-            (imago:rgb-image
-             (dotimes (y height)
-               (dotimes (x width)
-                 (let* ((pixel (imago:image-pixel imago-image x y))
-                        (idx (* (+ (* y width) x) 4)))
-                   (setf (aref data idx) (imago:color-red pixel))           ; R
-                   (setf (aref data (+ idx 1)) (imago:color-green pixel))   ; G
-                   (setf (aref data (+ idx 2)) (imago:color-blue pixel))    ; B
-                   (setf (aref data (+ idx 3)) (imago:color-alpha pixel)))))) ; A
-            (imago:grayscale-image
-             (dotimes (y height)
-               (dotimes (x width)
-                 (let* ((pixel (imago:image-pixel imago-image x y))
-                        (idx (* (+ (* y width) x) 4)))
-                   (setf (aref data idx) pixel)           ; R
-                   (setf (aref data (+ idx 1)) pixel)     ; G
-                   (setf (aref data (+ idx 2)) pixel)     ; B
-                   (setf (aref data (+ idx 3)) 255)))))   ; A
-            (t
-             (trace-log-warning "IMAGE: Unsupported image type, converting to RGB")
-             (let ((rgb-image (imago:convert-to-rgb imago-image)))
-               (dotimes (y height)
-                 (dotimes (x width)
-                   (let* ((pixel (imago:image-pixel rgb-image x y))
-                          (idx (* (+ (* y width) x) 4)))
-                     (setf (aref data idx) (imago:color-red pixel))
-                     (setf (aref data (+ idx 1)) (imago:color-green pixel))
-                     (setf (aref data (+ idx 2)) (imago:color-blue pixel))
-                     (setf (aref data (+ idx 3)) (imago:color-alpha pixel))))))))
+;; NOTE: Image data includes all frames: [image#0][image#1][image#2][...], all frames in RGBA,
+;; frames delay data is discarded; returns the image and the number of frames
+(defun load-image-anim (file-name)
+  "Load image sequence from file (frames appended to image.data)"
+  (if (is-file-extension file-name ".gif")
+      (multiple-value-bind (file-data data-size) (load-file-data file-name)
+        (if file-data
+            (load-image-anim-from-memory ".gif" file-data data-size)
+            (values (make-image :width 0 :height 0 :mipmaps 0 :format 0) 0)))
+      (values (load-image file-name) 1)))
 
-          (make-image :data data
-                      :width width
-                      :height height
-                      :format +pixelformat-uncompressed-rgba+)))
-    (error (e)
-      (trace-log-error "IMAGE: Failed to load [~a]: ~a" filename e)
-      ;; Return placeholder image on error
-      (let ((color (cond
-                     ((search "red" (string-downcase filename)) +red+)
-                     ((search "green" (string-downcase filename)) +green+)
-                     ((search "blue" (string-downcase filename)) +blue+)
-                     ((search "yellow" (string-downcase filename)) +yellow+)
-                     (t +magenta+))))
-        (gen-image-color 64 64 color)))))
+(defun load-image-anim-from-memory (file-type file-data data-size)
+  "Load image sequence from memory buffer, returns the image and the number of frames"
+  (when (or (null file-type) (null file-data) (zerop data-size)) ; Security check
+    (return-from load-image-anim-from-memory (values (make-image :width 0 :height 0 :mipmaps 0 :format 0) 0)))
+  (if (%file-type-p file-type ".gif")
+      (multiple-value-bind (frames width height) (%gif-frames file-data)
+        (let ((data (%make-octets (* width height 4 (length frames)))))
+          (loop for frame in frames
+                for offset from 0 by (* width height 4)
+                do (replace data frame :start1 offset))
+          (values (make-image :data data :width width :height height :mipmaps 1
+                              :format +pixelformat-uncompressed-r8g8b8a8+)
+                  (length frames))))
+      (values (load-image-from-memory file-type file-data data-size) 1)))
+
+;; WARNING: File extension must be provided in lower-case (other cases also accepted here)
+(defun load-image-from-memory (file-type file-data data-size)
+  "Load image from memory buffer, fileType refers to extension: i.e. '.png'"
+  (let ((image nil))
+    ;; Security checks for input data
+    (when (or (null file-data) (zerop data-size))
+      (trace-log-warning "IMAGE: Invalid file data")
+      (return-from load-image-from-memory (make-image :width 0 :height 0 :mipmaps 0 :format 0)))
+    (when (null file-type)
+      (trace-log-warning "IMAGE: Missing file extension")
+      (return-from load-image-from-memory (make-image :width 0 :height 0 :mipmaps 0 :format 0)))
+    (let ((file-data (coerce file-data '(simple-array (unsigned-byte 8) (*)))))
+      (handler-case
+          (cond ((%file-type-p file-type ".png")
+                 (setf image (%load-png file-data)))
+                ((%file-type-p file-type ".bmp")
+                 (setf image (%load-bmp file-data)))
+                ((%file-type-p file-type ".gif")
+                 (setf image (%load-gif file-data)))
+                ((%file-type-p file-type ".qoi")
+                 (setf image (%load-qoi file-data)))
+                ;; NOTE: Formats disabled by default in raylib config.h, supported through imago
+                ((%file-type-p file-type ".jpg" ".jpeg")
+                 (let ((im (%read-imago-from-memory #'imago:read-jpg-from-stream file-data)))
+                   (setf image (%imago->image im (if (typep im 'imago:grayscale-image) 1 3)))))
+                ((%file-type-p file-type ".tga")
+                 (setf image (%imago->image (%read-imago-from-memory #'imago:read-tga-from-stream file-data)
+                                            (if (= (aref file-data 16) 32) 4 3))))
+                ((%file-type-p file-type ".ppm" ".pgm")
+                 (setf image (%imago->image (%read-imago-from-memory #'imago:read-pnm-from-stream file-data)
+                                            (if (%file-type-p file-type ".pgm") 1 3))))
+                (t (trace-log-warning "IMAGE: Data format not supported")))
+        (error (e)
+          (trace-log-warning "IMAGE: Failed to decode image data: ~a" e)
+          (setf image nil))))
+    (if (and image (image-data image))
+        (progn
+          (trace-log-info "IMAGE: Data loaded successfully (~dx~d | ~a | ~d mipmaps)"
+                          (image-width image) (image-height image)
+                          (rl-get-pixel-format-name (image-pixel-format image)) (image-mipmap-count image))
+          image)
+        (progn
+          (trace-log-warning "IMAGE: Failed to load image data")
+          (make-image :width 0 :height 0 :mipmaps 0 :format 0)))))
+
+;; NOTE: Compressed texture formats not supported
+(defun load-image-from-texture (texture)
+  "Load image from GPU texture data"
+  (if (< (texture-format texture) +pixelformat-compressed-dxt1-rgb+)
+      (let ((image (get-texture-data texture)))
+        (if image
+            (progn (trace-log-info "TEXTURE: [ID ~d] Pixel data retrieved successfully" (texture-id texture))
+                   image)
+            (progn (trace-log-warning "TEXTURE: [ID ~d] Failed to retrieve pixel data" (texture-id texture))
+                   (make-image :width 0 :height 0 :mipmaps 0 :format 0))))
+      (progn (trace-log-warning "TEXTURE: [ID ~d] Failed to retrieve compressed pixel data" (texture-id texture))
+             (make-image :width 0 :height 0 :mipmaps 0 :format 0))))
+
+(defun load-image-from-screen ()
+  "Load image from screen buffer and (screenshot)"
+  (let* ((width (get-render-width))
+         (height (get-render-height))
+         (data (%make-octets (* width height 4))))
+    ;; NOTE: glReadPixels() returns image flipped vertically -> (0,0) is the bottom left corner of the framebuffer
+    (gl:read-pixels 0 0 width height :rgba :unsigned-byte data)
+    (let ((flipped (%make-octets (* width height 4)))
+          (row (* width 4)))
+      (dotimes (y height)
+        (replace flipped data :start1 (* y row) :start2 (* (- height 1 y) row) :end2 (* (- height y) row)))
+      ;; NOTE: Alpha value has already been applied to RGB in framebuffer, not needed anymore
+      (loop for k from 3 below (length flipped) by 4 do (setf (aref flipped k) 255))
+      (make-image :data flipped :width width :height height :mipmaps 1
+                  :format +pixelformat-uncompressed-r8g8b8a8+))))
 
 (defun unload-image (image)
-  "Unload image data from CPU memory (RAM)"
-  (when (and image (image-p image) (image-data image))
-    ;; Clear the image data array
-    ;; In Common Lisp, we just need to clear the reference
-    ;; The GC will handle the actual memory deallocation
-    (setf (image-data image) nil)
-    (trace-log-info "IMAGE: Data unloaded successfully from RAM")))
+  "Unload image from CPU memory (RAM)"
+  (when (and image (image-p image))
+    ;; NOTE: Memory is managed by the GC, data reference is just cleared
+    (setf (image-data image) nil))
+  nil)
+
+;;; Image export
+
+(defun %image-export-data (image)
+  "Pixel data and channels used to export IMAGE (Color array for non 8-bit formats)"
+  (let ((channels (%format->channels (image-pixel-format image))))
+    (if (zerop channels)
+        (values (%load-image-colors image) 4)
+        (values (image-data image) channels))))
+
+(defun %encode-png (data width height channels)
+  (let ((png (make-instance 'zpng:png :width width :height height
+                                      :color-type (ecase channels
+                                                    (1 :grayscale) (2 :grayscale-alpha)
+                                                    (3 :truecolor) (4 :truecolor-alpha))
+                                      :image-data (subseq data 0 (* width height channels)))))
+    (flexi-streams:with-output-to-sequence (out)
+      (zpng:write-png-stream png out))))
+
+(defun %encode-bmp (data width height channels)
+  "Encode a BMP like stbi_write_bmp(): 24bpp, or 32bpp BGRA with V4 header for 4 channels"
+  (let* ((bpp (if (= channels 4) 32 24))
+         (header-size (if (= channels 4) 108 40))
+         (stride (* 4 (ceiling (* width bpp) 32)))
+         (pixel-offset (+ 14 header-size))
+         (file-size (+ pixel-offset (* stride height)))
+         (out (%make-octets file-size)))
+    (flet ((put16 (offset v) (setf (aref out offset) (ldb (byte 8 0) v) (aref out (1+ offset)) (ldb (byte 8 8) v)))
+           (put32 (offset v) (dotimes (k 4) (setf (aref out (+ offset k)) (ldb (byte 8 (* k 8)) v)))))
+      (setf (aref out 0) (char-code #\B) (aref out 1) (char-code #\M))
+      (put32 2 file-size) (put32 10 pixel-offset)
+      (put32 14 header-size) (put32 18 width) (put32 22 height)
+      (put16 26 1) (put16 28 bpp)
+      (put32 30 (if (= channels 4) 3 0))           ; BI_BITFIELDS for alpha bitmaps
+      (put32 34 (* stride height))
+      (when (= channels 4)
+        (put32 54 #x00ff0000) (put32 58 #x0000ff00) (put32 62 #x000000ff) (put32 66 #xff000000)
+        (put32 70 #x73524742))                     ; 'sRGB' color space
+      (dotimes (row height)
+        (let ((y (- height 1 row)))                ; Bottom-up rows
+          (dotimes (x width)
+            (let* ((s (* (+ (* y width) x) channels))
+                   (d (+ pixel-offset (* row stride) (* x (floor bpp 8))))
+                   (r (aref data s))
+                   (g (if (< channels 3) r (aref data (+ s 1))))
+                   (b (if (< channels 3) r (aref data (+ s 2)))))
+              (setf (aref out d) b (aref out (+ d 1)) g (aref out (+ d 2)) r)
+              (when (= channels 4) (setf (aref out (+ d 3)) (aref data (+ s 3)))))))))
+    out))
+
+;; NOTE: File format depends on fileName extension
+(defun export-image (image file-name)
+  "Export image data to file, returns true on success"
+  (let ((result nil))
+    (when (or (zerop (image-width image)) (zerop (image-height image)) (null (image-data image)))
+      (return-from export-image nil))    ; Security check
+    (multiple-value-bind (data channels) (%image-export-data image)
+      (let ((w (image-width image)) (h (image-height image)))
+        (handler-case
+            (cond ((is-file-extension file-name ".png")
+                   (let ((file-data (%encode-png data w h channels)))
+                     (setf result (save-file-data file-name file-data (length file-data)))))
+                  ((is-file-extension file-name ".bmp")
+                   (let ((file-data (%encode-bmp data w h channels)))
+                     (setf result (save-file-data file-name file-data (length file-data)))))
+                  ((is-file-extension file-name ".qoi")
+                   (let ((qoi-channels (alexandria:switch ((image-pixel-format image))
+                                         (+pixelformat-uncompressed-r8g8b8+ 3)
+                                         (+pixelformat-uncompressed-r8g8b8a8+ 4)
+                                         (t (trace-log-warning "IMAGE: Image pixel format must be R8G8B8 or R8G8B8A8")
+                                            0))))
+                     (when (member qoi-channels '(3 4))
+                       (let ((file-data (%encode-qoi (image-data image) w h qoi-channels)))
+                         (setf result (save-file-data file-name file-data (length file-data)))))))
+                  ;; NOTE: JPG export is disabled by default in raylib config.h, supported through imago
+                  ((or (is-file-extension file-name ".jpg") (is-file-extension file-name ".jpeg"))
+                   (let ((rgb (imago:make-rgb-image w h)))
+                     (dotimes (y h)
+                       (dotimes (x w)
+                         (let ((s (* (+ (* y w) x) channels)))
+                           (setf (imago:image-pixel rgb x y)
+                                 (if (< channels 3)
+                                     (imago:make-color (aref data s) (aref data s) (aref data s))
+                                     (imago:make-color (aref data s) (aref data (+ s 1)) (aref data (+ s 2))))))))
+                     (imago:write-jpg rgb file-name)
+                     (setf result t)))
+                  ((is-file-extension file-name ".raw")
+                   ;; Export raw pixel data (without header)
+                   ;; NOTE: It's up to the user to track image parameters
+                   (setf result (save-file-data file-name (image-data image)
+                                                (get-pixel-data-size w h (image-pixel-format image)))))
+                  (t (trace-log-warning "IMAGE: Export image format requested not supported")))
+          (error (e)
+            (trace-log-warning "IMAGE: Failed to encode image: ~a" e)
+            (setf result nil)))))
+    (if result
+        (trace-log-info "FILEIO: [~a] Image exported successfully" file-name)
+        (trace-log-warning "FILEIO: [~a] Failed to export image" file-name))
+    result))
+
+;; NOTE: Returns the file data and its size
+(defun export-image-to-memory (image file-type)
+  "Export image to memory buffer"
+  (when (or (zerop (image-width image)) (zerop (image-height image)) (null (image-data image)))
+    (return-from export-image-to-memory (values nil 0))) ; Security check
+  (let ((channels (%format->channels (image-pixel-format image))))
+    (if (and (%file-type-p file-type ".png") (> channels 0))
+        (let ((file-data (%encode-png (image-data image) (image-width image) (image-height image) channels)))
+          (values file-data (length file-data)))
+        (values nil 0))))
+
+(defun export-image-as-code (image file-name)
+  "Export image as code file defining an array of bytes, returns true on success"
+  (let* ((text-bytes-per-line 20)
+         (data-size (get-pixel-data-size (image-width image) (image-height image) (image-pixel-format image)))
+         ;; Get file name from path and convert variable name to uppercase
+         (var-file-name (string-upcase (get-file-name-without-ext file-name)))
+         (data (image-data image))
+         (text
+           (with-output-to-string (s)
+             (format s "////////////////////////////////////////////////////////////////////////////////////////~%")
+             (format s "//                                                                                    //~%")
+             (format s "// ImageAsCode exporter v1.0 - Image pixel data exported as an array of bytes         //~%")
+             (format s "//                                                                                    //~%")
+             (format s "// more info and bugs-report:  github.com/raysan5/raylib                              //~%")
+             (format s "// feedback and support:       ray[at]raylib.com                                      //~%")
+             (format s "//                                                                                    //~%")
+             (format s "// Copyright (c) 2018-2026 Ramon Santamaria (@raysan5)                                //~%")
+             (format s "//                                                                                    //~%")
+             (format s "////////////////////////////////////////////////////////////////////////////////////////~%~%")
+             ;; Add image information
+             (format s "// Image data information~%")
+             (format s "#define ~a_WIDTH    ~d~%" var-file-name (image-width image))
+             (format s "#define ~a_HEIGHT   ~d~%" var-file-name (image-height image))
+             (format s "#define ~a_FORMAT   ~d          // raylib internal pixel format~%~%"
+                     var-file-name (image-pixel-format image))
+             (format s "static unsigned char ~a_DATA[~d] = { " var-file-name data-size)
+             (dotimes (i (1- data-size))
+               (format s (if (zerop (mod i text-bytes-per-line)) "0x~(~x~),~%" "0x~(~x~), ") (aref data i)))
+             (format s "0x~(~x~) };~%" (aref data (1- data-size)))))
+         (result (save-file-text file-name text)))
+    (if result
+        (trace-log-info "FILEIO: [~a] Image as code exported successfully" file-name)
+        (trace-log-warning "FILEIO: [~a] Failed to export image as code" file-name))
+    result))
 
 (defun is-image-valid (image)
   "Check if an image is valid (data and parameters)"
@@ -2287,257 +2875,441 @@
   (let ((white-image (gen-image-color 1 1 +white+)))
     (load-texture-from-image white-image)))
 
-(defun load-texture-from-image (image)
-  "Load texture from image data into GPU memory
-   NOTE: Image data is uploaded as R8G8B8A8, other uncompressed formats are converted first"
-  (let ((texture-id (gl:gen-texture))
-        (width (image-width image))
-        (height (image-height image))
-        (data (if (= (image-pixel-format image) +pixelformat-uncompressed-r8g8b8a8+)
-                  (image-data image)
-                  (%load-image-colors image))))
-    
-    ;; Bind texture
-    (gl:bind-texture :texture-2d texture-id)
-    
-    ;; Set texture parameters (default settings)
-    (gl:tex-parameter :texture-2d :texture-wrap-s :repeat)
-    (gl:tex-parameter :texture-2d :texture-wrap-t :repeat)
-    (gl:tex-parameter :texture-2d :texture-min-filter :linear)
-    (gl:tex-parameter :texture-2d :texture-mag-filter :linear)
-    
-    ;; Upload texture data
-    (gl:tex-image-2d :texture-2d 0 :rgba width height 0 :rgba :unsigned-byte data)
-    
-    ;; Generate mipmaps if supported
-    (gl:generate-mipmap :texture-2d)
-    
-    ;; Unbind texture
-    (gl:bind-texture :texture-2d 0)
-    
-    ;; Create texture structure
-    (let ((texture (make-texture :id texture-id
-                                 :width width
-                                 :height height
-                                 :mipmaps 1
-                                 :format +pixelformat-uncompressed-r8g8b8a8+)))
-      
-      ;; Register texture for cleanup
-      (setf (gethash texture-id *texture-registry*) texture)
-      
-      texture)))
+(defun load-texture (file-name)
+  "Load texture from file into GPU memory (VRAM)"
+  (let ((texture (make-texture :id 0 :width 0 :height 0 :mipmaps 0 :format 0))
+        (image (load-image file-name)))
+    (when (image-data image)
+      (setf texture (load-texture-from-image image))
+      (unload-image image))
+    texture))
 
-(defun load-texture (filename)
-  "Load texture from file into GPU memory"
-  (let ((image (load-image filename)))
-    (if image
-        (let ((texture (load-texture-from-image image)))
-          (trace-log-info "TEXTURE: [ID ~d] Texture loaded successfully (~dx~d | R8G8B8A8 | 1 mipmaps)"
-                         (texture-id texture) (image-width image) (image-height image))
-          texture)
-        ;; Fallback to colored texture if loading fails
-        (let* ((color (cond
-                        ((search "red" filename) +red+)
-                        ((search "green" filename) +green+)
-                        ((search "blue" filename) +blue+)
-                        (t +white+)))
-               (image (gen-image-color 64 64 color)))
-          (load-texture-from-image image)))))
+;; NOTE: image is not unloaded, it must be done manually
+(defun load-texture-from-image (image)
+  "Load texture from image data"
+  (let ((texture (make-texture :id 0 :width (image-width image) :height (image-height image)
+                               :mipmaps (image-mipmap-count image) :format (image-pixel-format image))))
+    (if (and (/= (image-width image) 0) (/= (image-height image) 0))
+        (setf (texture-id texture) (rl-load-texture (image-data image) (image-width image) (image-height image)
+                                                    (image-pixel-format image) (image-mipmap-count image)))
+        (trace-log-warning "IMAGE: Data is not valid to load texture"))
+    ;; Register texture for cleanup-texture-system
+    (when (> (texture-id texture) 0)
+      (setf (gethash (texture-id texture) *texture-registry*) texture))
+    texture))
+
+(defun load-texture-cubemap (image layout)
+  "Load cubemap from image, multiple image cubemap layouts supported"
+  (let ((cubemap (make-texture :id 0 :width 0 :height 0 :mipmaps 0 :format 0))
+        (iw (image-width image))
+        (ih (image-height image)))
+    (if (= layout +cubemap-layout-auto-detect+)   ; Try to automatically guess layout type
+        ;; Check image width/height to determine the type of cubemap provided
+        (cond ((> iw ih)
+               (cond ((= (floor iw 6) ih)
+                      (setf layout +cubemap-layout-line-horizontal+ (texture-width cubemap) (floor iw 6)))
+                     ((= (floor iw 4) (floor ih 3))
+                      (setf layout +cubemap-layout-cross-four-by-three+ (texture-width cubemap) (floor iw 4)))))
+              ((> ih iw)
+               (cond ((= (floor ih 6) iw)
+                      (setf layout +cubemap-layout-line-vertical+ (texture-width cubemap) (floor ih 6)))
+                     ((= (floor iw 3) (floor ih 4))
+                      (setf layout +cubemap-layout-cross-three-by-four+ (texture-width cubemap) (floor iw 3))))))
+        (setf (texture-width cubemap)
+              (alexandria:switch (layout)
+                (+cubemap-layout-line-vertical+ (floor ih 6))
+                (+cubemap-layout-line-horizontal+ (floor iw 6))
+                (+cubemap-layout-cross-three-by-four+ (floor iw 3))
+                (+cubemap-layout-cross-four-by-three+ (floor iw 4))
+                (t 0))))
+    (setf (texture-height cubemap) (texture-width cubemap))
+    ;; Layout provided or already auto-detected
+    (if (/= layout +cubemap-layout-auto-detect+)
+        (let* ((size (texture-width cubemap))
+               (face-recs (loop repeat 6 collect (make-rectangle :width (float size) :height (float size))))
+               (faces nil))
+          (if (= layout +cubemap-layout-line-vertical+)
+              (setf faces (image-copy image))        ; Image data already follows expected convention
+              (progn
+                (flet ((set-rec (i x y)
+                         (setf (rectangle-x (nth i face-recs)) (float (* size x))
+                               (rectangle-y (nth i face-recs)) (float (* size y)))))
+                  (alexandria:switch (layout)
+                    (+cubemap-layout-line-horizontal+ (dotimes (i 6) (set-rec i i 0)))
+                    (+cubemap-layout-cross-three-by-four+
+                     (set-rec 0 1 1) (set-rec 1 1 3) (set-rec 2 1 0) (set-rec 3 1 2) (set-rec 4 0 1) (set-rec 5 2 1))
+                    (+cubemap-layout-cross-four-by-three+
+                     (set-rec 0 2 1) (set-rec 1 0 1) (set-rec 2 1 0) (set-rec 3 1 2) (set-rec 4 1 1) (set-rec 5 3 1))))
+                ;; Convert image data to 6 faces in a vertical column, that's the optimum layout for loading
+                ;; NOTE: Image formatting does not work with compressed textures
+                (setf faces (gen-image-color size (* size 6) +magenta+))
+                (image-format faces (image-pixel-format image))
+                (let ((mipmapped (image-copy image)))
+                  (when (> (image-mipmap-count image) 1)
+                    (image-mipmaps mipmapped)
+                    (image-mipmaps faces))
+                  (dotimes (i 6)
+                    (image-draw-image-pro faces mipmapped (nth i face-recs)
+                                          (make-rectangle :y (float (* size i)) :width (float size) :height (float size))
+                                          (vec2 0.0 0.0) 0.0 +white+))
+                  (unload-image mipmapped))))
+          ;; NOTE: Cubemap data is expected to be provided as 6 images in a single data array,
+          ;; one after the other (that's a vertical image), following convention: +X, -X, +Y, -Y, +Z, -Z
+          (setf (texture-id cubemap) (rl-load-texture-cubemap (image-data faces) size (image-pixel-format faces)
+                                                              (image-mipmap-count faces)))
+          (if (/= (texture-id cubemap) 0)
+              (setf (texture-format cubemap) (image-pixel-format faces)
+                    (texture-mipmaps cubemap) (image-mipmap-count faces))
+              (trace-log-warning "IMAGE: Failed to load cubemap image"))
+          (unload-image faces))
+        (trace-log-warning "IMAGE: Failed to detect cubemap image layout"))
+    cubemap))
+
+(defun load-render-texture (width height)
+  "Load texture for rendering (framebuffer)"
+  (load-render-texture-ex width height +pixelformat-uncompressed-r8g8b8a8+))
+
+;; NOTE: Render texture is loaded by default with RGBA color attachment and depth RenderBuffer
+(defun load-render-texture-ex (width height format)
+  "Load texture for rendering (framebuffer), with specific format"
+  (let ((target (make-render-texture)))
+    (when (>= format +pixelformat-compressed-dxt1-rgb+)
+      (trace-log-warning "FBO: Render texture format not supported")
+      (return-from load-render-texture-ex target))
+    (setf (render-texture-id target) (rl-load-framebuffer width height)) ; Load an empty framebuffer
+    (if (> (render-texture-id target) 0)
+        (progn
+          (rl-enable-framebuffer (render-texture-id target))
+          ;; Create color texture (default to RGBA)
+          (setf (render-texture-texture target)
+                (make-texture :id (rl-load-texture nil width height format 1)
+                              :width width :height height :format format :mipmaps 1))
+          ;; Create depth renderbuffer/texture
+          (setf (render-texture-depth target) (rl-load-texture-depth width height t))
+          ;; Attach color texture and depth renderbuffer/texture to FBO
+          (rl-framebuffer-attach (render-texture-id target) (texture-id (render-texture-texture target))
+                                 +rl-attachment-color-channel0+ +rl-attachment-texture2d+ 0)
+          (rl-framebuffer-attach (render-texture-id target) (texture-id (render-texture-depth target))
+                                 +rl-attachment-depth+ +rl-attachment-renderbuffer+ 0)
+          ;; Check if fbo is complete with attachments (valid)
+          (when (rl-framebuffer-complete (render-texture-id target))
+            (trace-log-info "FBO: [ID ~d] Framebuffer object created successfully" (render-texture-id target)))
+          (rl-disable-framebuffer))
+        (trace-log-warning "FBO: Framebuffer object can not be created"))
+    target))
 
 (defun is-texture-valid (texture)
   "Check if a texture is valid (loaded in GPU)"
   (and texture
        (texture-p texture)
-       (> (texture-id texture) 0)
-       (gethash (texture-id texture) *texture-registry*)))
+       (> (texture-id texture) 0)        ; Validate OpenGL id (texture uploaded to GPU)
+       (> (texture-width texture) 0)     ; Validate texture width
+       (> (texture-height texture) 0)    ; Validate texture height
+       (> (texture-format texture) 0)    ; Validate texture pixel format
+       (> (texture-mipmaps texture) 0)   ; Validate texture mipmaps (at least 1 for basic mipmap level)
+       t))
 
 (defun unload-texture (texture)
-  "Unload texture from GPU memory"
-  (when (is-texture-valid texture)
-    (let ((texture-id (texture-id texture)))
-      ;; Delete OpenGL texture
-      (gl:delete-texture texture-id)
-      
-      ;; Remove from registry
-      (remhash texture-id *texture-registry*)
-      
-      ;; Clear texture data
-      (setf (texture-id texture) 0))))
+  "Unload texture from GPU memory (VRAM)"
+  (when (and texture (> (texture-id texture) 0))
+    (rl-unload-texture (texture-id texture))
+    (remhash (texture-id texture) *texture-registry*)
+    (trace-log-info "TEXTURE: [ID ~d] Unloaded texture data from VRAM (GPU)" (texture-id texture))
+    (setf (texture-id texture) 0))
+  nil)
 
+(defun is-render-texture-valid (target)
+  "Check if a render texture is valid (loaded in GPU)"
+  (and target
+       (> (render-texture-id target) 0)                    ; Validate OpenGL id (loaded on GPU)
+       (is-texture-valid (render-texture-depth target))    ; Validate FBO depth texture/renderbuffer attachment
+       (is-texture-valid (render-texture-texture target))  ; Validate FBO texture attachment
+       t))
+
+(defun unload-render-texture (target)
+  "Unload render texture from GPU memory (VRAM)"
+  (when (and target (> (render-texture-id target) 0))
+    (when (and (render-texture-texture target) (> (texture-id (render-texture-texture target)) 0))
+      ;; Color texture attached to FBO is deleted
+      (rl-unload-texture (texture-id (render-texture-texture target))))
+    ;; NOTE: Depth renderbuffer is deleted before deleting framebuffer
+    (when (and (render-texture-depth target) (> (texture-id (render-texture-depth target)) 0))
+      (gl:delete-renderbuffers (list (texture-id (render-texture-depth target)))))
+    (gl:delete-framebuffers (list (render-texture-id target)))
+    (trace-log-info "FBO: [ID ~d] Unloaded framebuffer from VRAM (GPU)" (render-texture-id target))
+    (setf (render-texture-id target) 0))
+  nil)
+
+(defun %pixel-bytes (pixels)
+  "Pixel data as a byte vector: byte vectors pass through, images give their data,
+   a vector of colors (as returned by load-image-colors) is packed as R8G8B8A8"
+  (cond ((image-p pixels) (image-data pixels))
+        ((typep pixels '(simple-array (unsigned-byte 8) (*))) pixels)
+        (t (let ((out (%make-octets (* 4 (length pixels)))))
+             (loop for color across pixels
+                   for i from 0
+                   do (apply #'%put-rgba out i (%col color)))
+             out))))
+
+;; NOTE 1: pixels data must match texture.format (a byte vector, an image or a Color vector)
+;; NOTE 2: pixels data must contain at least as many pixels as texture
 (defun update-texture (texture pixels)
   "Update GPU texture with new data"
-  (when (is-texture-valid texture)
-    (gl:bind-texture :texture-2d (texture-id texture))
-    (gl:tex-sub-image-2d :texture-2d 0 0 0 
-                         (texture-width texture) (texture-height texture)
-                         :rgba :unsigned-byte pixels)
-    (gl:bind-texture :texture-2d 0)))
+  (rl-update-texture (texture-id texture) 0 0 (texture-width texture) (texture-height texture)
+                     (texture-format texture) (%pixel-bytes pixels)))
 
+;; NOTE 3: rec must fit completely within texture's width and height
+(defun update-texture-rec (texture rec pixels)
+  "Update GPU texture rectangle with new data"
+  (multiple-value-bind (x y w h) (%rec rec)
+    (rl-update-texture (texture-id texture) (truncate x) (truncate y) (truncate w) (truncate h)
+                       (texture-format texture) (%pixel-bytes pixels))))
+
+;;;------------------------------------------------------------------------------------
 ;;; Texture configuration functions
+;;;------------------------------------------------------------------------------------
+
+;; NOTE: Updates the texture mipmaps count (C passes Texture2D *)
+(defun gen-texture-mipmaps (texture)
+  "Generate GPU mipmaps for a texture"
+  (setf (texture-mipmaps texture)
+        (rl-gen-texture-mipmaps (texture-id texture) (texture-width texture) (texture-height texture)
+                                (texture-format texture)))
+  nil)
 
 (defun set-texture-filter (texture filter)
   "Set texture scaling filter mode"
-  (when (is-texture-valid texture)
-    (gl:bind-texture :texture-2d (texture-id texture))
-    
+  (let ((id (texture-id texture))
+        (mipmapped (> (texture-mipmaps texture) 1)))
     (alexandria:switch (filter)
       (+texture-filter-point+
-       (gl:tex-parameter :texture-2d :texture-min-filter :nearest)
-       (gl:tex-parameter :texture-2d :texture-mag-filter :nearest))
+       (if mipmapped
+           ;; RL_TEXTURE_FILTER_MIP_NEAREST - tex filter: POINT, mipmaps filter: POINT (sharp switching between mipmaps)
+           (rl-texture-parameters id +rl-texture-min-filter+ +rl-texture-filter-mip-nearest+)
+           ;; RL_TEXTURE_FILTER_NEAREST - tex filter: POINT (no filter), no mipmaps
+           (rl-texture-parameters id +rl-texture-min-filter+ +rl-texture-filter-nearest+))
+       (rl-texture-parameters id +rl-texture-mag-filter+ +rl-texture-filter-nearest+))
       (+texture-filter-bilinear+
-       (gl:tex-parameter :texture-2d :texture-min-filter :linear)
-       (gl:tex-parameter :texture-2d :texture-mag-filter :linear))
+       (if mipmapped
+           ;; RL_TEXTURE_FILTER_LINEAR_MIP_NEAREST - tex filter: BILINEAR, mipmaps filter: POINT (sharp switching between mipmaps)
+           (rl-texture-parameters id +rl-texture-min-filter+ +rl-texture-filter-linear-mip-nearest+)
+           ;; RL_TEXTURE_FILTER_LINEAR - tex filter: BILINEAR, no mipmaps
+           (rl-texture-parameters id +rl-texture-min-filter+ +rl-texture-filter-linear+))
+       (rl-texture-parameters id +rl-texture-mag-filter+ +rl-texture-filter-linear+))
       (+texture-filter-trilinear+
-       (gl:tex-parameter :texture-2d :texture-min-filter :linear-mipmap-linear)
-       (gl:tex-parameter :texture-2d :texture-mag-filter :linear))
-      (t ; Default to bilinear
-       (gl:tex-parameter :texture-2d :texture-min-filter :linear)
-       (gl:tex-parameter :texture-2d :texture-mag-filter :linear)))
-    
-    (gl:bind-texture :texture-2d 0)))
+       (if mipmapped
+           ;; RL_TEXTURE_FILTER_MIP_LINEAR - tex filter: BILINEAR, mipmaps filter: BILINEAR (smooth transition between mipmaps)
+           (rl-texture-parameters id +rl-texture-min-filter+ +rl-texture-filter-mip-linear+)
+           (progn
+             (trace-log-warning "TEXTURE: [ID ~d] No mipmaps available for TRILINEAR texture filtering" id)
+             ;; RL_TEXTURE_FILTER_LINEAR - tex filter: BILINEAR, no mipmaps
+             (rl-texture-parameters id +rl-texture-min-filter+ +rl-texture-filter-linear+)))
+       (rl-texture-parameters id +rl-texture-mag-filter+ +rl-texture-filter-linear+))
+      (+texture-filter-anisotropic-4x+ (rl-texture-parameters id +rl-texture-filter-anisotropic+ 4))
+      (+texture-filter-anisotropic-8x+ (rl-texture-parameters id +rl-texture-filter-anisotropic+ 8))
+      (+texture-filter-anisotropic-16x+ (rl-texture-parameters id +rl-texture-filter-anisotropic+ 16))))
+  nil)
 
 (defun set-texture-wrap (texture wrap)
   "Set texture wrapping mode"
-  (when (is-texture-valid texture)
-    (gl:bind-texture :texture-2d (texture-id texture))
-    
-    (let ((wrap-mode (alexandria:switch (wrap)
-                       (+texture-wrap-repeat+ :repeat)
-                       (+texture-wrap-clamp+ :clamp-to-edge)
-                       (+texture-wrap-mirror-repeat+ :mirrored-repeat)
-                       (+texture-wrap-mirror-clamp+ :mirror-clamp-to-edge)
-                       (t :repeat))))
-      (gl:tex-parameter :texture-2d :texture-wrap-s wrap-mode)
-      (gl:tex-parameter :texture-2d :texture-wrap-t wrap-mode))
-    
-    (gl:bind-texture :texture-2d 0)))
+  (let ((id (texture-id texture))
+        (mode (alexandria:switch (wrap)
+                ;; NOTE: It only works if NPOT textures are supported, i.e. OpenGL ES 2.0 could not support it
+                (+texture-wrap-repeat+ +rl-texture-wrap-repeat+)
+                (+texture-wrap-clamp+ +rl-texture-wrap-clamp+)
+                (+texture-wrap-mirror-repeat+ +rl-texture-wrap-mirror-repeat+)
+                (+texture-wrap-mirror-clamp+ +rl-texture-wrap-mirror-clamp+)
+                (t nil))))
+    (when mode
+      (rl-texture-parameters id +rl-texture-wrap-s+ mode)
+      (rl-texture-parameters id +rl-texture-wrap-t+ mode)))
+  nil)
 
+;;;------------------------------------------------------------------------------------
 ;;; Texture drawing functions
+;;;------------------------------------------------------------------------------------
 
 (defun bind-texture-safe (texture)
-  "Bind texture for drawing with safety checks"
+  "Bind texture for drawing with safety checks (not part of raylib)"
   (let ((texture-id (if (and texture (is-texture-valid texture))
                         (texture-id texture)
-                        (if *default-texture*
-                            (texture-id *default-texture*)
-                            0))))
+                        (if *default-texture* (texture-id *default-texture*) 0))))
     (unless (= texture-id *current-texture-id*)
       (gl:bind-texture :texture-2d texture-id)
       (setf *current-texture-id* texture-id))))
 
 (defun setup-texture-drawing ()
-  "Setup OpenGL state for texture drawing"
+  "Setup OpenGL state for texture drawing (not part of raylib)"
   (gl:enable :texture-2d)
   (gl:enable :blend)
   (gl:blend-func :src-alpha :one-minus-src-alpha))
 
 (defun draw-texture (texture pos-x pos-y tint)
-  "Draw a Texture2D at position with tint"
-  (when (is-texture-valid texture)
-    (let ((width (float (texture-width texture)))
-          (height (float (texture-height texture))))
-      (draw-texture-pro texture
-                        (make-rectangle :x 0.0 :y 0.0 :width width :height height)
-                        (make-rectangle :x (float pos-x) :y (float pos-y) 
-                                       :width width :height height)
-                        (vec2 0 0) 0.0 tint))))
+  "Draw a Texture2D"
+  (draw-texture-ex texture (vec2 (float pos-x 1.0) (float pos-y 1.0)) 0.0 1.0 tint))
 
 (defun draw-texture-v (texture position tint)
   "Draw a Texture2D with position defined as Vector2"
-  (let ((pos-x (if (listp position) (first position) (vx position)))
-        (pos-y (if (listp position) (second position) (vy position))))
-    (draw-texture texture pos-x pos-y tint)))
+  (draw-texture-ex texture position 0.0 1.0 tint))
 
 (defun draw-texture-ex (texture position rotation scale tint)
   "Draw a Texture2D with extended parameters"
-  (when (is-texture-valid texture)
-    (let* ((width (float (texture-width texture)))
-           (height (float (texture-height texture)))
-           (scaled-width (* width scale))
-           (scaled-height (* height scale))
-           (pos-x (if (listp position) (first position) (vx position)))
-           (pos-y (if (listp position) (second position) (vy position))))
-      (draw-texture-pro texture
-                        (make-rectangle :x 0.0 :y 0.0 :width width :height height)
-                        (make-rectangle :x pos-x :y pos-y
-                                       :width scaled-width :height scaled-height)
-                        (vec2 (* scaled-width 0.5) (* scaled-height 0.5))
-                        rotation tint))))
+  (let ((source (make-rectangle :width (float (texture-width texture)) :height (float (texture-height texture))))
+        (dest (make-rectangle :x (%x position) :y (%y position)
+                              :width (float (* (texture-width texture) scale))
+                              :height (float (* (texture-height texture) scale)))))
+    (draw-texture-pro texture source dest (vec2 0.0 0.0) rotation tint)))
 
 (defun draw-texture-rec (texture source position tint)
   "Draw a part of a texture defined by a rectangle"
-  (when (is-texture-valid texture)
-    (let ((pos-x (if (listp position) (first position) (vx position)))
-          (pos-y (if (listp position) (second position) (vy position))))
-      (draw-texture-pro texture source
-                        (make-rectangle :x pos-x :y pos-y
-                                       :width (rectangle-width source)
-                                       :height (rectangle-height source))
-                        (vec2 0 0) 0.0 tint))))
+  (multiple-value-bind (sx sy sw sh) (%rec source)
+    (declare (ignore sx sy))
+    (draw-texture-pro texture source
+                      (make-rectangle :x (%x position) :y (%y position) :width (abs sw) :height (abs sh))
+                      (vec2 0.0 0.0) 0.0 tint)))
 
+(defun %tex-vertex (u v x y)
+  (rl-tex-coord2f (float u 1.0) (float v 1.0))
+  (rl-vertex2f (float x 1.0) (float y 1.0)))
+
+;; NOTE: origin is relative to destination rectangle size
 (defun draw-texture-pro (texture source dest origin rotation tint)
   "Draw a part of a texture defined by a rectangle with 'pro' parameters"
-  (when (and (is-texture-valid texture) source dest)
-    (setup-texture-drawing)
-    (bind-texture-safe texture)
-    
-    ;; Set color tint
-    (set-gl-color tint)
-    
-    ;; Calculate texture coordinates with flipping support
-    (let* ((tex-width (float (texture-width texture)))
-           (tex-height (float (texture-height texture)))
-           (src-x (/ (rectangle-x source) tex-width))
-           (src-y (/ (rectangle-y source) tex-height))
-           (src-width (/ (rectangle-width source) tex-width))
-           (src-height (/ (rectangle-height source) tex-height))
-           ;; Handle negative dimensions for flipping
-           (flip-x (< src-width 0))
-           (flip-y (< src-height 0))
-           (abs-src-width (abs src-width))
-           (abs-src-height (abs src-height))
-           ;; Adjust coordinates for flipping
-           (final-src-x (if flip-x (+ src-x src-width) src-x))
-           (final-src-y (if flip-y (+ src-y src-height) src-y)))
-      
-      ;; Apply transformations
-      (gl:push-matrix)
-      
-      ;; Translate to position
-      (gl:translate (rectangle-x dest) (rectangle-y dest) 0.0)
-      
-      ;; Rotate around origin
-      (when (/= rotation 0.0)
-        (let ((ox (if (listp origin) (first origin) (vx origin)))
-              (oy (if (listp origin) (second origin) (vy origin))))
-          (gl:translate ox oy 0.0)
-          (gl:rotate rotation 0.0 0.0 1.0)
-          (gl:translate (- ox) (- oy) 0.0)))
-      
-      ;; Draw textured quad with proper flipping
-      (gl:with-primitive :quads
-        (gl:tex-coord final-src-x final-src-y)
-        (gl:vertex 0.0 0.0)
-        
-        (gl:tex-coord (+ final-src-x abs-src-width) final-src-y)
-        (gl:vertex (rectangle-width dest) 0.0)
-        
-        (gl:tex-coord (+ final-src-x abs-src-width) (+ final-src-y abs-src-height))
-        (gl:vertex (rectangle-width dest) (rectangle-height dest))
-        
-        (gl:tex-coord final-src-x (+ final-src-y abs-src-height))
-        (gl:vertex 0.0 (rectangle-height dest)))
-      
-      (gl:pop-matrix))
-    
-    ;; Unbind texture
-    (gl:bind-texture :texture-2d 0)))
+  ;; Check if texture is valid
+  (when (and texture (> (texture-id texture) 0))
+    (multiple-value-bind (sx sy sw sh) (%rec source)
+      (multiple-value-bind (dx dy dw dh) (%rec dest)
+        (let ((width (float (texture-width texture)))
+              (height (float (texture-height texture)))
+              (flip-x nil)
+              (ox (%x origin)) (oy (%y origin))
+              tl-x tl-y tr-x tr-y bl-x bl-y br-x br-y)
+          (when (< sw 0) (setf flip-x t sw (- sw)))
+          (when (< sh 0) (decf sy sh))
+          (when (< dw 0) (setf dw (- dw)))
+          (when (< dh 0) (setf dh (- dh)))
+          ;; Only calculate rotation if needed
+          (if (zerop rotation)
+              (let ((x (- dx ox)) (y (- dy oy)))
+                (setf tl-x x tl-y y
+                      tr-x (+ x dw) tr-y y
+                      bl-x x bl-y (+ y dh)
+                      br-x (+ x dw) br-y (+ y dh)))
+              (let ((sin-r (sin (* rotation +deg2rad+)))
+                    (cos-r (cos (* rotation +deg2rad+)))
+                    (rx (- ox)) (ry (- oy)))
+                (setf tl-x (+ dx (* rx cos-r) (- (* ry sin-r)))
+                      tl-y (+ dy (* rx sin-r) (* ry cos-r))
+                      tr-x (+ dx (* (+ rx dw) cos-r) (- (* ry sin-r)))
+                      tr-y (+ dy (* (+ rx dw) sin-r) (* ry cos-r))
+                      bl-x (+ dx (* rx cos-r) (- (* (+ ry dh) sin-r)))
+                      bl-y (+ dy (* rx sin-r) (* (+ ry dh) cos-r))
+                      br-x (+ dx (* (+ rx dw) cos-r) (- (* (+ ry dh) sin-r)))
+                      br-y (+ dy (* (+ rx dw) sin-r) (* (+ ry dh) cos-r)))))
+          (rl-set-texture (texture-id texture))
+          (rl-begin +rl-quads+)
+          (destructuring-bind (r g b a) (keyword-to-color tint)
+            (rl-color4ub r g b a))
+          (rl-normal3f 0.0 0.0 1.0)                 ; Normal vector pointing towards viewer
+          (let ((u0 (/ sx width)) (u1 (/ (+ sx sw) width))
+                (v0 (/ sy height)) (v1 (/ (+ sy sh) height)))
+            (when flip-x (rotatef u0 u1))
+            ;; Top-left corner for texture and quad
+            (%tex-vertex u0 v0 tl-x tl-y)
+            ;; Bottom-left corner for texture and quad
+            (%tex-vertex u0 v1 bl-x bl-y)
+            ;; Bottom-right corner for texture and quad
+            (%tex-vertex u1 v1 br-x br-y)
+            ;; Top-right corner for texture and quad
+            (%tex-vertex u1 v0 tr-x tr-y))
+          (rl-end)
+          (rl-set-texture 0)))))
+  nil)
 
-(defun draw-texture-npatch (texture npatch dest origin rotation tint)
-  "Draws a texture (or part of it) that stretches or shrinks nicely using n-patch info"
-  ;; This is a complex function that would implement 9-patch drawing
-  ;; For now, fall back to regular texture drawing
-  (draw-texture-pro texture (npatch-info-source npatch) dest origin rotation tint))
+(defun draw-texture-npatch (texture npatch-info dest origin rotation tint)
+  "Draws a texture (or part of it) that stretches or shrinks nicely"
+  (when (and texture (> (texture-id texture) 0))
+    (multiple-value-bind (sx sy sw sh) (%rec (npatch-info-source npatch-info))
+      (multiple-value-bind (dx dy dw dh) (%rec dest)
+        (let* ((width (float (texture-width texture)))
+               (height (float (texture-height texture)))
+               (layout (npatch-info-layout npatch-info))
+               (patch-width (if (<= (truncate dw) 0) 0.0 dw))
+               (patch-height (if (<= (truncate dh) 0) 0.0 dh))
+               (draw-center t)
+               (draw-middle t)
+               (left-border (float (npatch-info-left npatch-info)))
+               (top-border (float (npatch-info-top npatch-info)))
+               (right-border (float (npatch-info-right npatch-info)))
+               (bottom-border (float (npatch-info-bottom npatch-info))))
+          (when (< sw 0) (decf sx sw))
+          (when (< sh 0) (decf sy sh))
+          (when (= layout +npatch-three-patch-horizontal+) (setf patch-height sh))
+          (when (= layout +npatch-three-patch-vertical+) (setf patch-width sw))
+          ;; Adjust the lateral (left and right) border widths in case patchWidth < texture.width
+          (when (and (<= patch-width (+ left-border right-border)) (/= layout +npatch-three-patch-vertical+))
+            (setf draw-center nil
+                  left-border (* (/ left-border (+ left-border right-border)) patch-width)
+                  right-border (- patch-width left-border)))
+          ;; Adjust the lateral (top and bottom) border heights in case patchHeight < texture.height
+          (when (and (<= patch-height (+ top-border bottom-border)) (/= layout +npatch-three-patch-horizontal+))
+            (setf draw-middle nil
+                  top-border (* (/ top-border (+ top-border bottom-border)) patch-height)
+                  bottom-border (- patch-height top-border)))
+          (let (;; Vertices: outer left/top, inner left/top, inner right/bottom, outer right/bottom
+                (ax 0.0) (ay 0.0)
+                (bx left-border) (by top-border)
+                (cx (- patch-width right-border)) (cy (- patch-height bottom-border))
+                (ex patch-width) (ey patch-height)
+                ;; Texture coordinates
+                (tax (/ sx width)) (tay (/ sy height))
+                (tbx (/ (+ sx left-border) width)) (tby (/ (+ sy top-border) height))
+                (tcx (/ (+ sx (- sw right-border)) width)) (tcy (/ (+ sy (- sh bottom-border)) height))
+                (tdx (/ (+ sx sw) width)) (tdy (/ (+ sy sh) height)))
+            (flet ((quad (u0 v0 x0 y0 u1 v1 x1 y1)
+                     ;; Bottom-left, bottom-right, top-right, top-left corners for texture and quad
+                     (%tex-vertex u0 v1 x0 y1)
+                     (%tex-vertex u1 v1 x1 y1)
+                     (%tex-vertex u1 v0 x1 y0)
+                     (%tex-vertex u0 v0 x0 y0)))
+              (rl-set-texture (texture-id texture))
+              (rl-push-matrix)
+              (rl-translatef dx dy 0.0)
+              (rl-rotatef (float rotation 1.0) 0.0 0.0 1.0)
+              (rl-translatef (- (%x origin)) (- (%y origin)) 0.0)
+              (rl-begin +rl-quads+)
+              (destructuring-bind (r g b a) (keyword-to-color tint)
+                (rl-color4ub r g b a))
+              (rl-normal3f 0.0 0.0 1.0)            ; Normal vector pointing towards viewer
+              (alexandria:switch (layout)
+                (+npatch-nine-patch+
+                 ;; TOP-LEFT QUAD, TOP-CENTER QUAD, TOP-RIGHT QUAD
+                 (quad tax tay ax ay tbx tby bx by)
+                 (when draw-center (quad tbx tay bx ay tcx tby cx by))
+                 (quad tcx tay cx ay tdx tby ex by)
+                 (when draw-middle
+                   ;; MIDDLE-LEFT QUAD, MIDDLE-CENTER QUAD, MIDDLE-RIGHT QUAD
+                   (quad tax tby ax by tbx tcy bx cy)
+                   (when draw-center (quad tbx tby bx by tcx tcy cx cy))
+                   (quad tcx tby cx by tdx tcy ex cy))
+                 ;; BOTTOM-LEFT QUAD, BOTTOM-CENTER QUAD, BOTTOM-RIGHT QUAD
+                 (quad tax tcy ax cy tbx tdy bx ey)
+                 (when draw-center (quad tbx tcy bx cy tcx tdy cx ey))
+                 (quad tcx tcy cx cy tdx tdy ex ey))
+                (+npatch-three-patch-vertical+
+                 ;; TOP QUAD, MIDDLE QUAD, BOTTOM QUAD
+                 (quad tax tay ax ay tdx tby ex by)
+                 (when draw-center (quad tax tby ax by tdx tcy ex cy))
+                 (quad tax tcy ax cy tdx tdy ex ey))
+                (+npatch-three-patch-horizontal+
+                 ;; LEFT QUAD, CENTER QUAD, RIGHT QUAD
+                 (quad tax tay ax ay tbx tdy bx ey)
+                 (when draw-center (quad tbx tay bx ay tcx tdy cx ey))
+                 (quad tcx tay cx ay tdx tdy ex ey)))
+              (rl-end)
+              (rl-pop-matrix)
+              (rl-set-texture 0)))))))
+  nil)
 
 ;;; Render texture functions (will be implemented later in this file)
 
@@ -2583,10 +3355,6 @@
       
       ;; Cleanup framebuffer
       (gl:delete-framebuffer fbo))))
-
-(defun load-image-from-texture (texture)
-  "Load image from texture (raylib compatible function)"
-  (get-texture-data texture))
 
 (defun get-texture-format (texture)
   "Get texture internal format"
@@ -2670,89 +3438,6 @@
 ;;; Note: rl-framebuffer-attach and rl-framebuffer-complete functions are now in gl.lisp
 
 ;;; Render texture loading and management (following raylib LoadRenderTexture exactly)
-(defun load-render-texture (width height)
-  "Load framebuffer for render-to-texture (raylib LoadRenderTexture)"
-  (let ((target (make-render-texture)))
-    
-    ;; Load framebuffer (rlLoadFramebuffer)
-    (setf (render-texture-id target) (rl-load-framebuffer width height))
-    
-    ;; Load color texture (rlLoadTexture with PIXELFORMAT_UNCOMPRESSED_R8G8B8A8)
-    (let* ((color-texture-id (first (gl:gen-textures 1)))
-           (color-texture (make-texture :id color-texture-id
-                                      :width width
-                                      :height height
-                                      :mipmaps 1
-                                      :format +pixelformat-uncompressed-r8g8b8a8+)))
-      ;; Setup color texture exactly as raylib does
-      (gl:bind-texture :texture-2d color-texture-id)
-      (gl:tex-image-2d :texture-2d 0 :rgba width height 0 :rgba :unsigned-byte (cffi:null-pointer))
-      (gl:tex-parameter :texture-2d :texture-min-filter :linear)
-      (gl:tex-parameter :texture-2d :texture-mag-filter :linear)
-      (gl:tex-parameter :texture-2d :texture-wrap-s :clamp-to-edge)
-      (gl:tex-parameter :texture-2d :texture-wrap-t :clamp-to-edge)
-      (gl:bind-texture :texture-2d 0)
-      (format t "INFO: TEXTURE: [ID ~d] Texture loaded successfully (~dx~d - ~d mipmaps)~%" 
-              color-texture-id width height 1)
-      (setf (render-texture-texture target) color-texture))
-    
-    ;; Load depth renderbuffer (rlLoadTextureDepth with useRenderBuffer = true)
-    (setf (render-texture-depth target) (rl-load-texture-depth width height t))
-    
-    ;; Attach color texture to framebuffer
-    (rl-framebuffer-attach (render-texture-id target)
-                          (texture-id (render-texture-texture target))
-                          +rl-attachment-texture2d+
-                          +rl-attachment-color-channel0+
-                          0)
-    
-    ;; Attach depth renderbuffer to framebuffer  
-    (rl-framebuffer-attach (render-texture-id target)
-                          (texture-id (render-texture-depth target))
-                          +rl-attachment-renderbuffer+
-                          +rl-attachment-depth+
-                          0)
-    
-    ;; Check if framebuffer is complete
-    (unless (rl-framebuffer-complete (render-texture-id target))
-      (format t "WARNING: FBO: [ID ~d] Framebuffer object incomplete~%" (render-texture-id target))
-      ;; Return zero-initialized structure on failure (as raylib does)
-      (setf target (make-render-texture)))
-    
-    (when (> (render-texture-id target) 0)
-      (format t "INFO: FBO: [ID ~d] Framebuffer object loaded successfully~%" (render-texture-id target)))
-    
-    target))
-
-(defun is-render-texture-valid (render-texture)
-  "Check if render texture is valid and ready"
-  (and render-texture 
-       (> (render-texture-id render-texture) 0)
-       (render-texture-texture render-texture)
-       (is-texture-valid (render-texture-texture render-texture))))
-
-(defun unload-render-texture (render-texture)
-  "Unload render texture from GPU memory (raylib UnloadRenderTexture)"
-  (when (is-render-texture-valid render-texture)
-    (let ((fbo-id (render-texture-id render-texture)))
-      
-      ;; Unload textures
-      (when (render-texture-texture render-texture)
-        (unload-texture (render-texture-texture render-texture)))
-      
-      (when (render-texture-depth render-texture)
-        (unload-texture (render-texture-depth render-texture)))
-      
-      ;; Delete framebuffer
-      (gl:delete-framebuffers (list fbo-id))
-      
-      (format t "INFO: FBTEXTURE: [ID ~d] Framebuffer unloaded successfully~%" fbo-id)
-      
-      ;; Clear structure
-      (setf (render-texture-id render-texture) 0)
-      (setf (render-texture-texture render-texture) nil)
-      (setf (render-texture-depth render-texture) nil))))
-
 ;;; Helper functions for rlgl-style rendering operations
 (defun rl-draw-render-batch-active ()
   "Flush any pending draw calls (following rlDrawRenderBatchActive from rlgl.c)"

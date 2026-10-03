@@ -33,6 +33,20 @@
 (defconstant +rl-pixelformat-uncompressed-r32+ 8 "32 bpp (1 channel - float)")
 (defconstant +rl-pixelformat-uncompressed-r32g32b32+ 9 "32*3 bpp (3 channels - float)")
 (defconstant +rl-pixelformat-uncompressed-r32g32b32a32+ 10 "32*4 bpp (4 channels - float)")
+(defconstant +rl-pixelformat-uncompressed-r16+ 11 "16 bpp (1 channel - half float)")
+(defconstant +rl-pixelformat-uncompressed-r16g16b16+ 12 "16*3 bpp (3 channels - half float)")
+(defconstant +rl-pixelformat-uncompressed-r16g16b16a16+ 13 "16*4 bpp (4 channels - half float)")
+(defconstant +rl-pixelformat-compressed-dxt1-rgb+ 14 "4 bpp (no alpha)")
+(defconstant +rl-pixelformat-compressed-dxt1-rgba+ 15 "4 bpp (1 bit alpha)")
+(defconstant +rl-pixelformat-compressed-dxt3-rgba+ 16 "8 bpp")
+(defconstant +rl-pixelformat-compressed-dxt5-rgba+ 17 "8 bpp")
+(defconstant +rl-pixelformat-compressed-etc1-rgb+ 18 "4 bpp")
+(defconstant +rl-pixelformat-compressed-etc2-rgb+ 19 "4 bpp")
+(defconstant +rl-pixelformat-compressed-etc2-eac-rgba+ 20 "8 bpp")
+(defconstant +rl-pixelformat-compressed-pvrt-rgb+ 21 "4 bpp")
+(defconstant +rl-pixelformat-compressed-pvrt-rgba+ 22 "4 bpp")
+(defconstant +rl-pixelformat-compressed-astc-4x4-rgba+ 23 "8 bpp")
+(defconstant +rl-pixelformat-compressed-astc-8x8-rgba+ 24 "2 bpp")
 
 ;;; Texture parameters: filter mode
 (defconstant +rl-texture-filter-point+ 0 "No filter, just pixel approximation")
@@ -394,14 +408,6 @@
   "Disable texture cubemap"
   (gl:bind-texture :texture-cube-map 0))
 
-(defun rl-texture-parameters (id param value)
-  "Set texture parameters (filter, wrap)"
-  (declare (type fixnum id param value))
-  (let ((current-texture (gl:get-integer :texture-binding-2d)))
-    (gl:bind-texture :texture-2d id)
-    (gl:tex-parameter :texture-2d param value)
-    (gl:bind-texture :texture-2d current-texture)))
-
 ;;; Shader management
 
 (defvar *rl-current-shader-id* 0 "Current shader program id")
@@ -437,37 +443,22 @@
       (%gl:bind-framebuffer :framebuffer current-fbo)
       (= status #x8CD5)))) ; GL_FRAMEBUFFER_COMPLETE
 
-(defun rl-framebuffer-attach (fbo-id tex-id tex-type mip-level cube-map-face)
+(defun rl-framebuffer-attach (id tex-id attach-type tex-type mip-level)
   "Attach texture/renderbuffer to a framebuffer"
-  (declare (type fixnum fbo-id tex-id tex-type mip-level cube-map-face))
-  (let ((current-fbo (gl:get-integer :framebuffer-binding)))
-    (%gl:bind-framebuffer :framebuffer fbo-id)
-    
-    (cond
-      ;; Color attachment
-      ((<= 0 tex-type 7)
-       (if (= cube-map-face +rl-attachment-texture2d+)
-           (%gl:framebuffer-texture-2d :framebuffer
-                                       (+ #x8CE0 tex-type) ; GL_COLOR_ATTACHMENT0 + type
-                                       :texture-2d tex-id mip-level)
-           (%gl:framebuffer-texture-2d :framebuffer
-                                       (+ #x8CE0 tex-type)
-                                       (+ #x8515 cube-map-face) ; GL_TEXTURE_CUBE_MAP_POSITIVE_X + face
-                                       tex-id mip-level)))
-      ;; Depth attachment
-      ((= tex-type +rl-attachment-depth+)
-       (if (= cube-map-face +rl-attachment-texture2d+)
-           (%gl:framebuffer-texture-2d :framebuffer :depth-attachment :texture-2d tex-id mip-level)
-           (%gl:framebuffer-texture-2d :framebuffer :depth-attachment
-                                       (+ #x8515 cube-map-face) tex-id mip-level)))
-      ;; Stencil attachment
-      ((= tex-type +rl-attachment-stencil+)
-       (if (= cube-map-face +rl-attachment-texture2d+)
-           (%gl:framebuffer-texture-2d :framebuffer :stencil-attachment :texture-2d tex-id mip-level)
-           (%gl:framebuffer-texture-2d :framebuffer :stencil-attachment
-                                       (+ #x8515 cube-map-face) tex-id mip-level))))
-    
-    (%gl:bind-framebuffer :framebuffer current-fbo)))
+  (%gl:bind-framebuffer :framebuffer id)
+  (flet ((attach (attachment)
+           (cond ((= tex-type +rl-attachment-texture2d+)
+                  (%gl:framebuffer-texture-2d :framebuffer attachment :texture-2d tex-id mip-level))
+                 ((= tex-type +rl-attachment-renderbuffer+)
+                  (%gl:framebuffer-renderbuffer :framebuffer attachment :renderbuffer tex-id))
+                 ((and (>= tex-type +rl-attachment-cubemap-positive-x+) (integerp attachment))
+                  (%gl:framebuffer-texture-2d :framebuffer attachment (+ #x8515 tex-type) tex-id mip-level)))))
+    (cond ((<= +rl-attachment-color-channel0+ attach-type +rl-attachment-color-channel7+)
+           (attach (+ #x8CE0 attach-type)))           ; GL_COLOR_ATTACHMENT0 + attachType
+          ;; NOTE: Depth/stencil attachments only support texture2d or renderbuffer
+          ((= attach-type +rl-attachment-depth+) (attach :depth-attachment))
+          ((= attach-type +rl-attachment-stencil+) (attach :stencil-attachment))))
+  (%gl:bind-framebuffer :framebuffer 0))
 
 ;;; OpenGL state management functions
 
@@ -811,15 +802,196 @@ void main() {
   (declare (ignore loader))
   (format t "INFO: RLGL: OpenGL extensions loaded successfully~%"))
 
-(defun rl-get-gl-texture-formats (format internal-format type)
-  "Get OpenGL internal formats and data type from raylib PixelFormat"
-  (declare (type fixnum format))
-  (declare (ignore format internal-format type))
-  ;; This would return appropriate OpenGL format constants
-  ;; For now, return reasonable defaults
-  (values #x1908     ; GL_RGBA
-          #x1908     ; GL_RGBA  
-          #x1401))   ; GL_UNSIGNED_BYTE
+;;; Texture parameters (rlgl.h)
+(defconstant +rl-texture-wrap-s+ #x2802 "GL_TEXTURE_WRAP_S")
+(defconstant +rl-texture-wrap-t+ #x2803 "GL_TEXTURE_WRAP_T")
+(defconstant +rl-texture-mag-filter+ #x2800 "GL_TEXTURE_MAG_FILTER")
+(defconstant +rl-texture-min-filter+ #x2801 "GL_TEXTURE_MIN_FILTER")
+(defconstant +rl-texture-filter-nearest+ #x2600 "GL_NEAREST")
+(defconstant +rl-texture-filter-linear+ #x2601 "GL_LINEAR")
+(defconstant +rl-texture-filter-mip-nearest+ #x2700 "GL_NEAREST_MIPMAP_NEAREST")
+(defconstant +rl-texture-filter-nearest-mip-linear+ #x2702 "GL_NEAREST_MIPMAP_LINEAR")
+(defconstant +rl-texture-filter-linear-mip-nearest+ #x2701 "GL_LINEAR_MIPMAP_NEAREST")
+(defconstant +rl-texture-filter-mip-linear+ #x2703 "GL_LINEAR_MIPMAP_LINEAR")
+(defconstant +rl-texture-filter-anisotropic+ #x3000 "Anisotropic filter (custom identifier)")
+(defconstant +rl-texture-mipmap-bias-ratio+ #x4000 "Texture mipmap bias, percentage ratio (custom identifier)")
+(defconstant +rl-texture-wrap-repeat+ #x2901 "GL_REPEAT")
+(defconstant +rl-texture-wrap-clamp+ #x812F "GL_CLAMP_TO_EDGE")
+(defconstant +rl-texture-wrap-mirror-repeat+ #x8370 "GL_MIRRORED_REPEAT")
+(defconstant +rl-texture-wrap-mirror-clamp+ #x8742 "GL_MIRROR_CLAMP_EXT")
+
+(defconstant +gl-texture-2d+ #x0DE1)
+(defconstant +gl-texture-cube-map+ #x8513)
+(defconstant +gl-texture-cube-map-positive-x+ #x8515)
+(defconstant +gl-texture-wrap-r+ #x8072)
+(defconstant +gl-texture-base-level+ #x813C)
+(defconstant +gl-texture-max-level+ #x813D)
+(defconstant +gl-texture-max-anisotropy-ext+ #x84FE)
+(defconstant +gl-max-texture-max-anisotropy-ext+ #x84FF)
+(defconstant +gl-texture-lod-bias+ #x8501)
+(defconstant +gl-unpack-alignment+ #x0CF5)
+
+(defun rl-texture-parameters (id param value)
+  "Set texture parameters (filter, wrap)"
+  (gl:bind-texture :texture-2d id)
+  (alexandria:switch (param)
+    (+rl-texture-wrap-s+ (%gl:tex-parameter-i +gl-texture-2d+ param value))
+    (+rl-texture-wrap-t+ (%gl:tex-parameter-i +gl-texture-2d+ param value))
+    (+rl-texture-mag-filter+ (%gl:tex-parameter-i +gl-texture-2d+ param value))
+    (+rl-texture-min-filter+ (%gl:tex-parameter-i +gl-texture-2d+ param value))
+    (+rl-texture-filter-anisotropic+
+     (let ((max-anisotropy (gl:get-float +gl-max-texture-max-anisotropy-ext+)))
+       (when (vectorp max-anisotropy) (setf max-anisotropy (aref max-anisotropy 0)))
+       (if (<= value max-anisotropy)
+           (%gl:tex-parameter-f +gl-texture-2d+ +gl-texture-max-anisotropy-ext+ (float value 1.0))
+           (progn
+             (trace-log-warning "GL: Maximum anisotropic filter level supported is ~fX" max-anisotropy)
+             (%gl:tex-parameter-f +gl-texture-2d+ +gl-texture-max-anisotropy-ext+ (float max-anisotropy 1.0))))))
+    (+rl-texture-mipmap-bias-ratio+
+     (%gl:tex-parameter-f +gl-texture-2d+ +gl-texture-lod-bias+ (/ value 100.0)))
+    (t nil))
+  (gl:bind-texture :texture-2d 0))
+
+(defun rl-get-gl-texture-formats (format)
+  "Get OpenGL internal formats and data type from raylib PixelFormat
+   NOTE: Returns (values gl-internal-format gl-format gl-type), using the rlgl OpenGL 2.1 table
+   (compatibility profile), NIL for unsupported formats"
+  (let ((gl-luminance #x1909) (gl-luminance-alpha #x190A) (gl-rgb #x1907) (gl-rgba #x1908)
+        (gl-unsigned-byte #x1401) (gl-float #x1406) (gl-half-float #x140B))
+    (case format
+      (1 (values gl-luminance gl-luminance gl-unsigned-byte))
+      (2 (values gl-luminance-alpha gl-luminance-alpha gl-unsigned-byte))
+      (3 (values gl-rgb gl-rgb #x8363))            ; GL_UNSIGNED_SHORT_5_6_5
+      (4 (values gl-rgb gl-rgb gl-unsigned-byte))
+      (5 (values gl-rgba gl-rgba #x8034))          ; GL_UNSIGNED_SHORT_5_5_5_1
+      (6 (values gl-rgba gl-rgba #x8033))          ; GL_UNSIGNED_SHORT_4_4_4_4
+      (7 (values gl-rgba gl-rgba gl-unsigned-byte))
+      (8 (values gl-luminance gl-luminance gl-float))
+      (9 (values gl-rgb gl-rgb gl-float))
+      (10 (values gl-rgba gl-rgba gl-float))
+      (11 (values gl-luminance gl-luminance gl-half-float))
+      (12 (values gl-rgb gl-rgb gl-half-float))
+      (13 (values gl-rgba gl-rgba gl-half-float))
+      (t (trace-log-warning "TEXTURE: Current format not supported (~d)" format)
+         (values nil nil nil)))))
+
+(defun rl-get-pixel-format-name (format)
+  "Get name string for pixel format"
+  (case format
+    (1 "GRAYSCALE") (2 "GRAY_ALPHA") (3 "R5G6B5") (4 "R8G8B8") (5 "R5G5B5A1") (6 "R4G4B4A4")
+    (7 "R8G8B8A8") (8 "R32") (9 "R32G32B32") (10 "R32G32B32A32") (11 "R16") (12 "R16G16B16")
+    (13 "R16G16B16A16") (14 "DXT1_RGB") (15 "DXT1_RGBA") (16 "DXT3_RGBA") (17 "DXT5_RGBA")
+    (18 "ETC1_RGB") (19 "ETC2_RGB") (20 "ETC2_RGBA") (21 "PVRT_RGB") (22 "PVRT_RGBA")
+    (23 "ASTC_4x4_RGBA") (24 "ASTC_8x8_RGBA") (t "UNKNOWN")))
+
+(defun %rl-tex-image (target level format width height data offset size)
+  "glTexImage2D() of SIZE bytes of DATA from OFFSET (NIL data allocates storage only)"
+  (multiple-value-bind (internal-format gl-format gl-type) (rl-get-gl-texture-formats format)
+    (when internal-format
+      (if data
+          (let ((chunk (if (and (zerop offset) (= size (length data))) data (subseq data offset (+ offset size)))))
+            (cffi:with-pointer-to-vector-data (ptr chunk)
+              (%gl:tex-image-2d target level internal-format width height 0 gl-format gl-type ptr)))
+          (%gl:tex-image-2d target level internal-format width height 0 gl-format gl-type (cffi:null-pointer))))))
+
+(defun rl-load-texture (data width height format mipmap-count)
+  "Load texture data into GPU memory, returns the texture id
+   NOTE: DATA is a byte vector with all mipmap levels, or NIL to only allocate storage"
+  (gl:bind-texture :texture-2d 0)        ; Free any old binding
+  (when (>= format +rl-pixelformat-compressed-dxt1-rgb+)
+    (trace-log-warning "GL: Compressed texture formats not supported")
+    (return-from rl-load-texture 0))
+  (%gl:pixel-store-i +gl-unpack-alignment+ 1)
+  (let ((id (gl:gen-texture))
+        (mip-width width)
+        (mip-height height)
+        (mip-offset 0))
+    (gl:bind-texture :texture-2d id)
+    ;; Load the different mipmap levels
+    (dotimes (i mipmap-count)
+      (let ((mip-size (get-pixel-data-size mip-width mip-height format)))
+        (%rl-tex-image +gl-texture-2d+ i format mip-width mip-height data mip-offset mip-size)
+        (setf mip-width (max 1 (floor mip-width 2))
+              mip-height (max 1 (floor mip-height 2)))
+        (incf mip-offset mip-size)))
+    ;; Texture parameters configuration
+    ;; NOTE: glTexParameteri does NOT affect texture uploading
+    (%gl:tex-parameter-i +gl-texture-2d+ +rl-texture-wrap-s+ +rl-texture-wrap-repeat+) ; Set texture to repeat on x-axis
+    (%gl:tex-parameter-i +gl-texture-2d+ +rl-texture-wrap-t+ +rl-texture-wrap-repeat+) ; Set texture to repeat on y-axis
+    ;; Magnification and minification filters
+    (%gl:tex-parameter-i +gl-texture-2d+ +rl-texture-mag-filter+ +rl-texture-filter-nearest+) ; Alternative: GL_LINEAR
+    (%gl:tex-parameter-i +gl-texture-2d+ +rl-texture-min-filter+ +rl-texture-filter-nearest+) ; Alternative: GL_LINEAR
+    (when (> mipmap-count 1)
+      ;; Activate trilinear filtering if mipmaps are available
+      (%gl:tex-parameter-i +gl-texture-2d+ +rl-texture-mag-filter+ +rl-texture-filter-linear+)
+      (%gl:tex-parameter-i +gl-texture-2d+ +rl-texture-min-filter+ +rl-texture-filter-mip-linear+)
+      ;; Define the maximum number of mipmap levels to be used, 0 is base texture size
+      (%gl:tex-parameter-i +gl-texture-2d+ +gl-texture-base-level+ 0)
+      (%gl:tex-parameter-i +gl-texture-2d+ +gl-texture-max-level+ (1- mipmap-count)))
+    ;; Unbind current texture
+    (gl:bind-texture :texture-2d 0)
+    (if (> id 0)
+        (trace-log-info "TEXTURE: [ID ~d] Texture loaded successfully (~dx~d | ~a | ~d mipmaps)"
+                        id width height (rl-get-pixel-format-name format) mipmap-count)
+        (trace-log-warning "TEXTURE: Failed to load texture"))
+    id))
+
+(defun rl-load-texture-cubemap (data size format mipmap-count)
+  "Load texture cubemap, returns the texture id
+   NOTE: Cubemap data is expected to be 6 images in a single data array (one after the other),
+   expected the following convention: +X, -X, +Y, -Y, +Z, -Z"
+  (when (>= format +rl-pixelformat-compressed-dxt1-rgb+)
+    (trace-log-warning "GL: Compressed texture formats not supported")
+    (return-from rl-load-texture-cubemap 0))
+  (let ((id (gl:gen-texture))
+        (mip-size size)
+        (data-offset 0))
+    (gl:bind-texture :texture-cube-map id)
+    (dotimes (mipmap-level mipmap-count)
+      (let ((data-size (get-pixel-data-size mip-size mip-size format)))
+        ;; Load cubemap faces/mipmaps
+        (dotimes (face 6)
+          (%rl-tex-image (+ +gl-texture-cube-map-positive-x+ face) mipmap-level format mip-size mip-size
+                         data (+ data-offset (* face data-size)) data-size))
+        (when data (incf data-offset (* data-size 6)))
+        (setf mip-size (max 1 (floor mip-size 2)))))
+    ;; Set cubemap texture sampling parameters
+    (%gl:tex-parameter-i +gl-texture-cube-map+ +rl-texture-min-filter+
+                         (if (> mipmap-count 1) +rl-texture-filter-mip-linear+ +rl-texture-filter-linear+))
+    (%gl:tex-parameter-i +gl-texture-cube-map+ +rl-texture-mag-filter+ +rl-texture-filter-linear+)
+    (%gl:tex-parameter-i +gl-texture-cube-map+ +rl-texture-wrap-s+ +rl-texture-wrap-clamp+)
+    (%gl:tex-parameter-i +gl-texture-cube-map+ +rl-texture-wrap-t+ +rl-texture-wrap-clamp+)
+    (%gl:tex-parameter-i +gl-texture-cube-map+ +gl-texture-wrap-r+ +rl-texture-wrap-clamp+)
+    (gl:bind-texture :texture-cube-map 0)
+    (if (> id 0)
+        (trace-log-info "TEXTURE: [ID ~d] Cubemap texture loaded successfully (~dx~d)" id size size)
+        (trace-log-warning "TEXTURE: Failed to load cubemap texture"))
+    id))
+
+(defun rl-update-texture (id offset-x offset-y width height format data)
+  "Update texture with new data on GPU"
+  (gl:bind-texture :texture-2d id)
+  (multiple-value-bind (internal-format gl-format gl-type) (rl-get-gl-texture-formats format)
+    (if (and internal-format (< format +rl-pixelformat-compressed-dxt1-rgb+))
+        (let ((chunk (subseq data 0 (get-pixel-data-size width height format))))
+          (cffi:with-pointer-to-vector-data (ptr chunk)
+            (%gl:tex-sub-image-2d +gl-texture-2d+ 0 offset-x offset-y width height gl-format gl-type ptr)))
+        (trace-log-warning "TEXTURE: [ID ~d] Failed to update for current texture format (~d)" id format)))
+  (gl:bind-texture :texture-2d 0))
+
+(defun rl-gen-texture-mipmaps (id width height format)
+  "Generate mipmap data for selected texture, returns the number of mipmap levels"
+  (declare (ignore format))
+  (gl:bind-texture :texture-2d id)
+  (gl:generate-mipmap :texture-2d)
+  (gl:bind-texture :texture-2d 0)
+  (let ((mipmaps (1+ (floor (log (float (max width height))) (log 2.0)))))
+    (trace-log-info "TEXTURE: [ID ~d] Mipmaps generated automatically, total: ~d" id mipmaps)
+    mipmaps))
+
+(defun rl-unload-texture (id)
+  "Unload texture from GPU memory"
+  (gl:delete-textures (list id)))
 
 ;;; Matrix utility functions (using core-data matrices)
 

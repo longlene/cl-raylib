@@ -229,7 +229,11 @@
    #:render-texture #:make-render-texture
    
    ;; Image loading functions
-   #:load-image
+   #:load-image #:load-image-raw #:load-image-anim #:load-image-anim-from-memory
+   #:load-image-from-memory #:load-image-from-screen
+   #:export-image #:export-image-to-memory #:export-image-as-code
+   #:load-texture-cubemap #:load-render-texture-ex #:update-texture-rec #:gen-texture-mipmaps
+   #:+npatch-nine-patch+ #:+npatch-three-patch-vertical+ #:+npatch-three-patch-horizontal+
    
    ;; Image generation functions
    #:gen-image-color #:gen-image-gradient-linear #:gen-image-gradient-radial
@@ -451,7 +455,7 @@
    #:mem-alloc #:mem-realloc #:mem-free #:clamp
    
    ;; File I/O system functions  
-   #:directory-exists #:get-file-length #:get-file-extension #:get-file-name
+   #:directory-exists #:get-file-length #:get-file-extension #:is-file-extension #:get-file-name
    #:get-file-name-without-ext #:get-directory-path #:get-working-directory #:change-directory
    #:load-file-data #:save-file-data #:unload-file-data #:load-file-text #:save-file-text
    #:get-directory-files #:copy-file #:move-file #:delete-file-safe #:file-data
