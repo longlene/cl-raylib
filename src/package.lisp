@@ -58,15 +58,9 @@
    #:mperspective #:mfrustum #:mortho #:m* #:minv #:mtranspose
    #:mdet #:mat4 #:mat4-p #:marr4 #:nm* #:mcol #:mrow
    
-   ;; Quaternion functions
-   #:quaternion-identity #:quaternion-from-axis-angle #:quaternion-from-euler
-   #:quaternion-multiply #:quaternion-length #:quaternion-normalize
-   #:quaternion-conjugate #:quaternion-inverse #:quaternion-to-matrix4
-   #:quaternion-slerp
-   
    ;; Camera2D functions
    #:camera2d #:make-camera2d #:camera2d-offset #:camera2d-target #:camera2d-rotation #:camera2d-zoom
-   #:make-camera-2d #:camera2d-default #:get-camera2d-matrix
+   #:make-camera-2d #:camera2d-default #:get-camera-matrix-2d #:get-world-to-screen-ex #:get-screen-to-world-ray #:get-screen-to-world-ray-ex
    #:get-screen-to-world-2d #:get-world-to-screen-2d
    #:camera2d-set-offset #:camera2d-set-target #:camera2d-set-rotation #:camera2d-set-zoom
    #:camera2d-move #:camera2d-rotate #:camera2d-zoom-by #:camera2d-zoom-to
@@ -80,7 +74,7 @@
    #:camera3d #:make-camera3d #:camera3d-position #:camera3d-target #:camera3d-up
    #:camera3d-fovy #:camera3d-projection #:make-camera-3d #:camera3d-default
    #:camera3d-first-person #:camera3d-third-person #:get-camera-matrix
-   #:get-camera-projection-matrix #:camera3d-get-forward #:camera3d-get-right
+   #:get-camera-projection-matrix #:rl-set-clip-planes #:rl-get-cull-distance-near #:rl-get-cull-distance-far #:camera3d-get-forward #:camera3d-get-right
    #:camera3d-get-up #:camera3d-move-forward #:camera3d-move-right #:camera3d-move-up
    #:camera3d-rotate-yaw #:camera3d-rotate-pitch #:camera3d-rotate-roll
    #:set-camera-mode #:update-camera #:camera3d-set-position #:camera3d-set-target
@@ -314,23 +308,40 @@
    ;; Window management functions
    #:set-config-flags #:init-window #:close-window #:window-should-close #:set-target-fps
    #:begin-drawing #:end-drawing #:with-drawing #:clear-background
-   #:begin-scissor-mode #:end-scissor-mode
+   #:begin-scissor-mode #:end-scissor-mode #:begin-blend-mode #:end-blend-mode
+   #:is-window-state #:toggle-borderless-windowed #:set-window-icon #:set-window-icons
+   #:set-window-monitor #:set-window-focused #:get-window-handle #:get-monitor-position
+   #:get-monitor-physical-width #:get-monitor-physical-height #:get-monitor-refresh-rate
+   #:get-monitor-name #:get-window-scale-dpi #:get-clipboard-image #:enable-event-waiting
+   #:disable-event-waiting #:is-cursor-on-screen #:take-screenshot #:is-key-pressed-repeat
+   #:get-key-name #:get-gamepad-button-pressed #:set-mouse-offset #:set-mouse-scale
+   #:get-touch-x #:get-touch-y
+   ;; Automation events
+   #:automation-event #:make-automation-event #:automation-event-frame #:automation-event-type
+   #:automation-event-params #:automation-event-list #:make-automation-event-list
+   #:automation-event-list-capacity #:automation-event-list-count #:automation-event-list-events
+   #:load-automation-event-list #:unload-automation-event-list #:export-automation-event-list
+   #:set-automation-event-list #:set-automation-event-base-frame #:start-automation-event-recording
+   #:stop-automation-event-recording #:play-automation-event
+   #:rl-read-screen-pixels #:rl-read-texture-pixels #:rl-set-blend-factors #:rl-set-blend-factors-separate
+   #:+blend-alpha+ #:+blend-additive+ #:+blend-multiplied+ #:+blend-add-colors+
+   #:+blend-subtract-colors+ #:+blend-alpha-premultiply+ #:+blend-custom+ #:+blend-custom-separate+
    #:get-fps #:draw-fps #:trace-log-warning
    #:with-window #:is-window-ready #:is-window-fullscreen #:is-window-hidden
    #:is-window-minimized #:is-window-maximized #:is-window-focused #:is-window-resized
    #:set-window-state #:clear-window-state #:toggle-fullscreen
-   #:maximize-window #:minimize-window #:restore-window #:hide-window #:show-window
+   #:maximize-window #:minimize-window #:restore-window
    #:set-window-title #:set-window-position #:get-window-position
    #:set-window-size #:set-window-min-size #:set-window-max-size
-   #:update-fullscreen-cooldown
-   #:set-window-opacity #:get-window-opacity
+
+   #:set-window-opacity
    #:disable-cursor #:enable-cursor #:hide-cursor #:show-cursor #:is-cursor-hidden
    
    ;; File drop functions
    #:file-path-list #:make-file-path-list #:file-path-list-count #:file-path-list-paths
    #:is-file-dropped #:load-dropped-files #:unload-dropped-files #:file-path-list-path
    #:get-screen-width #:get-screen-height #:get-render-width #:get-render-height
-   #:get-monitor-count #:get-current-monitor #:get-monitor-info
+   #:get-monitor-count #:get-current-monitor
    #:set-clipboard-text #:get-clipboard-text
    #:get-monitor-width #:get-monitor-height #:swap-screen-buffer #:poll-input-events #:open-url
    #:unload-file-text #:set-gamepad-mappings #:set-gamepad-vibration
@@ -347,7 +358,7 @@
    #:+flag-vsync-hint+ #:+flag-msaa-4x-hint+ #:+flag-interlaced-hint+
    
    ;; Input functions
-   #:setup-input-callbacks #:update-input #:is-key-pressed #:is-key-down #:is-key-released #:is-key-up
+ #:is-key-pressed #:is-key-down #:is-key-released #:is-key-up
    #:get-key-pressed #:get-char-pressed #:set-exit-key
    #:is-mouse-button-pressed #:is-mouse-button-down #:is-mouse-button-released #:is-mouse-button-up
    #:get-mouse-position #:get-mouse-x #:get-mouse-y #:set-mouse-position
@@ -357,7 +368,7 @@
    ;; Gamepad functions
    #:is-gamepad-available #:get-gamepad-name
    #:is-gamepad-button-pressed #:is-gamepad-button-down #:is-gamepad-button-released #:is-gamepad-button-up
-   #:get-gamepad-axis-count #:get-gamepad-axis-movement #:get-gamepad-button-count
+   #:get-gamepad-axis-count #:get-gamepad-axis-movement
    
    ;; Key constants
    #:+key-null+ #:+key-space+ #:+key-escape+ #:+key-enter+ #:+key-tab+ #:+key-backspace+
@@ -384,7 +395,7 @@
    #:+mouse-button-side+ #:+mouse-button-extra+ #:+mouse-button-forward+
    #:+mouse-button-back+
    ;; Alternative mouse button names for compatibility
-   #:+mouse-left-button+ #:+mouse-right-button+ #:+mouse-middle-button+
+
    
    ;; Math constants and utilities
    #:+pi+ #:+deg2rad+ #:+rad2deg+ #:+epsilon+ #:clamp
@@ -401,6 +412,7 @@
    #:vector2-add-value #:vector2-subtract-value #:vector2-cross-product #:vector2-angle
    #:vector2-line-angle #:vector2-reflect #:vector2-rotate #:vector2-move-towards
    #:vector2-invert #:vector2-clamp-value #:vector2-equals #:vector2-transform
+   #:vector2-refract
    
    ;; Vector3 math functions
    #:vector3-zero #:vector3-one #:vector3-add #:vector3-subtract #:vector3-scale
@@ -411,7 +423,15 @@
    #:vector3-perpendicular #:vector3-project #:vector3-reject #:vector3-ortho-normalize
    #:vector3-transform #:vector3-rotate-by-quaternion #:vector3-rotate-by-axis-angle
    #:vector3-reflect #:vector3-barycenter #:vector3-unproject #:vector3-invert
-   #:vector3-clamp-value #:vector3-equals
+   #:vector3-clamp-value #:vector3-equals #:vector3-move-towards #:vector3-cubic-hermite
+   #:vector3-to-float-v #:vector3-refract
+
+   ;; Vector4 math functions
+   #:vector4-zero #:vector4-one #:vector4-add #:vector4-add-value #:vector4-subtract
+   #:vector4-subtract-value #:vector4-length #:vector4-length-sqr #:vector4-dot-product
+   #:vector4-distance #:vector4-distance-sqr #:vector4-scale #:vector4-multiply
+   #:vector4-negate #:vector4-divide #:vector4-normalize #:vector4-min #:vector4-max
+   #:vector4-lerp #:vector4-move-towards #:vector4-invert #:vector4-equals
    
    ;; Matrix math functions
    #:matrix-determinant #:matrix-trace #:matrix-transpose #:matrix-invert
@@ -419,7 +439,7 @@
    #:matrix-translate #:matrix-rotate #:matrix-rotate-x #:matrix-rotate-y
    #:matrix-rotate-z #:matrix-rotate-xyz #:matrix-rotate-zyx #:matrix-scale
    #:matrix-frustum #:matrix-perspective #:matrix-ortho #:matrix-look-at
-   #:matrix-to-float-v
+   #:matrix-to-float-v #:matrix-multiply-value #:matrix-compose #:matrix-decompose
    
    ;; Quaternion math functions
    #:quaternion-identity #:quaternion-length #:quaternion-normalize #:quaternion-invert
@@ -427,18 +447,19 @@
    #:quaternion-slerp #:quaternion-from-matrix #:quaternion-to-matrix
    #:quaternion-from-axis-angle #:quaternion-to-axis-angle #:quaternion-equals
    #:quaternion-scale #:quaternion-from-vector3-to-vector3 #:quaternion-from-euler
-   #:quaternion-to-euler #:quaternion-transform
+   #:quaternion-to-euler #:quaternion-transform #:quaternion-add #:quaternion-add-value
+   #:quaternion-subtract #:quaternion-subtract-value #:quaternion-cubic-hermite-spline
    
    ;; Re-export 3d-math symbols
    #:vec #:vx #:vy #:vz #:v+ #:v- #:v* #:vunit #:vc #:vscale
    #:vx2 #:vy2 #:vz2 #:vw2 #:vx3 #:vy3 #:vz3 #:vw3 #:vx4 #:vy4 #:vz4 #:vw4
    
    ;; Timing system functions
-   #:get-time #:get-frame-time #:get-fps #:get-fps-raw #:set-target-fps #:get-target-fps
-   #:update-frame-timing #:wait-time #:wait-frame #:get-time-precise #:get-frame-count
+   #:get-time #:get-frame-time #:get-fps #:set-target-fps
+ #:wait-time
    #:performance-timer #:create-timer #:start-timer #:stop-timer #:get-timer-elapsed
-   #:with-timer #:time-execution #:sync-to-fps #:begin-frame #:end-frame
-   #:get-timing-info #:reset-timing #:begin-frame-timing #:end-frame-timing #:init-timer
+   #:with-timer #:time-execution #:begin-frame #:end-frame
+   #:get-timing-info #:reset-timing #:init-timer
    
    ;; Logging system functions (now in utils.lisp)
    #:set-trace-log-level #:get-trace-log-level #:set-trace-log-callback #:trace-log

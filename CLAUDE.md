@@ -12,6 +12,9 @@ cl-raylib is a pure Common Lisp implementation of raylib that closely follows th
 - File correspondence:
 ```
 raylib/src/rcore.c -> cl-raylib/src/core.lisp
+raylib/src/platforms/rcore_desktop_glfw.c -> cl-raylib/src/glfw.lisp
+raylib/src/rgestures.h -> cl-raylib/src/gestures.lisp
+raylib/src/rlgl.h -> cl-raylib/src/gl.lisp
 raylib/src/raylib.h -> cl-raylib/src/raylib.lisp
 raylib/src/raymath.h -> cl-raylib/src/math.lisp
 raylib/src/rcamera.h -> cl-raylib/src/camera.lisp + cl-raylib/src/camera3d.lisp

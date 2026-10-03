@@ -30,31 +30,30 @@
       
       ;; Update
       (incf frames-counter)
-      (update-fullscreen-cooldown)
       
       ;; Handle keyboard input for window flags
       (cond
         ;; Toggle window resizable
         ((is-key-pressed :r)
-         (if (logbitp 2 *window-flags*) ; Check if resizable flag is set
+         (if (is-window-state +flag-window-resizable+) ; Check if resizable flag is set
              (clear-window-state +flag-window-resizable+)
              (set-window-state +flag-window-resizable+)))
         
         ;; Toggle window decoration
         ((is-key-pressed :d) 
-         (if (logbitp 3 *window-flags*) ; Check if undecorated flag is set
+         (if (is-window-state +flag-window-undecorated+) ; Check if undecorated flag is set
              (clear-window-state +flag-window-undecorated+)
              (set-window-state +flag-window-undecorated+)))
         
         ;; Toggle window topmost
         ((is-key-pressed :t)
-         (if (logbitp 12 *window-flags*) ; Check if topmost flag is set
+         (if (is-window-state +flag-window-topmost+) ; Check if topmost flag is set
              (clear-window-state +flag-window-topmost+)
              (set-window-state +flag-window-topmost+)))
         
         ;; Toggle window transparency  
         ((is-key-pressed :a)
-         (if (logbitp 4 *window-flags*) ; Check if transparent flag is set
+         (if (is-window-state +flag-window-transparent+) ; Check if transparent flag is set
              (clear-window-state +flag-window-transparent+)
              (set-window-state +flag-window-transparent+)))
         
@@ -66,8 +65,8 @@
         ;; Hide/Show window
         ((is-key-pressed :h)
          (if (is-window-hidden)
-             (show-window)
-             (hide-window)))
+             (clear-window-state +flag-window-hidden+)
+             (set-window-state +flag-window-hidden+)))
         
         ;; Minimize window
         ((is-key-pressed :m)
@@ -117,23 +116,23 @@
           (draw-text "Current window flags:" 10 y-pos 14 +black+)
           (incf y-pos 25)
           
-          (when (logbitp 2 *window-flags*)
+          (when (is-window-state +flag-window-resizable+)
             (draw-text "FLAG_WINDOW_RESIZABLE" 10 y-pos 10 +lime+)
             (incf y-pos 15))
           
-          (when (logbitp 3 *window-flags*)
+          (when (is-window-state +flag-window-undecorated+)
             (draw-text "FLAG_WINDOW_UNDECORATED" 10 y-pos 10 +lime+)
             (incf y-pos 15))
           
-          (when (logbitp 12 *window-flags*)
+          (when (is-window-state +flag-window-topmost+)
             (draw-text "FLAG_WINDOW_TOPMOST" 10 y-pos 10 +lime+)
             (incf y-pos 15))
           
-          (when (logbitp 4 *window-flags*)
+          (when (is-window-state +flag-window-transparent+)
             (draw-text "FLAG_WINDOW_TRANSPARENT" 10 y-pos 10 +lime+)
             (incf y-pos 15))
           
-          (when (logbitp 1 *window-flags*)
+          (when (is-window-state +flag-fullscreen-mode+)
             (draw-text "FLAG_FULLSCREEN_MODE" 10 y-pos 10 +lime+)
             (incf y-pos 15))
           

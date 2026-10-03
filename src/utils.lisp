@@ -492,7 +492,7 @@
 ;;; Global logging state
 (defvar *trace-log-level* +log-info+ "Current trace log level")
 (defvar *trace-log-callback* nil "Custom trace log callback function")
-(defvar *log-output-stream* *standard-output* "Output stream for logging")
+(defvar *log-output-stream* nil "Output stream for logging, NIL for the current *standard-output*")
 (defvar *log-to-file* nil "Whether to log to file")
 (defvar *log-file-stream* nil "File stream for logging")
 (defvar *log-with-timestamp* t "Whether to include timestamps")
@@ -522,7 +522,7 @@
 
 (defun set-trace-log-level (log-level)
   "Set the current trace log level"
-  (setf *trace-log-level* (clamp log-level +log-all+ +log-none+)))
+  (setf *trace-log-level* (clamp (%enum-value log-level '("LOG-")) +log-all+ +log-none+)))
 
 (defun get-trace-log-level ()
   "Get the current trace log level"
@@ -535,6 +535,7 @@
 
 (defun trace-log (log-level message &rest args)
   "Log a message with specified level"
+  (setf log-level (%enum-value log-level '("LOG-")))
   (when (and (>= log-level *trace-log-level*) (< log-level +log-none+))
     (let ((formatted-message (if args
                                   (apply #'format nil message args)
@@ -551,8 +552,9 @@
          (formatted-line (format nil "~a: ~a" level-name message)))
     
     ;; Output to console
-    (format *log-output-stream* "~a~%" formatted-line)
-    (force-output *log-output-stream*)
+    (let ((stream (or *log-output-stream* *standard-output*)))
+      (format stream "~a~%" formatted-line)
+      (force-output stream))
     
     ;; Output to file if enabled
     (when (and *log-to-file* *log-file-stream*)
@@ -751,7 +753,7 @@
   "Initialize logging system with default settings"
   (setf *trace-log-level* +log-info+)
   (setf *trace-log-callback* nil)
-  (setf *log-output-stream* *standard-output*)
+  (setf *log-output-stream* nil)          ; NIL: log to the current *standard-output*
   (setf *log-to-file* nil)
   (setf *log-file-stream* nil)
   (setf *log-with-timestamp* t)

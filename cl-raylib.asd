@@ -6,6 +6,7 @@
   :depends-on (#:cl-opengl
                #:cl-glu
                #:glfw
+               #:float-features
                #:3d-matrices
                #:3d-vectors
                #:3d-transforms
@@ -26,18 +27,17 @@
   (;; Package definition
    (:file "package")
    (:file "raylib")
-   (:file "glfw")                  ; Platform layer (must load before core for get-time function)
-   (:file "core")                  ; Current working core with consolidated timing functions
-   (:file "math")
+   (:file "math")                  ; raymath.h (included by rcore.c)
+   (:file "gl")                    ; OpenGL abstraction layer (matches raylib rlgl.h functionality)
+   (:file "gestures")              ; rgestures.h (included by rcore.c)
+   (:file "core")                  ; rcore.c
+   (:file "glfw")                  ; platforms/rcore_desktop_glfw.c (included by rcore.c after CORE data)
    (:file "camera2d")              ; 2D camera system (matches raylib Camera2D)
    (:file "camera3d")
    (:file "color")
-   (:file "gl")                    ; OpenGL abstraction layer (matches raylib rlgl.h functionality)
    (:file "textures")
    (:file "shaders")               ; Shader system (matches raylib rlgl.c shader functionality)
    (:file "utils")                 ; Utility functions and logging system (required for raylib compatibility)
-   (:file "window")
-   (:file "input")
    (:file "shapes")
    (:file "shapes3d")
    (:file "collision")             ; Collision detection (stateless, matches raylib design)

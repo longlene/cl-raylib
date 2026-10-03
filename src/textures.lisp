@@ -932,31 +932,25 @@
 ;; NOTE: Compressed texture formats not supported
 (defun load-image-from-texture (texture)
   "Load image from GPU texture data"
-  (if (< (texture-format texture) +pixelformat-compressed-dxt1-rgb+)
-      (let ((image (get-texture-data texture)))
-        (if image
-            (progn (trace-log-info "TEXTURE: [ID ~d] Pixel data retrieved successfully" (texture-id texture))
-                   image)
-            (progn (trace-log-warning "TEXTURE: [ID ~d] Failed to retrieve pixel data" (texture-id texture))
-                   (make-image :width 0 :height 0 :mipmaps 0 :format 0))))
-      (progn (trace-log-warning "TEXTURE: [ID ~d] Failed to retrieve compressed pixel data" (texture-id texture))
-             (make-image :width 0 :height 0 :mipmaps 0 :format 0))))
+  (let ((image (make-image :width 0 :height 0 :mipmaps 0 :format 0)))
+    (if (< (texture-format texture) +pixelformat-compressed-dxt1-rgb+)
+        (let ((data (rl-read-texture-pixels (texture-id texture) (texture-width texture)
+                                            (texture-height texture) (texture-format texture))))
+          (if data
+              (progn
+                (setf image (make-image :data data :width (texture-width texture) :height (texture-height texture)
+                                        :mipmaps 1 :format (texture-format texture)))
+                (trace-log-info "TEXTURE: [ID ~d] Pixel data retrieved successfully" (texture-id texture)))
+              (trace-log-warning "TEXTURE: [ID ~d] Failed to retrieve pixel data" (texture-id texture))))
+        (trace-log-warning "TEXTURE: [ID ~d] Failed to retrieve compressed pixel data" (texture-id texture)))
+    image))
 
 (defun load-image-from-screen ()
   "Load image from screen buffer and (screenshot)"
-  (let* ((width (get-render-width))
-         (height (get-render-height))
-         (data (%make-octets (* width height 4))))
-    ;; NOTE: glReadPixels() returns image flipped vertically -> (0,0) is the bottom left corner of the framebuffer
-    (gl:read-pixels 0 0 width height :rgba :unsigned-byte data)
-    (let ((flipped (%make-octets (* width height 4)))
-          (row (* width 4)))
-      (dotimes (y height)
-        (replace flipped data :start1 (* y row) :start2 (* (- height 1 y) row) :end2 (* (- height y) row)))
-      ;; NOTE: Alpha value has already been applied to RGB in framebuffer, not needed anymore
-      (loop for k from 3 below (length flipped) by 4 do (setf (aref flipped k) 255))
-      (make-image :data flipped :width width :height height :mipmaps 1
-                  :format +pixelformat-uncompressed-r8g8b8a8+))))
+  (let ((width (get-render-width))
+        (height (get-render-height)))
+    (make-image :data (rl-read-screen-pixels width height) :width width :height height
+                :mipmaps 1 :format +pixelformat-uncompressed-r8g8b8a8+)))
 
 (defun unload-image (image)
   "Unload image from CPU memory (RAM)"
@@ -3316,45 +3310,8 @@
 ;;; Utility functions
 
 (defun get-texture-data (texture)
-  "Get pixel data from texture (download from GPU)"
-  (when (is-texture-valid texture)
-    (let* ((width (texture-width texture))
-          (height (texture-height texture))
-          (texture-id (texture-id texture))
-          (data (make-array (* width height 4) :element-type '(unsigned-byte 8))))
-      
-      ;; Use framebuffer approach (compatible with both Desktop OpenGL and OpenGL ES)
-      (read-texture-via-framebuffer texture-id width height data)
-      
-      ;; Create image from data
-      (make-image :data data :width width :height height 
-                  :format +pixelformat-uncompressed-rgba+))))
-
-(defun read-texture-via-framebuffer (texture-id width height data)
-  "Read texture data using framebuffer (for OpenGL ES compatibility)"
-  (let ((fbo (gl:gen-framebuffer)))
-    (unwind-protect
-        (progn
-          ;; Bind framebuffer
-          (gl:bind-framebuffer :framebuffer fbo)
-          
-          ;; Attach texture as color attachment
-          (gl:framebuffer-texture-2d :framebuffer :color-attachment0 :texture-2d texture-id 0)
-          
-          ;; Check framebuffer completeness
-          (unless (eq (gl:check-framebuffer-status :framebuffer) :framebuffer-complete)
-            (error "Framebuffer not complete for texture reading"))
-          
-          ;; Read pixels from framebuffer
-          (gl:read-pixels 0 0 width height :rgba :unsigned-byte data)
-          
-          ;; Unbind framebuffer
-          (gl:bind-framebuffer :framebuffer 0)
-          
-          (trace-log-info "read-texture-via-framebuffer: Successfully read texture data"))
-      
-      ;; Cleanup framebuffer
-      (gl:delete-framebuffer fbo))))
+  "Get pixel data from texture (download from GPU), same as load-image-from-texture"
+  (load-image-from-texture texture))
 
 (defun get-texture-format (texture)
   "Get texture internal format"
@@ -3451,59 +3408,6 @@
 ;; setup-viewport is now defined in core.lisp to match raylib's rcore.c organization
 
 ;;; Render texture mode functions (following raylib exactly)
-(defun begin-texture-mode (target)
-  "Begin drawing to render texture (raylib BeginTextureMode)"
-  (when (is-render-texture-valid target)
-    ;; Flush any pending draw calls (rlDrawRenderBatchActive)
-    (rl-draw-render-batch-active)
-    
-    ;; Bind framebuffer (rlEnableFramebuffer)
-    (rl-enable-framebuffer (render-texture-id target))
-    
-    ;; Set viewport to render texture size (rlViewport)
-    (rl-viewport 0 0 
-                 (texture-width (render-texture-texture target))
-                 (texture-height (render-texture-texture target)))
-    
-    ;; Update internal state (rlSetFramebufferWidth/Height)
-    (setf *current-fbo-width* (texture-width (render-texture-texture target)))
-    (setf *current-fbo-height* (texture-height (render-texture-texture target)))
-    
-    ;; Setup projection matrix
-    (rl-matrix-mode 0) ; Projection mode
-    (rl-load-identity)
-    (rl-ortho 0.0d0 (coerce (texture-width (render-texture-texture target)) 'double-float)
-              (coerce (texture-height (render-texture-texture target)) 'double-float) 0.0d0 0.0d0 1.0d0)
-    
-    ;; Setup modelview matrix
-    (rl-matrix-mode 1) ; Modelview mode
-    (rl-load-identity)
-    
-    ;; Update global state (CORE.Window state)
-    (setf *using-fbo* t)))
-
-(defun end-texture-mode ()
-  "End drawing to render texture (raylib EndTextureMode)"
-  ;; Flush any pending draw calls (rlDrawRenderBatchActive)
-  (rl-draw-render-batch-active)
-  
-  ;; Disable framebuffer (rlDisableFramebuffer) 
-  (rl-disable-framebuffer)
-  
-  ;; Restore viewport and projection (SetupViewport)
-  (setup-viewport (core-data-window-screen-width *core*) (core-data-window-screen-height *core*))
-  
-  ;; Restore modelview matrix
-  (rl-matrix-mode :modelview)
-  (rl-load-identity)
-  ;; Apply screen scaling (in raylib: rlMultMatrixf(MatrixToFloat(CORE.Window.screenScale)))
-  ;; For now we skip screen scaling transformation
-  
-  ;; Update global state
-  (setf *current-fbo-width* (core-data-window-screen-width *core*))
-  (setf *current-fbo-height* (core-data-window-screen-height *core*))
-  (setf *using-fbo* nil))
-
 ;;; Utility functions for render textures
 (defun get-render-texture-texture (render-texture)
   "Get the color texture from render texture"

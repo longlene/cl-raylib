@@ -25,43 +25,7 @@
 
 ;;; Camera2D matrix functions
 
-(defun get-camera2d-matrix (camera)
-  "Get camera 2D transform matrix"
-  (let* ((offset (camera2d-offset camera))
-         (target (camera2d-target camera))
-         (rotation (camera2d-rotation camera))
-         (zoom (camera2d-zoom camera)))
-    
-    ;; Create simple transformation matrix manually
-    ;; This is a simplified version that should work
-    (let* ((cos-r (cos (degrees-to-radians rotation)))
-           (sin-r (sin (degrees-to-radians rotation)))
-           ;; Translation by (offset - target*zoom) with rotation and zoom
-           (tx (- (vx2 offset) (* (vx2 target) zoom)))
-           (ty (- (vy2 offset) (* (vy2 target) zoom))))
-      
-      ;; Create the final transformation matrix
-      (mat4 (list (* zoom cos-r) (* zoom sin-r)     0.0 0.0
-                  (* zoom (- sin-r)) (* zoom cos-r) 0.0 0.0
-                  0.0                0.0            1.0 0.0
-                  tx                 ty             0.0 1.0)))))
-
 ;;; Screen to world coordinate conversion
-
-(defun get-screen-to-world-2d (position camera)
-  "Convert screen coordinates to world coordinates using camera"
-  (let* ((matrix (get-camera2d-matrix camera))
-         (inverse-matrix (minv matrix))
-         (screen-pos (vec3 (vx2 position) (vy2 position) 0.0))
-         (world-pos (m* inverse-matrix screen-pos)))
-    (vec2 (vx3 world-pos) (vy3 world-pos))))
-
-(defun get-world-to-screen-2d (position camera)
-  "Convert world coordinates to screen coordinates using camera"
-  (let* ((matrix (get-camera2d-matrix camera))
-         (world-pos (vec3 (vx2 position) (vy2 position) 0.0))
-         (screen-pos (m* matrix world-pos)))
-    (vec2 (vx3 screen-pos) (vy3 screen-pos))))
 
 ;;; Camera2D manipulation functions
 
@@ -112,34 +76,6 @@
   camera)
 
 ;;; 2D Drawing setup functions
-
-(defun begin-mode-2d (camera)
-  "Begin 2D drawing mode with camera transformation"
-  (setf *current-camera2d* camera)
-  
-  ;; Setup OpenGL for 2D rendering with camera transform
-  (gl:disable :depth-test)
-  (gl:disable :cull-face)
-  
-  ;; Setup matrices
-  (gl:matrix-mode :projection)
-  (gl:load-identity)
-  (gl:ortho 0 (get-screen-width) (get-screen-height) 0 -1 1)
-  
-  (gl:matrix-mode :modelview)
-  (let ((camera-matrix (get-camera2d-matrix camera)))
-    (gl:load-matrix (marr4 camera-matrix))))
-
-(defun end-mode-2d ()
-  "End 2D drawing mode"
-  ;; Restore default 2D projection
-  (gl:matrix-mode :projection)
-  (gl:load-identity)
-  (gl:ortho 0 (get-screen-width) (get-screen-height) 0 -1 1)
-  (gl:matrix-mode :modelview)
-  (gl:load-identity)
-  
-  (setf *current-camera2d* nil))
 
 ;;; Camera2D utility functions
 

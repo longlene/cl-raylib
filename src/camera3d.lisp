@@ -17,17 +17,6 @@
                   :fovy fovy
                   :projection (keyword-to-projection projection)))
 
-;;; Camera projection types
-(defconstant +camera-perspective+ 0)
-(defconstant +camera-orthographic+ 1)
-
-;;; Camera modes
-(defconstant +camera-custom+ 0)
-(defconstant +camera-free+ 1)
-(defconstant +camera-orbital+ 2)
-(defconstant +camera-first-person+ 3)
-(defconstant +camera-third-person+ 4)
-
 ;;; Global camera state
 (defvar *current-camera* nil "Currently active camera")
 (defvar *camera-mode* +camera-custom+ "Current camera update mode")
@@ -85,25 +74,18 @@
 
 ;;; Camera matrix functions
 
-(defun get-camera-matrix (camera)
-  "Get camera view matrix (look-at matrix)"
-  (mlookat (camera3d-position camera)
-           (camera3d-target camera)
-           (camera3d-up camera)))
-
 (defun get-camera-projection-matrix (camera aspect)
-  "Get camera projection matrix"
-  (alexandria:switch ((camera3d-projection camera))
-    (+camera-perspective+
-     (mperspective (degrees-to-radians (camera3d-fovy camera))
-                   aspect
-                   0.1    ; Near plane
-                   1000.0)) ; Far plane
-    (+camera-orthographic+
-     (let* ((top (* (camera3d-fovy camera) 0.5))
-           (right (* top aspect)))
-       (mortho (- right) right (- top) top 0.1 1000.0)))
-    (t (meye 4))))
+  "Get camera projection matrix (same projection as BeginMode3D())"
+  (case (%camera-projection camera)
+    (#.+camera-perspective+
+     (matrix-perspective (* (camera3d-fovy camera) +deg2rad+) aspect
+                         (rl-get-cull-distance-near) (rl-get-cull-distance-far)))
+    (#.+camera-orthographic+
+     (let* ((top (/ (camera3d-fovy camera) 2.0d0))
+            (right (* top aspect)))
+       (matrix-ortho (- right) right (- top) top
+                     (rl-get-cull-distance-near) (rl-get-cull-distance-far))))
+    (t (matrix-identity))))
 
 ;;; Camera transformation functions
 
@@ -524,52 +506,10 @@
 
   camera)
 
-(defun get-mouse-ray (mouse-position camera aspect)
-  "Get ray from mouse position through camera"
-  (let* ((mouse-x (first mouse-position))
-         (mouse-y (second mouse-position))
-         (screen-width (get-screen-width))
-         (screen-height (get-screen-height))
-         ;; Convert mouse position to normalized device coordinates
-         (ndc-x (- (* 2.0 (/ mouse-x screen-width)) 1.0))
-         (ndc-y (- 1.0 (* 2.0 (/ mouse-y screen-height))))
-         ;; Create ray in clip space
-         (clip-coords (vec4 ndc-x ndc-y -1.0 1.0))
-         ;; Transform to view space
-         (proj-matrix (get-camera-projection-matrix camera aspect))
-         (proj-inverse (minv proj-matrix))
-         (view-coords (m* proj-inverse clip-coords)))
-    
-    ;; Normalize to get direction
-    (setf (vz4 view-coords) -1.0)
-    (setf (vw4 view-coords) 0.0)
-    
-    ;; Transform to world space
-    (let* ((view-matrix (get-camera-matrix camera))
-           (view-inverse (minv view-matrix))
-           (world-coords (m* view-inverse view-coords))
-           (direction (vunit (vec3 (vx4 world-coords)
-                                   (vy4 world-coords)
-                                   (vz4 world-coords)))))
-      (make-ray :position (camera3d-position camera)
-                :direction direction))))
-
 (defun get-camera-ray (camera direction)
   "Get ray from camera in specified direction"
   (make-ray :position (camera3d-position camera)
             :direction (vunit direction)))
-
-(defun get-screen-to-world-ray (position camera)
-  "Get a ray trace from screen position (matches raylib GetScreenToWorldRay)"
-  (let* ((screen-width (get-screen-width))
-         (screen-height (get-screen-height))
-         (aspect (/ (float screen-width) (float screen-height))))
-    (get-mouse-ray (list (vx position) (vy position)) camera aspect)))
-
-(defun get-screen-to-world-ray-ex (position camera width height)
-  "Get a ray trace from screen position with custom viewport size (matches raylib GetScreenToWorldRayEx)"
-  (let ((aspect (/ (float width) (float height))))
-    (get-mouse-ray (list (vx position) (vy position)) camera aspect)))
 
 ;;; Utility functions
 
@@ -595,94 +535,7 @@
 
 ;;; World to screen coordinate conversion
 
-(defun get-world-to-screen (position camera)
-  "Get screen space position from world space position"
-  (let* ((screen-width (float (core-data-window-screen-width *core*)))
-         (screen-height (float (core-data-window-screen-height *core*)))
-         (aspect (/ screen-width screen-height))
-         
-         ;; Get view and projection matrices
-         (view-matrix (get-camera-matrix camera))
-         (proj-matrix (get-camera-projection-matrix camera aspect))
-         (mvp-matrix (m* proj-matrix view-matrix))
-         
-         ;; Transform world position to homogeneous coordinates
-         ;; Handle both vec3 objects and lists
-         (world-pos (if (vec3-p position)
-                        (vec4 (vx3 position) (vy3 position) (vz3 position) 1.0)
-                        (vec4 (first position) (second position) (third position) 1.0)))
-         
-         ;; Transform to clip space
-         (clip-pos (m* mvp-matrix world-pos))
-         
-         ;; Perform perspective divide
-         (w (vw4 clip-pos))
-         (ndc-x (if (= w 0.0) 0.0 (/ (vx4 clip-pos) w)))
-         (ndc-y (if (= w 0.0) 0.0 (/ (vy4 clip-pos) w)))
-         
-         ;; Convert to screen coordinates
-         (screen-x (* (+ ndc-x 1.0) 0.5 screen-width))
-         (screen-y (* (- 1.0 ndc-y) 0.5 screen-height)))
-    
-    (vec2 screen-x screen-y)))
-
 (defun camera3d-get-view-ray (camera x y)
   "Get view ray for screen coordinates"
-  (let ((aspect (/ (float (get-screen-width)) (float (get-screen-height)))))
-    (get-mouse-ray (vec2 x y) camera aspect)))
-
-;;; 3D Drawing setup functions
-
-(defun begin-mode-3d (camera)
-  "Begin 3D drawing mode with camera - improved implementation"
-  (setf *current-camera* camera)
-  
-  ;; Setup OpenGL for 3D rendering
-  (gl:enable :depth-test)
-  (gl:depth-func :lequal)
-  (gl:enable :cull-face)
-  (gl:cull-face :back)
-  
-  ;; Setup perspective projection
-  (gl:matrix-mode :projection)
-  (gl:load-identity)
-  (let* ((width (float (get-screen-width)))
-         (height (float (get-screen-height)))
-         (aspect (/ width height))
-         (fovy-rad (* (camera3d-fovy camera) (/ pi 180.0)))
-         (top (* 0.1 (tan (/ fovy-rad 2.0))))
-         (right (* top aspect)))
-    (gl:frustum (- right) right (- top) top 0.1 1000.0))
-  
-  ;; Setup camera view using lookAt-style positioning
-  (gl:matrix-mode :modelview)
-  (gl:load-identity)
-  (let* ((pos (camera3d-position camera))
-         (target (camera3d-target camera))
-         (up (camera3d-up camera))
-         (px (if (listp pos) (first pos) (vx pos)))
-         (py (if (listp pos) (second pos) (vy pos)))
-         (pz (if (listp pos) (third pos) (vz pos)))
-         (tx (if (listp target) (first target) (vx target)))
-         (ty (if (listp target) (second target) (vy target)))
-         (tz (if (listp target) (third target) (vz target)))
-         (ux (if (listp up) (first up) (vx up)))
-         (uy (if (listp up) (second up) (vy up)))
-         (uz (if (listp up) (third up) (vz up))))
-    
-    ;; Use gluLookAt equivalent
-    (cl-glu:look-at px py pz tx ty tz ux uy uz)))
-
-(defun end-mode-3d ()
-  "End 3D drawing mode"
-  ;; Restore 2D settings
-  (gl:disable :depth-test)
-  (gl:disable :cull-face)
-  
-  ;; Restore 2D projection
-  (gl:matrix-mode :projection)
-  (gl:load-identity)
-  (gl:ortho 0 (get-screen-width) (get-screen-height) 0 -1 1)
-  (gl:matrix-mode :modelview)
-  (gl:load-identity))
+  (get-screen-to-world-ray (vec2 x y) camera))
 

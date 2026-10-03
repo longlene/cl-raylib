@@ -127,8 +127,7 @@
               ;; Draw camera ray if mouse is pressed
               (when (is-mouse-button-down +mouse-button-left+)
                 (let* ((mouse-pos (get-mouse-position))
-                       (ray (get-mouse-ray mouse-pos camera 
-                                          (/ (float screen-width) (float screen-height)))))
+                       (ray (get-mouse-ray mouse-pos camera)))
                   (draw-ray ray +cyan+))))
             
             ;; 2D UI overlay
