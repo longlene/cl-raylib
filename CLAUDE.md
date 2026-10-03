@@ -48,3 +48,27 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 - Dependencies: quicklisp's glfw system (~/.quicklisp/dists/quicklisp/software/glfw-20260101-git, used through its %glfw cffi package), cffi, 3d-vectors, 3d-matrices, float-features and the others listed in cl-raylib.asd.
 - When porting an API, keep the implementation close to the C version, and keep functions in the same order as in the C file where practical, so the two versions are easy to compare later.
 - Do not try to fix mismatched parentheses with Python scripts; it costs more than it saves.
+
+## Porting Progress (last updated: 2026-10-03, branch pure)
+
+### Overview
+- All 619 RLAPI functions in raylib.h have a Lisp implementation (raymath, rlgl, rcamera and rgestures are complete too).
+- About 38,600 lines in 34 source files of pure Common Lisp (cffi is only used to call GLFW/OpenGL/libm/PulseAudio/X11).
+- Verification: outputs (pixels, meshes, audio, files) are compared byte for byte against C raylib (a GL 3.3 build in the scratchpad).
+
+### Modules verified byte-identical to C
+- rlgl (GL 3.3); rcore shaders, VR, file and path functions, CompressData (sdefl), clipboard images (X11)
+- rshapes; rtextures (including PNG/BMP export via stb_image_write); rtext (stb_truetype)
+- rmodels: 3D shapes, GenMesh*, materials, animations, collisions, and the OBJ/MTL, IQM, VOX, glTF/GLB and M3D loaders
+- raudio: WAV/OGG/MP3/QOA/FLAC/XM/MOD decoding and mixing
+- raymath (trig calls libm sinf/cosf etc. so it matches C exactly), rcamera
+
+### Known differences (all documented in code comments)
+- Undefined behavior in C (out-of-bounds reads, uninitialized memory) is treated as 0 in Lisp; matching it is not a goal.
+- LOG_FATAL does not exit the process; DecompressData uses chipz (same results for valid data).
+- JPG/TGA/PNM and other formats that raylib disables by default are provided through imago.
+
+### TODO
+- Many examples in examples/ still use the old invented API (camera3d-*, set-camera-mode, init-shader-system, etc.) and need to be rewritten from the raylib examples.
+- The camera2d-* helpers in camera2d.lisp and the logging/timing extensions in utils.lisp are not raylib API; consider removing them.
+- raygui.lisp is only a partial port (raygui.h is not part of raylib itself).
