@@ -33,12 +33,6 @@
 (defconstant +npatch-three-patch-vertical+ 1 "Npatch layout: 1x3 tiles")
 (defconstant +npatch-three-patch-horizontal+ 2 "Npatch layout: 3x1 tiles")
 
-;;; Global texture management
-(defvar *texture-id-counter* 1 "OpenGL texture ID counter")
-(defvar *current-texture-id* 0 "Currently bound texture ID")
-(defvar *texture-registry* (make-hash-table) "Registry of loaded textures")
-(defvar *default-texture* nil "Default white 1x1 texture")
-
 ;;; NPatch structure for 9-patch drawing
 ;; NPatchInfo structure is defined in raylib.lisp
 
@@ -2858,17 +2852,6 @@
 ;;; Texture loading functions
 ;;;------------------------------------------------------------------------------------
 
-;;; Initialize texture system
-(defun init-texture-system ()
-  "Initialize the texture system and create default texture"
-  (unless *default-texture*
-    (setf *default-texture* (create-default-texture))))
-
-(defun create-default-texture ()
-  "Create a default 1x1 white texture"
-  (let ((white-image (gen-image-color 1 1 +white+)))
-    (load-texture-from-image white-image)))
-
 (defun load-texture (file-name)
   "Load texture from file into GPU memory (VRAM)"
   (let ((texture (make-texture :id 0 :width 0 :height 0 :mipmaps 0 :format 0))
@@ -2887,9 +2870,6 @@
         (setf (texture-id texture) (rl-load-texture (image-data image) (image-width image) (image-height image)
                                                     (image-pixel-format image) (image-mipmap-count image)))
         (trace-log-warning "IMAGE: Data is not valid to load texture"))
-    ;; Register texture for cleanup-texture-system
-    (when (> (texture-id texture) 0)
-      (setf (gethash (texture-id texture) *texture-registry*) texture))
     texture))
 
 (defun load-texture-cubemap (image layout)
@@ -2970,7 +2950,7 @@
     (when (>= format +pixelformat-compressed-dxt1-rgb+)
       (trace-log-warning "FBO: Render texture format not supported")
       (return-from load-render-texture-ex target))
-    (setf (render-texture-id target) (rl-load-framebuffer width height)) ; Load an empty framebuffer
+    (setf (render-texture-id target) (rl-load-framebuffer)) ; Load an empty framebuffer
     (if (> (render-texture-id target) 0)
         (progn
           (rl-enable-framebuffer (render-texture-id target))
@@ -2979,7 +2959,11 @@
                 (make-texture :id (rl-load-texture nil width height format 1)
                               :width width :height height :format format :mipmaps 1))
           ;; Create depth renderbuffer/texture
-          (setf (render-texture-depth target) (rl-load-texture-depth width height t))
+          (setf (render-texture-depth target)
+                (make-texture :id (rl-load-texture-depth width height t)
+                              :width width :height height
+                              :format 19 ; DEPTH_COMPONENT_24BIT?
+                              :mipmaps 1))
           ;; Attach color texture and depth renderbuffer/texture to FBO
           (rl-framebuffer-attach (render-texture-id target) (texture-id (render-texture-texture target))
                                  +rl-attachment-color-channel0+ +rl-attachment-texture2d+ 0)
@@ -3005,11 +2989,9 @@
 
 (defun unload-texture (texture)
   "Unload texture from GPU memory (VRAM)"
-  (when (and texture (> (texture-id texture) 0))
+  (when (> (texture-id texture) 0)
     (rl-unload-texture (texture-id texture))
-    (remhash (texture-id texture) *texture-registry*)
-    (trace-log-info "TEXTURE: [ID ~d] Unloaded texture data from VRAM (GPU)" (texture-id texture))
-    (setf (texture-id texture) 0))
+    (trace-log-info "TEXTURE: [ID ~d] Unloaded texture data from VRAM (GPU)" (texture-id texture)))
   nil)
 
 (defun is-render-texture-valid (target)
@@ -3022,16 +3004,13 @@
 
 (defun unload-render-texture (target)
   "Unload render texture from GPU memory (VRAM)"
-  (when (and target (> (render-texture-id target) 0))
-    (when (and (render-texture-texture target) (> (texture-id (render-texture-texture target)) 0))
+  (when (> (render-texture-id target) 0)
+    (when (> (texture-id (render-texture-texture target)) 0)
       ;; Color texture attached to FBO is deleted
       (rl-unload-texture (texture-id (render-texture-texture target))))
-    ;; NOTE: Depth renderbuffer is deleted before deleting framebuffer
-    (when (and (render-texture-depth target) (> (texture-id (render-texture-depth target)) 0))
-      (gl:delete-renderbuffers (list (texture-id (render-texture-depth target)))))
-    (gl:delete-framebuffers (list (render-texture-id target)))
-    (trace-log-info "FBO: [ID ~d] Unloaded framebuffer from VRAM (GPU)" (render-texture-id target))
-    (setf (render-texture-id target) 0))
+    ;; NOTE: Depth texture/renderbuffer is automatically
+    ;; queried and deleted before deleting framebuffer
+    (rl-unload-framebuffer (render-texture-id target)))
   nil)
 
 (defun %pixel-bytes (pixels)
@@ -3124,21 +3103,6 @@
 ;;;------------------------------------------------------------------------------------
 ;;; Texture drawing functions
 ;;;------------------------------------------------------------------------------------
-
-(defun bind-texture-safe (texture)
-  "Bind texture for drawing with safety checks (not part of raylib)"
-  (let ((texture-id (if (and texture (is-texture-valid texture))
-                        (texture-id texture)
-                        (if *default-texture* (texture-id *default-texture*) 0))))
-    (unless (= texture-id *current-texture-id*)
-      (gl:bind-texture :texture-2d texture-id)
-      (setf *current-texture-id* texture-id))))
-
-(defun setup-texture-drawing ()
-  "Setup OpenGL state for texture drawing (not part of raylib)"
-  (gl:enable :texture-2d)
-  (gl:enable :blend)
-  (gl:blend-func :src-alpha :one-minus-src-alpha))
 
 (defun draw-texture (texture pos-x pos-y tint)
   "Draw a Texture2D"
@@ -3321,19 +3285,6 @@
       (texture-format texture)
       0))
 
-;;; Cleanup functions
-
-(defun cleanup-texture-system ()
-  "Cleanup all loaded textures"
-  (loop for texture being the hash-values of *texture-registry* do
-    (when (is-texture-valid texture)
-      (gl:delete-texture (texture-id texture))))
-  (clrhash *texture-registry*)
-  (when *default-texture*
-    (setf *default-texture* nil))
-  (setf *texture-id-counter* 1)
-  (setf *current-texture-id* 0))
-
 ;;; RenderTexture System (from raylib.h and rcore.c)
 ;;; Used for render-to-texture functionality - strictly following raylib C implementation
 
@@ -3344,70 +3295,6 @@
 ;;;     Texture depth;          // Depth buffer attachment texture
 ;;; } RenderTexture;
 ;; RenderTexture structure is defined in raylib.lisp
-
-;;; Global render texture state (following raylib CORE.Window state)
-(defvar *current-fbo* nil "Currently bound framebuffer")
-(defvar *current-fbo-width* 0 "Current framebuffer width")
-(defvar *current-fbo-height* 0 "Current framebuffer height")
-(defvar *using-fbo* nil "Whether currently using framebuffer")
-
-;;; Pixel format constants (from raylib.h)
-
-;;; Attachment constants (from rlgl.h)
-(defconstant +rl-attachment-color-channel0+ 0 "Color attachment 0")
-(defconstant +rl-attachment-depth+ 100 "Depth attachment")
-(defconstant +rl-attachment-texture2d+ 100 "Texture2D attachment type")
-(defconstant +rl-attachment-renderbuffer+ 200 "Renderbuffer attachment type")
-
-;;; Helper functions for rlgl-style operations (following raylib rlgl.c patterns)
-(defun rl-load-framebuffer (width height)
-  "Load framebuffer (following rlLoadFramebuffer from rlgl.c)"
-  (declare (ignore width height))
-  (let ((fbo-id (first (gl:gen-framebuffers 1))))
-    (format t "INFO: FBO: [ID ~d] Framebuffer object created successfully~%" fbo-id)
-    fbo-id))
-
-(defun rl-load-texture-depth (width height use-renderbuffer)
-  "Load depth texture/renderbuffer (following rlLoadTextureDepth from rlgl.c)"
-  (if use-renderbuffer
-    ;; Create depth renderbuffer (as in raylib)
-    (let ((depth-id (first (gl:gen-renderbuffers 1))))
-      (gl:bind-renderbuffer :renderbuffer depth-id)
-      (gl:renderbuffer-storage :renderbuffer :depth-component width height)
-      (gl:bind-renderbuffer :renderbuffer 0)
-      (format t "INFO: TEXTURE: [ID ~d] Depth renderbuffer loaded successfully (~dx~d)~%" 
-              depth-id width height)
-      ;; Return texture structure for depth renderbuffer
-      (make-texture :id depth-id 
-                    :width width 
-                    :height height 
-                    :mipmaps 1 
-                    :format 19)) ; DEPTH_COMPONENT_24BIT format
-    ;; Create depth texture (alternative)
-    (let ((depth-id (first (gl:gen-textures 1))))
-      (gl:bind-texture :texture-2d depth-id)
-      (gl:tex-image-2d :texture-2d 0 :depth-component width height 0 :depth-component :unsigned-int (cffi:null-pointer))
-      (gl:tex-parameter :texture-2d :texture-min-filter :nearest)
-      (gl:tex-parameter :texture-2d :texture-mag-filter :nearest)
-      (gl:tex-parameter :texture-2d :texture-wrap-s :clamp-to-edge)
-      (gl:tex-parameter :texture-2d :texture-wrap-t :clamp-to-edge)
-      (gl:bind-texture :texture-2d 0)
-      (make-texture :id depth-id :width width :height height :mipmaps 1 :format 19))))
-
-;;; Note: rl-framebuffer-attach and rl-framebuffer-complete functions are now in gl.lisp
-
-;;; Render texture loading and management (following raylib LoadRenderTexture exactly)
-;;; Helper functions for rlgl-style rendering operations
-(defun rl-draw-render-batch-active ()
-  "Flush any pending draw calls (following rlDrawRenderBatchActive from rlgl.c)"
-  ;; In raylib this flushes batched geometry
-  ;; For now we ensure OpenGL state is consistent
-  (gl:flush))
-
-;;; Note: rl-enable-framebuffer and rl-disable-framebuffer functions are now in gl.lisp
-
-;; rl-viewport, rl-load-identity, rl-ortho are now defined in gl.lisp
-;; setup-viewport is now defined in core.lisp to match raylib's rcore.c organization
 
 ;;; Render texture mode functions (following raylib exactly)
 ;;; Utility functions for render textures

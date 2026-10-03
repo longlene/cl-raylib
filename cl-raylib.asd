@@ -3,9 +3,7 @@
   :author "loong0"
   :license "MIT"
   :description "Common Lisp implementation of Raylib - modular architecture matching raylib C structure"
-  :depends-on (#:cl-opengl
-               #:cl-glu
-               #:glfw
+  :depends-on (#:glfw
                #:float-features
                #:cffi
                #:bordeaux-threads
@@ -38,12 +36,8 @@
    (:file "camera3d")
    (:file "color")
    (:file "textures")
-   (:file "shaders")               ; Shader system (matches raylib rlgl.c shader functionality)
    (:file "utils")                 ; Utility functions and logging system (required for raylib compatibility)
    (:file "shapes")
-   (:file "shapes3d")
-   (:file "collision")             ; Collision detection (stateless, matches raylib design)
-   (:file "models")                ; 3D models and meshes (matching raylib rmodels.c)
    (:file "truetype")              ; stb_truetype.h + stb_rect_pack.h (used by rtext.c)
    (:file "text")                  ; rtext.c
    (:file "miniaudio")             ; miniaudio.h subset: data conversion + PulseAudio playback device

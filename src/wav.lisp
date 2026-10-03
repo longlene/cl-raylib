@@ -65,7 +65,7 @@
 (defun %u64le (v i) (logior (%u32le v i) (ash (%u32le v (+ i 4)) 32)))
 (defun %u16be (v i) (logior (ash (aref v i) 8) (aref v (+ i 1))))
 (defun %u32be (v i) (logior (ash (%u16be v i) 16) (%u16be v (+ i 2))))
-(defun %s16 (x) (if (>= x #x8000) (- x #x10000) x))
+;; NOTE: %s16 is defined in truetype.lisp
 (defun %s32 (x) (if (>= x #x80000000) (- x #x100000000) x))
 (defun %s64 (x) (if (>= x #x8000000000000000) (- x #x10000000000000000) x))
 

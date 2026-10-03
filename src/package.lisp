@@ -7,44 +7,6 @@
         #:org.shirakumo.flare.transform)
   (:import-from #:alexandria
                 #:clamp)
-  (:import-from #:cl-opengl
-                #:with-pushed-matrix
-                #:matrix-mode
-                #:load-identity
-                #:ortho
-                #:load-matrix
-                #:disable
-                #:enable
-                #:cull-face
-                #:polygon-mode
-                #:color
-                #:vertex
-                #:begin
-                #:end
-                #:point-size
-                #:bind-texture
-                #:tex-coord
-                #:mult-matrix
-                #:draw-elements
-                #:draw-arrays
-                #:gen-buffer
-                #:bind-buffer
-                #:buffer-data
-                #:depth-func
-                #:frustum
-                #:gen-texture
-                #:tex-parameter
-                #:tex-image-2d
-                #:generate-mipmap
-                #:gen-framebuffer
-                #:gen-renderbuffer
-                #:bind-framebuffer
-                #:viewport)
-  (:import-from #:%gl
-                #:enable-vertex-attrib-array
-                #:vertex-attrib-pointer)
-  (:import-from #:cl-glu
-                #:look-at)
   (:local-nicknames
    (#:glfw #:org.shirakumo.fraf.glfw)
    (#:%glfw #:org.shirakumo.fraf.glfw.cffi))
@@ -207,7 +169,7 @@
    #:+material-map-diffuse+ #:+material-map-specular+ #:+max-material-maps+
    
    ;; Utility functions
-   #:color-normalize #:color-multiply #:set-gl-color #:matrix4-rotate-axis
+   #:color-normalize #:color-multiply #:matrix4-rotate-axis
    
    ;; Rendering control
    #:set-wireframe-mode #:set-lighting-enabled #:unload-model
@@ -282,11 +244,11 @@
    #:+pixelformat-compressed-astc-8x8-rgba+ #:+pixelformat-uncompressed-rgba+
    
    ;; GPU Texture functions
-   #:init-texture-system #:load-texture-from-image #:load-texture 
+   #:load-texture-from-image #:load-texture 
    #:is-texture-valid #:unload-texture #:update-texture
-   #:set-texture-filter #:set-texture-wrap #:bind-texture #:setup-texture-drawing
+   #:set-texture-filter #:set-texture-wrap
    #:draw-texture #:draw-texture-v #:draw-texture-ex #:draw-texture-rec #:draw-texture-pro
-   #:draw-texture-npatch #:get-texture-data #:get-texture-format #:cleanup-texture-system
+   #:draw-texture-npatch #:get-texture-data #:get-texture-format
    #:load-image-from-texture
    
    ;; Render Texture functions  
@@ -684,8 +646,17 @@
    #:get-shader-location #:get-shader-location-attrib
    #:set-shader-value #:set-shader-value-v #:set-shader-value-matrix #:set-shader-value-texture
    #:begin-shader-mode #:end-shader-mode #:with-shader-mode
-   #:is-shader-valid #:get-current-shader #:text-format
-   #:init-shader-system #:cleanup-shader-system
+   #:is-shader-valid #:text-format
+   ;; VR stereo rendering
+   #:vr-device-info #:make-vr-device-info #:vr-device-info-h-resolution #:vr-device-info-v-resolution
+   #:vr-device-info-h-screen-size #:vr-device-info-v-screen-size #:vr-device-info-eye-to-screen-distance
+   #:vr-device-info-lens-separation-distance #:vr-device-info-interpupillary-distance
+   #:vr-device-info-lens-distortion-values #:vr-device-info-chroma-ab-correction
+   #:vr-stereo-config #:make-vr-stereo-config #:vr-stereo-config-projection #:vr-stereo-config-view-offset
+   #:vr-stereo-config-left-lens-center #:vr-stereo-config-right-lens-center
+   #:vr-stereo-config-left-screen-center #:vr-stereo-config-right-screen-center
+   #:vr-stereo-config-scale #:vr-stereo-config-scale-in
+   #:begin-vr-stereo-mode #:end-vr-stereo-mode #:load-vr-stereo-config #:unload-vr-stereo-config
    
    ;; Shader location constants
    #:+shader-loc-vertex-position+ #:+shader-loc-vertex-texcoord01+ #:+shader-loc-vertex-texcoord02+
@@ -697,13 +668,15 @@
    #:+shader-loc-map-roughness+ #:+shader-loc-map-occlusion+ #:+shader-loc-map-emission+
    #:+shader-loc-map-height+ #:+shader-loc-map-cubemap+ #:+shader-loc-map-irradiance+
    #:+shader-loc-map-prefilter+ #:+shader-loc-map-brdf+ #:+shader-loc-vertex-boneids+
-   #:+shader-loc-vertex-boneweights+ #:+shader-loc-bone-matrices+ #:+shader-loc-vertex-instance-tx+
+   #:+shader-loc-vertex-boneweights+ #:+shader-loc-matrix-bonetransforms+ #:+shader-loc-vertex-instancetransform+
+   #:+shader-loc-map-diffuse+ #:+shader-loc-map-specular+
    
    ;; Shader uniform type constants
    #:+shader-uniform-float+ #:+shader-uniform-vec2+ #:+shader-uniform-vec3+ #:+shader-uniform-vec4+
    #:+shader-uniform-int+ #:+shader-uniform-ivec2+ #:+shader-uniform-ivec3+ #:+shader-uniform-ivec4+
    #:+shader-uniform-uint+ #:+shader-uniform-uivec2+ #:+shader-uniform-uivec3+ #:+shader-uniform-uivec4+
    #:+shader-uniform-sampler2d+
+   #:+shader-attrib-float+ #:+shader-attrib-vec2+ #:+shader-attrib-vec3+ #:+shader-attrib-vec4+
    
    ;; Render texture system
    #:render-texture #:make-render-texture #:render-texture-id #:render-texture-texture #:render-texture-depth

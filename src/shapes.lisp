@@ -72,11 +72,8 @@
 
 (defun %matrix-transform-scale ()
   "Return m0 and m5 of the current transform matrix (rlGetMatrixTransform)"
-  (handler-case
-      (let ((m (gl:get-float :modelview-matrix)))
-        (values (if (zerop (aref m 0)) 1.0 (aref m 0))
-                (if (zerop (aref m 5)) 1.0 (aref m 5))))
-    (error () (values 1.0 1.0))))
+  (let ((mat (rl-get-matrix-transform)))
+    (values (%m mat 0) (%m mat 5))))
 
 (defun %ease-cubic-in-out (time b c d)
   "Cubic easing in-out (used by draw-line-bezier only)"

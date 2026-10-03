@@ -156,8 +156,87 @@
 ;;; Shader structure (matches raylib Shader)
 (defstruct shader
   "Shader program structure"
-  (id 0 :type fixnum)                                                      ; Shader program id
-  (locs (make-array +max-shader-locations+ :initial-element -1) :type simple-vector)) ; Shader locations array
+  (id 0 :type fixnum)                   ; Shader program id
+  (locs nil :type (or null simple-vector))) ; Shader locations array (RL_MAX_SHADER_LOCATIONS)
+
+;;; Shader location index
+(defconstant +shader-loc-vertex-position+ 0 "Shader location: vertex attribute: position")
+(defconstant +shader-loc-vertex-texcoord01+ 1 "Shader location: vertex attribute: texcoord01")
+(defconstant +shader-loc-vertex-texcoord02+ 2 "Shader location: vertex attribute: texcoord02")
+(defconstant +shader-loc-vertex-normal+ 3 "Shader location: vertex attribute: normal")
+(defconstant +shader-loc-vertex-tangent+ 4 "Shader location: vertex attribute: tangent")
+(defconstant +shader-loc-vertex-color+ 5 "Shader location: vertex attribute: color")
+(defconstant +shader-loc-matrix-mvp+ 6 "Shader location: matrix uniform: model-view-projection")
+(defconstant +shader-loc-matrix-view+ 7 "Shader location: matrix uniform: view (camera transform)")
+(defconstant +shader-loc-matrix-projection+ 8 "Shader location: matrix uniform: projection")
+(defconstant +shader-loc-matrix-model+ 9 "Shader location: matrix uniform: model (transform)")
+(defconstant +shader-loc-matrix-normal+ 10 "Shader location: matrix uniform: normal")
+(defconstant +shader-loc-vector-view+ 11 "Shader location: vector uniform: view")
+(defconstant +shader-loc-color-diffuse+ 12 "Shader location: vector uniform: diffuse color")
+(defconstant +shader-loc-color-specular+ 13 "Shader location: vector uniform: specular color")
+(defconstant +shader-loc-color-ambient+ 14 "Shader location: vector uniform: ambient color")
+(defconstant +shader-loc-map-albedo+ 15 "Shader location: sampler2d texture: albedo (same as: SHADER_LOC_MAP_DIFFUSE)")
+(defconstant +shader-loc-map-metalness+ 16 "Shader location: sampler2d texture: metalness (same as: SHADER_LOC_MAP_SPECULAR)")
+(defconstant +shader-loc-map-normal+ 17 "Shader location: sampler2d texture: normal")
+(defconstant +shader-loc-map-roughness+ 18 "Shader location: sampler2d texture: roughness")
+(defconstant +shader-loc-map-occlusion+ 19 "Shader location: sampler2d texture: occlusion")
+(defconstant +shader-loc-map-emission+ 20 "Shader location: sampler2d texture: emission")
+(defconstant +shader-loc-map-height+ 21 "Shader location: sampler2d texture: height")
+(defconstant +shader-loc-map-cubemap+ 22 "Shader location: samplerCube texture: cubemap")
+(defconstant +shader-loc-map-irradiance+ 23 "Shader location: samplerCube texture: irradiance")
+(defconstant +shader-loc-map-prefilter+ 24 "Shader location: samplerCube texture: prefilter")
+(defconstant +shader-loc-map-brdf+ 25 "Shader location: sampler2d texture: brdf")
+(defconstant +shader-loc-vertex-boneids+ 26 "Shader location: vertex attribute: bone indices")
+(defconstant +shader-loc-vertex-boneweights+ 27 "Shader location: vertex attribute: bone weights")
+(defconstant +shader-loc-matrix-bonetransforms+ 28 "Shader location: matrix attribute: bone transforms (animation)")
+(defconstant +shader-loc-vertex-instancetransform+ 29 "Shader location: vertex attribute: instance transforms")
+
+(defconstant +shader-loc-map-diffuse+ +shader-loc-map-albedo+)
+(defconstant +shader-loc-map-specular+ +shader-loc-map-metalness+)
+
+;;; Shader uniform data type
+(defconstant +shader-uniform-float+ 0 "Shader uniform type: float")
+(defconstant +shader-uniform-vec2+ 1 "Shader uniform type: vec2 (2 float)")
+(defconstant +shader-uniform-vec3+ 2 "Shader uniform type: vec3 (3 float)")
+(defconstant +shader-uniform-vec4+ 3 "Shader uniform type: vec4 (4 float)")
+(defconstant +shader-uniform-int+ 4 "Shader uniform type: int")
+(defconstant +shader-uniform-ivec2+ 5 "Shader uniform type: ivec2 (2 int)")
+(defconstant +shader-uniform-ivec3+ 6 "Shader uniform type: ivec3 (3 int)")
+(defconstant +shader-uniform-ivec4+ 7 "Shader uniform type: ivec4 (4 int)")
+(defconstant +shader-uniform-uint+ 8 "Shader uniform type: unsigned int")
+(defconstant +shader-uniform-uivec2+ 9 "Shader uniform type: uivec2 (2 unsigned int)")
+(defconstant +shader-uniform-uivec3+ 10 "Shader uniform type: uivec3 (3 unsigned int)")
+(defconstant +shader-uniform-uivec4+ 11 "Shader uniform type: uivec4 (4 unsigned int)")
+(defconstant +shader-uniform-sampler2d+ 12 "Shader uniform type: sampler2d")
+
+;;; Shader attribute data types
+(defconstant +shader-attrib-float+ 0 "Shader attribute type: float")
+(defconstant +shader-attrib-vec2+ 1 "Shader attribute type: vec2 (2 float)")
+(defconstant +shader-attrib-vec3+ 2 "Shader attribute type: vec3 (3 float)")
+(defconstant +shader-attrib-vec4+ 3 "Shader attribute type: vec4 (4 float)")
+
+;;; VrDeviceInfo, Head-Mounted-Display device parameters
+(defstruct vr-device-info
+  (h-resolution 0 :type fixnum)         ; Horizontal resolution in pixels
+  (v-resolution 0 :type fixnum)         ; Vertical resolution in pixels
+  (h-screen-size 0.0 :type single-float) ; Horizontal size in meters
+  (v-screen-size 0.0 :type single-float) ; Vertical size in meters
+  (eye-to-screen-distance 0.0 :type single-float) ; Distance between eye and display in meters
+  (lens-separation-distance 0.0 :type single-float) ; Lens separation distance in meters
+  (interpupillary-distance 0.0 :type single-float) ; IPD (distance between pupils) in meters
+  (lens-distortion-values (make-array 4 :element-type 'single-float :initial-element 0.0)) ; Lens distortion constant parameters
+  (chroma-ab-correction (make-array 4 :element-type 'single-float :initial-element 0.0))) ; Chromatic aberration correction parameters
+
+;;; VrStereoConfig, VR stereo rendering configuration for simulator
+(defstruct vr-stereo-config
+  (projection (vector (meye 4) (meye 4)))  ; VR projection matrices (per eye)
+  (view-offset (vector (meye 4) (meye 4))) ; VR view offset matrices (per eye)
+  (left-lens-center (make-array 2 :element-type 'single-float :initial-element 0.0))   ; VR left lens center
+  (right-lens-center (make-array 2 :element-type 'single-float :initial-element 0.0))  ; VR right lens center
+  (left-screen-center (make-array 2 :element-type 'single-float :initial-element 0.0)) ; VR left screen center
+  (right-screen-center (make-array 2 :element-type 'single-float :initial-element 0.0)) ; VR right screen center
+  (scale (make-array 2 :element-type 'single-float :initial-element 0.0))    ; VR distortion scale
+  (scale-in (make-array 2 :element-type 'single-float :initial-element 0.0))) ; VR distortion scale in
 
 ;; Note: raylib doesn't have a standalone Vertex struct - 
 ;; vertex data is stored as arrays within the Mesh struct

@@ -486,11 +486,21 @@
   ;; Go back to the modelview state from BeginDrawing since we are back to the default FBO
   (rl-matrix-mode +rl-modelview+)       ; Switch back to modelview matrix
   (rl-load-identity)                    ; Reset current matrix (modelview)
-  (rl-mult-matrixf (mat4-to-array (core-data-window-screen-scale *core*))) ; Apply screen scaling if required
+  (rl-mult-matrixf (matrix-to-float-v (core-data-window-screen-scale *core*))) ; Apply screen scaling if required
   ;; Reset current fbo to screen size
   (setf (core-data-window-current-fbo-width *core*) (core-data-window-render-width *core*)
         (core-data-window-current-fbo-height *core*) (core-data-window-render-height *core*)
         (core-data-window-using-fbo *core*) nil))
+
+;; Begin custom shader mode
+(defun begin-shader-mode (shader)
+  "Begin custom shader drawing"
+  (rl-set-shader (shader-id shader) (shader-locs shader)))
+
+;; End custom shader mode (returns to default shader)
+(defun end-shader-mode ()
+  "End custom shader drawing (use default shader)"
+  (rl-set-shader (rl-get-shader-id-default) (rl-get-shader-locs-default)))
 
 (defun begin-blend-mode (mode)
   "Begin blending mode (alpha, additive, multiplied, subtract, custom)"
@@ -516,6 +526,201 @@
   "End scissor mode"
   (rl-draw-render-batch-active)         ; Update and draw internal render batch
   (rl-disable-scissor-test))
+
+;;; VR Stereo Rendering (from rcore.c)
+
+;; Begin VR drawing configuration
+(defun begin-vr-stereo-mode (config)
+  "Begin stereo rendering (requires VR simulator)"
+  (rl-enable-stereo-render)
+  ;; Set stereo render matrices
+  (rl-set-matrix-projection-stereo (aref (vr-stereo-config-projection config) 0) (aref (vr-stereo-config-projection config) 1))
+  (rl-set-matrix-view-offset-stereo (aref (vr-stereo-config-view-offset config) 0) (aref (vr-stereo-config-view-offset config) 1)))
+
+;; End VR drawing process (and desktop mirror)
+(defun end-vr-stereo-mode ()
+  "End stereo rendering (requires VR simulator)"
+  (rl-disable-stereo-render))
+
+;; Load VR stereo config for VR simulator device parameters
+(defun load-vr-stereo-config (device)
+  "Load VR stereo config for VR simulator device parameters"
+  (let ((config (make-vr-stereo-config)))
+    (if (/= (rl-get-version) +rl-opengl-11+)
+        (let* (;; Compute aspect ratio
+               (aspect (/ (* (float (vr-device-info-h-resolution device) 1.0) 0.5)
+                          (float (vr-device-info-v-resolution device) 1.0)))
+               ;; Compute lens parameters
+               (h-screen-size (vr-device-info-h-screen-size device))
+               (lens-shift (/ (- (* h-screen-size 0.25) (* (vr-device-info-lens-separation-distance device) 0.5))
+                              h-screen-size)))
+          (setf (aref (vr-stereo-config-left-lens-center config) 0) (+ 0.25 lens-shift)
+                (aref (vr-stereo-config-left-lens-center config) 1) 0.5
+                (aref (vr-stereo-config-right-lens-center config) 0) (- 0.75 lens-shift)
+                (aref (vr-stereo-config-right-lens-center config) 1) 0.5
+                (aref (vr-stereo-config-left-screen-center config) 0) 0.25
+                (aref (vr-stereo-config-left-screen-center config) 1) 0.5
+                (aref (vr-stereo-config-right-screen-center config) 0) 0.75
+                (aref (vr-stereo-config-right-screen-center config) 1) 0.5)
+          ;; Compute distortion scale parameters
+          ;; NOTE: To get lens max radius, lensShift must be normalized to [-1..1]
+          (let* ((lens-radius (abs (- -1.0 (* 4.0 lens-shift))))
+                 (lens-radius-sq (* lens-radius lens-radius))
+                 (k (vr-device-info-lens-distortion-values device))
+                 (distortion-scale (+ (aref k 0)
+                                      (* (aref k 1) lens-radius-sq)
+                                      (* (aref k 2) lens-radius-sq lens-radius-sq)
+                                      (* (aref k 3) lens-radius-sq lens-radius-sq lens-radius-sq)))
+                 (norm-screen-width 0.5)
+                 (norm-screen-height 1.0))
+            (setf (aref (vr-stereo-config-scale-in config) 0) (/ 2.0 norm-screen-width)
+                  (aref (vr-stereo-config-scale-in config) 1) (/ (/ 2.0 norm-screen-height) aspect)
+                  (aref (vr-stereo-config-scale config) 0) (/ (* norm-screen-width 0.5) distortion-scale)
+                  (aref (vr-stereo-config-scale config) 1) (/ (* norm-screen-height 0.5 aspect) distortion-scale))
+            ;; Fovy is normally computed with: 2*atan2f(device.vScreenSize, 2*device.eyeToScreenDistance)
+            ;; ...but with lens distortion it is increased (see Oculus SDK Documentation)
+            (let* ((fovy (* 2.0 (atan (* (vr-device-info-v-screen-size device) 0.5 distortion-scale)
+                                      (vr-device-info-eye-to-screen-distance device)))) ; Really need distortionScale?
+                   ;; Compute camera projection matrices
+                   (proj-offset (* 4.0 lens-shift)) ; Scaled to projection space coordinates [-1..1]
+                   (proj (matrix-perspective fovy aspect (rl-get-cull-distance-near) (rl-get-cull-distance-far)))
+                   (ipd (vr-device-info-interpupillary-distance device)))
+              (setf (aref (vr-stereo-config-projection config) 0) (matrix-multiply proj (matrix-translate proj-offset 0.0 0.0))
+                    (aref (vr-stereo-config-projection config) 1) (matrix-multiply proj (matrix-translate (- proj-offset) 0.0 0.0)))
+              ;; Compute camera transformation matrices
+              ;; NOTE: Camera movement might seem more natural if modelling the head
+              ;; Axis of rotation is the base of the head, so adding some y (base of head to eye level
+              ;; and -z (center of head to eye protrusion) to the camera positions
+              (setf (aref (vr-stereo-config-view-offset config) 0) (matrix-translate (* ipd 0.5) 0.075 0.045)
+                    (aref (vr-stereo-config-view-offset config) 1) (matrix-translate (* (- ipd) 0.5) 0.075 0.045)))))
+        (trace-log +log-warning+ "RLGL: VR Simulator not supported on OpenGL 1.1"))
+    config))
+
+;; Unload VR stereo config properties
+(defun unload-vr-stereo-config (config)
+  "Unload VR stereo config"
+  (declare (ignore config))
+  (trace-log +log-info+ "UnloadVrStereoConfig not implemented in rcore.c"))
+
+;;; Shaders Management (from rcore.c)
+
+;; Load shader from files and bind default locations
+;; NOTE: If shader filename is NULL, using default vertex/fragment shaders
+(defun load-shader (vs-file-name fs-file-name)
+  "Load shader from files and bind default locations"
+  (let ((v-shader-str (when vs-file-name (load-file-text vs-file-name)))
+        (f-shader-str (when fs-file-name (load-file-text fs-file-name))))
+    (when (and (null v-shader-str) (null f-shader-str))
+      (trace-log +log-warning+ "SHADER: Shader files provided are not valid, using default shader"))
+    (load-shader-from-memory v-shader-str f-shader-str)))
+
+;; Load shader from code strings and bind default locations
+(defun load-shader-from-memory (vs-code fs-code)
+  "Load shader from code strings and bind default locations"
+  (let ((shader (make-shader)))
+    (setf (shader-id shader) (rl-load-shader-program vs-code fs-code))
+    (cond ((= (shader-id shader) 0)
+           ;; Shader could not be loaded but still loading the location points to avoid potential crashes
+           ;; NOTE: All locations set to -1 (no location found)
+           (setf (shader-locs shader) (make-array +rl-max-shader-locations+ :initial-element -1)))
+          ((= (shader-id shader) (rl-get-shader-id-default))
+           (setf (shader-locs shader) (rl-get-shader-locs-default)))
+          ((> (shader-id shader) 0)
+           ;; After custom shader loading, trying to set default location names
+           ;; Default shader attribute locations have been binded before linking:
+           ;;  - vertex position location    = 0
+           ;;  - vertex texcoord location    = 1
+           ;;  - vertex normal location      = 2
+           ;;  - vertex color location       = 3
+           ;;  - vertex tangent location     = 4
+           ;;  - vertex texcoord2 location   = 5
+           ;;  - vertex boneIndices location = 6
+           ;;  - vertex boneWeights location = 7
+
+           ;; NOTE: If any location is not found, loc point becomes -1
+
+           ;; Load shader locations array
+           ;; NOTE: All locations set to -1 (no location)
+           (let ((locs (make-array +rl-max-shader-locations+ :initial-element -1))
+                 (id (shader-id shader)))
+             ;; Get handles to GLSL input attribute locations
+             (setf (aref locs +shader-loc-vertex-position+) (rl-get-location-attrib id +rl-default-shader-attrib-name-position+)
+                   (aref locs +shader-loc-vertex-texcoord01+) (rl-get-location-attrib id +rl-default-shader-attrib-name-texcoord+)
+                   (aref locs +shader-loc-vertex-texcoord02+) (rl-get-location-attrib id +rl-default-shader-attrib-name-texcoord2+)
+                   (aref locs +shader-loc-vertex-normal+) (rl-get-location-attrib id +rl-default-shader-attrib-name-normal+)
+                   (aref locs +shader-loc-vertex-tangent+) (rl-get-location-attrib id +rl-default-shader-attrib-name-tangent+)
+                   (aref locs +shader-loc-vertex-color+) (rl-get-location-attrib id +rl-default-shader-attrib-name-color+)
+                   (aref locs +shader-loc-vertex-boneids+) (rl-get-location-attrib id +rl-default-shader-attrib-name-boneindices+)
+                   (aref locs +shader-loc-vertex-boneweights+) (rl-get-location-attrib id +rl-default-shader-attrib-name-boneweights+)
+                   (aref locs +shader-loc-vertex-instancetransform+) (rl-get-location-attrib id +rl-default-shader-attrib-name-instancetransform+))
+
+             ;; Get handles to GLSL uniform locations (vertex shader)
+             (setf (aref locs +shader-loc-matrix-mvp+) (rl-get-location-uniform id +rl-default-shader-uniform-name-mvp+)
+                   (aref locs +shader-loc-matrix-view+) (rl-get-location-uniform id +rl-default-shader-uniform-name-view+)
+                   (aref locs +shader-loc-matrix-projection+) (rl-get-location-uniform id +rl-default-shader-uniform-name-projection+)
+                   (aref locs +shader-loc-matrix-model+) (rl-get-location-uniform id +rl-default-shader-uniform-name-model+)
+                   (aref locs +shader-loc-matrix-normal+) (rl-get-location-uniform id +rl-default-shader-uniform-name-normal+)
+                   (aref locs +shader-loc-matrix-bonetransforms+) (rl-get-location-uniform id +rl-default-shader-uniform-name-bonematrices+))
+
+             ;; Get handles to GLSL uniform locations (fragment shader)
+             (setf (aref locs +shader-loc-color-diffuse+) (rl-get-location-uniform id +rl-default-shader-uniform-name-color+)
+                   (aref locs +shader-loc-map-diffuse+) (rl-get-location-uniform id +rl-default-shader-sampler2d-name-texture0+) ; SHADER_LOC_MAP_ALBEDO
+                   (aref locs +shader-loc-map-specular+) (rl-get-location-uniform id +rl-default-shader-sampler2d-name-texture1+) ; SHADER_LOC_MAP_METALNESS
+                   (aref locs +shader-loc-map-normal+) (rl-get-location-uniform id +rl-default-shader-sampler2d-name-texture2+))
+             (setf (shader-locs shader) locs))))
+    shader))
+
+;; Check if shader is valid (loaded on GPU)
+(defun is-shader-valid (shader)
+  "Check if a shader is valid (loaded on GPU)"
+  (and (> (shader-id shader) 0)         ; Validate shader id (GPU loaded successfully)
+       (not (null (shader-locs shader))))) ; Validate memory has been allocated for default shader locations
+
+;; Unload shader from GPU memory (VRAM)
+(defun unload-shader (shader)
+  "Unload shader from GPU memory (VRAM)"
+  (when (/= (shader-id shader) (rl-get-shader-id-default))
+    (rl-unload-shader-program (shader-id shader))
+    ;; NOTE: If shader loading failed, it should be 0
+    (setf (shader-locs shader) nil)))
+
+;; Get shader uniform location
+(defun get-shader-location (shader uniform-name)
+  "Get shader uniform location"
+  (rl-get-location-uniform (shader-id shader) uniform-name))
+
+;; Get shader attribute location
+(defun get-shader-location-attrib (shader attrib-name)
+  "Get shader attribute location"
+  (rl-get-location-attrib (shader-id shader) attrib-name))
+
+;; Set shader uniform value
+;; NOTE: VALUE is a number, vec2/vec3/vec4, sequence, specialized vector or foreign pointer
+(defun set-shader-value (shader loc-index value uniform-type)
+  "Set shader uniform value"
+  (set-shader-value-v shader loc-index value uniform-type 1))
+
+;; Set shader uniform value vector
+(defun set-shader-value-v (shader loc-index value uniform-type count)
+  "Set shader uniform value vector"
+  (when (> loc-index -1)
+    (rl-enable-shader (shader-id shader))
+    (rl-set-uniform loc-index value uniform-type count)))
+    ;;rlDisableShader();      // Avoid resetting current shader program, in case other uniforms are set
+
+;; Set shader uniform value (matrix 4x4)
+(defun set-shader-value-matrix (shader loc-index mat)
+  "Set shader uniform value (matrix 4x4)"
+  (when (> loc-index -1)
+    (rl-enable-shader (shader-id shader))
+    (rl-set-uniform-matrix loc-index mat)))
+
+;; Set shader uniform value for texture
+(defun set-shader-value-texture (shader loc-index texture)
+  "Set shader uniform value for texture (sampler2d)"
+  (when (> loc-index -1)
+    (rl-enable-shader (shader-id shader))
+    (rl-set-uniform-sampler loc-index (texture-id texture))))
 
 ;;; Screen-space-related functions (from rcore.c)
 

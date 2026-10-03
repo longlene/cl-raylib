@@ -90,10 +90,6 @@
   "C (unsigned char) cast of a number: truncate toward zero, keep the low 8 bits"
   (logand (truncate x) #xff))
 
-(defun set-gl-color (color)
-  "Set OpenGL color from cl-raylib color"
-  (destructuring-bind (r g b a) (keyword-to-color color)
-    (gl:color (/ r 255.0) (/ g 255.0) (/ b 255.0) (/ a 255.0))))
 
 ;;;----------------------------------------------------------------------------------
 ;;; Color/pixel related functions (raylib rtextures.c)
