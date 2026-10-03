@@ -1,106 +1,120 @@
-;;;; core_smooth_pixelperfect.lisp - Smooth Pixel-perfect camera
-;;;; Translated from raylib/examples/core/core_smooth_pixelperfect.c
+;;;; raylib [core] example - smooth pixelperfect
+;;;;
+;;;; Example complexity rating: [★★★☆] 3/4
+;;;;
+;;;; Example originally created with raylib 3.7, last time updated with raylib 4.0
+;;;;
+;;;; Example contributed by Giancamillo Alessandroni (@NotManyIdeasDev) and
+;;;; reviewed by Ramon Santamaria (@raysan5)
+;;;;
+;;;; Copyright (c) 2021-2025 Giancamillo Alessandroni (@NotManyIdeasDev) and Ramon Santamaria (@raysan5)
+;;;; Common Lisp port of raylib/examples/core/core_smooth_pixelperfect.c
 
 (require :cl-raylib)
 
-(defpackage :core-smooth-pixelperfect
-  (:use :cl :cl-raylib))
-
-(in-package :core-smooth-pixelperfect)
+(defpackage #:raylib-examples/core-smooth-pixelperfect
+  (:use #:cl #:raylib))
+(in-package #:raylib-examples/core-smooth-pixelperfect)
 
 (defun main ()
-  "Main function - smooth pixel-perfect camera"
-  (let ((screen-width 800)
-        (screen-height 450)
-        (virtual-screen-width 160)
-        (virtual-screen-height 90))
+  ;; Initialization
+  ;;--------------------------------------------------------------------------------------
+  (let* ((screen-width 800)
+         (screen-height 450)
+         (virtual-screen-width 160)
+         (virtual-screen-height 90)
+         (virtual-ratio (/ (float screen-width) (float virtual-screen-width))))
 
-    ;; Initialization
-    (init-window screen-width screen-height "raylib [core] example - smooth pixel-perfect camera")
+    (init-window screen-width screen-height "raylib [core] example - smooth pixelperfect")
 
-    (let ((virtual-ratio (/ screen-width virtual-screen-width)))
+    (let* ((world-space-camera (make-camera2d :zoom 1.0)) ; Game world camera
+           (screen-space-camera (make-camera2d :zoom 1.0)) ; Smoothing camera
+           ;; Load render texture to draw all our objects
+           (target (load-render-texture virtual-screen-width virtual-screen-height))
+           (rec01 (make-rectangle :x 70.0 :y 35.0 :width 20.0 :height 20.0))
+           (rec02 (make-rectangle :x 90.0 :y 55.0 :width 30.0 :height 10.0))
+           (rec03 (make-rectangle :x 80.0 :y 65.0 :width 15.0 :height 25.0))
+           ;; The target's height is flipped (in the source Rectangle), due to OpenGL reasons
+           (source-rec (make-rectangle :x 0.0 :y 0.0 :width (float (texture-width (render-texture-texture target)))
+                                       :height (- (float (texture-height (render-texture-texture target))))))
+           (dest-rec (make-rectangle :x (/ (- screen-width (/ screen-width 1.25)) 2.0) :y (/ (- screen-height (/ screen-height 1.25)) 2.0)
+                                     :width (/ screen-width 1.25) :height (/ screen-height 1.25)))
+           (origin (vec2 0.0 0.0))
+           (rotation 0.0)
+           (camera-x 0.0)
+           (camera-y 0.0)
+           (smooth-on t)
+           (overscan nil))
 
-      ;; Game world camera
-      (let ((world-space-camera (make-camera-2d :offset (vec2 0.0 0.0)
-                                                :target (vec2 0.0 0.0)
-                                                :rotation 0.0
-                                                :zoom 1.0))
-            ;; Smoothing camera
-            (screen-space-camera (make-camera-2d :offset (vec2 0.0 0.0)
-                                                :target (vec2 0.0 0.0)
-                                                :rotation 0.0
-                                                :zoom 1.0)))
+      (set-target-fps 60)
+      ;;--------------------------------------------------------------------------------------
 
-        ;; This is where we'll draw all our objects
-        (let ((target (load-render-texture virtual-screen-width virtual-screen-height))
-              (rec01 (make-rectangle :x 70.0 :y 35.0 :width 20.0 :height 20.0))
-              (rec02 (make-rectangle :x 90.0 :y 55.0 :width 30.0 :height 10.0))
-              (rec03 (make-rectangle :x 80.0 :y 65.0 :width 15.0 :height 25.0)))
+      ;; Main game loop
+      (loop until (window-should-close) ; Detect window close button or ESC key
+            do ;; Update
+               ;;----------------------------------------------------------------------------------
+               (incf rotation (* 60.0 (get-frame-time))) ; Rotate the rectangles, 60 degrees per second
 
-          ;; The target's height is flipped (in the source Rectangle), due to OpenGL reasons
-          (let ((source-rec (make-rectangle :x 0.0 :y 0.0 
-                                           :width (float (texture-width (render-texture-texture target)))
-                                           :height (float (- (texture-height (render-texture-texture target))))))
-                (dest-rec (make-rectangle :x (- virtual-ratio) :y (- virtual-ratio)
-                                         :width (+ screen-width (* virtual-ratio 2))
-                                         :height (+ screen-height (* virtual-ratio 2))))
-                (origin (vec2 0.0 0.0))
-                (rotation 0.0)
-                (camera-x 0.0)
-                (camera-y 0.0))
+               ;; Make the camera move to demonstrate the effect
+               (setf camera-x (- (* (sin (float (get-time) 1.0)) 50.0) 10.0)
+                     camera-y (* (cos (float (get-time) 1.0)) 30.0))
 
-            (set-target-fps 60)
+               ;; Set the camera's target to the values computed above
+               (setf (camera2d-target screen-space-camera) (vec2 camera-x camera-y))
 
-            ;; Main game loop
-            (loop until (window-should-close) do
-              ;; Update
-              ;; Rotate the rectangles, 60 degrees per second
-              (incf rotation (* 60.0 (get-frame-time)))
+               ;; Round worldSpace coordinates, keep decimals into screenSpace coordinates
+               (setf (vx (camera2d-target world-space-camera)) (ftruncate (vx (camera2d-target screen-space-camera))))
+               (decf (vx (camera2d-target screen-space-camera)) (vx (camera2d-target world-space-camera)))
+               (setf (vx (camera2d-target screen-space-camera)) (* (vx (camera2d-target screen-space-camera)) virtual-ratio))
 
-              ;; Make the camera move to demonstrate the effect
-              (setf camera-x (- (* (sin (get-time)) 50.0) 10.0))
-              (setf camera-y (* (cos (get-time)) 30.0))
+               (setf (vy (camera2d-target world-space-camera)) (ftruncate (vy (camera2d-target screen-space-camera))))
+               (decf (vy (camera2d-target screen-space-camera)) (vy (camera2d-target world-space-camera)))
+               (setf (vy (camera2d-target screen-space-camera)) (* (vy (camera2d-target screen-space-camera)) virtual-ratio))
 
-              ;; Set the camera's target to the values computed above
-              (setf (camera-2d-target screen-space-camera) (vec2 camera-x camera-y))
+               (when (is-key-pressed +key-s+) (setf smooth-on (not smooth-on)))
+               (when (is-key-pressed +key-o+) (setf overscan (not overscan)))
 
-              ;; Round worldSpace coordinates, keep decimals into screenSpace coordinates
-              (setf (vx (camera-2d-target world-space-camera)) (truncate (vx (camera-2d-target screen-space-camera))))
-              (decf (vx (camera-2d-target screen-space-camera)) (vx (camera-2d-target world-space-camera)))
-              (setf (vx (camera-2d-target screen-space-camera)) (* (vx (camera-2d-target screen-space-camera)) virtual-ratio))
+               (if overscan
+                   (setf dest-rec (make-rectangle :x (- virtual-ratio) :y (- virtual-ratio)
+                                                  :width (+ screen-width (* virtual-ratio 2)) :height (+ screen-height (* virtual-ratio 2))))
+                   (setf dest-rec (make-rectangle :x (/ (- screen-width (/ screen-width 1.25)) 2.0) :y (/ (- screen-height (/ screen-height 1.25)) 2.0)
+                                                  :width (/ screen-width 1.25) :height (/ screen-height 1.25))))
+               ;;----------------------------------------------------------------------------------
 
-              (setf (vy (camera-2d-target world-space-camera)) (truncate (vy (camera-2d-target screen-space-camera))))
-              (decf (vy (camera-2d-target screen-space-camera)) (vy (camera-2d-target world-space-camera)))
-              (setf (vy (camera-2d-target screen-space-camera)) (* (vy (camera-2d-target screen-space-camera)) virtual-ratio))
+               ;; Draw
+               ;;----------------------------------------------------------------------------------
+               (begin-texture-mode target)
+               (clear-background +raywhite+)
 
-              ;; Draw
-              (begin-texture-mode target)
-                (clear-background +raywhite+)
+               (begin-mode-2d world-space-camera)
+               (draw-rectangle-pro rec01 origin rotation +black+)
+               (draw-rectangle-pro rec02 origin (- rotation) +red+)
+               (draw-rectangle-pro rec03 origin (+ rotation 45.0) +blue+)
+               (end-mode-2d)
+               (end-texture-mode)
 
-                (begin-mode-2d world-space-camera)
-                  (draw-rectangle-pro rec01 origin rotation +black+)
-                  (draw-rectangle-pro rec02 origin (- rotation) +red+)
-                  (draw-rectangle-pro rec03 origin (+ rotation 45.0) +blue+)
-                (end-mode-2d)
-              (end-texture-mode)
+               (begin-drawing)
+               (clear-background +lightgray+)
 
-              (begin-drawing)
-                (clear-background +red+)
+               (if smooth-on
+                   (progn
+                     (begin-mode-2d screen-space-camera)
+                     (draw-texture-pro (render-texture-texture target) source-rec dest-rec origin 0.0 +white+)
+                     (end-mode-2d))
+                   (draw-texture-pro (render-texture-texture target) source-rec dest-rec origin 0.0 +white+))
 
-                (begin-mode-2d screen-space-camera)
-                  (draw-texture-pro (render-texture-texture target) source-rec dest-rec origin 0.0 +white+)
-                (end-mode-2d)
+               (draw-text (text-format "Screen resolution: %ix%i" screen-width screen-height) 10 10 20 +darkblue+)
+               (draw-text (text-format "World resolution: %ix%i" virtual-screen-width virtual-screen-height) 10 40 20 +darkgreen+)
+               (draw-text (text-format "Smooth: %s" (if smooth-on "ON" "OFF")) 10 (- screen-height 60) 20 +red+)
+               (draw-text (text-format "Overscan: %s" (if overscan "ON" "OFF")) 10 (- screen-height 30) 20 +red+)
+               (draw-fps (- (get-screen-width) 95) 10)
+               (end-drawing))
+      ;;----------------------------------------------------------------------------------
 
-                (draw-text (format nil "Screen resolution: ~dx~d" screen-width screen-height) 10 10 20 +darkblue+)
-                (draw-text (format nil "World resolution: ~dx~d" virtual-screen-width virtual-screen-height) 10 40 20 +darkgreen+)
-                (draw-fps (- (get-screen-width) 95) 10)
-              (end-drawing))
+      ;; De-Initialization
+      ;;--------------------------------------------------------------------------------------
+      (unload-render-texture target)    ; Unload render texture
 
-            ;; De-Initialization
-            (unload-render-texture target)))) ; Unload render texture
+      (close-window))))                 ; Close window and OpenGL context
 
-    ;; Close window
-    (close-window)))
-
-;; Run the example
 (main)

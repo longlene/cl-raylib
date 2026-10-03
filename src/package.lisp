@@ -569,4 +569,132 @@
    #:gui-enable #:gui-disable #:gui-lock #:gui-unlock #:gui-is-locked
    #:gui-set-alpha #:gui-set-state #:gui-get-state
    #:gui-button #:gui-label #:gui-checkbox #:gui-slider #:gui-progress-bar
-   #:+gui-state-normal+ #:+gui-state-focused+ #:+gui-state-pressed+ #:+gui-state-disabled+))
+   #:+gui-state-normal+ #:+gui-state-focused+ #:+gui-state-pressed+ #:+gui-state-disabled+
+
+   ;; raylib.h enum values
+    #:+flag-borderless-windowed-mode+ #:+key-left-bracket+ #:+key-backslash+ #:+key-right-bracket+
+    #:+key-grave+ #:+key-kb-menu+ #:+key-kp-0+ #:+key-kp-1+ #:+key-kp-2+ #:+key-kp-3+ #:+key-kp-4+ #:+key-kp-5+
+    #:+key-kp-6+ #:+key-kp-7+ #:+key-kp-8+ #:+key-kp-9+ #:+key-kp-decimal+ #:+key-kp-divide+
+    #:+key-kp-multiply+ #:+key-kp-subtract+ #:+key-kp-add+ #:+key-kp-enter+ #:+key-kp-equal+ #:+key-back+
+    #:+key-menu+ #:+key-volume-up+ #:+key-volume-down+ #:+gamepad-button-unknown+
+    #:+gamepad-button-left-face-up+ #:+gamepad-button-left-face-right+ #:+gamepad-button-left-face-down+
+    #:+gamepad-button-left-face-left+ #:+gamepad-button-right-face-up+ #:+gamepad-button-right-face-right+
+    #:+gamepad-button-right-face-down+ #:+gamepad-button-right-face-left+ #:+gamepad-button-left-trigger-1+
+    #:+gamepad-button-left-trigger-2+ #:+gamepad-button-right-trigger-1+ #:+gamepad-button-right-trigger-2+
+    #:+gamepad-button-middle-left+ #:+gamepad-button-middle+ #:+gamepad-button-middle-right+
+    #:+gamepad-button-left-thumb+ #:+gamepad-button-right-thumb+ #:+gamepad-axis-left-x+
+    #:+gamepad-axis-left-y+ #:+gamepad-axis-right-x+ #:+gamepad-axis-right-y+ #:+gamepad-axis-left-trigger+
+    #:+gamepad-axis-right-trigger+ #:+gesture-none+ #:+gesture-tap+ #:+gesture-doubletap+ #:+gesture-hold+
+    #:+gesture-drag+ #:+gesture-swipe-right+ #:+gesture-swipe-left+ #:+gesture-swipe-up+ #:+gesture-swipe-down+
+    #:+gesture-pinch-in+ #:+gesture-pinch-out+
+
+   ;; rlgl.h (rlgl API used by examples that include rlgl.h)
+    #:+rl-attachment-color-channel0+ #:+rl-attachment-color-channel1+ #:+rl-attachment-color-channel2+
+    #:+rl-attachment-color-channel3+ #:+rl-attachment-color-channel4+ #:+rl-attachment-color-channel5+
+    #:+rl-attachment-color-channel6+ #:+rl-attachment-color-channel7+ #:+rl-attachment-cubemap-negative-x+
+    #:+rl-attachment-cubemap-negative-y+ #:+rl-attachment-cubemap-negative-z+
+    #:+rl-attachment-cubemap-positive-x+ #:+rl-attachment-cubemap-positive-y+
+    #:+rl-attachment-cubemap-positive-z+ #:+rl-attachment-depth+ #:+rl-attachment-renderbuffer+
+    #:+rl-attachment-stencil+ #:+rl-attachment-texture2d+ #:+rl-blend-add-colors+ #:+rl-blend-additive+
+    #:+rl-blend-alpha+ #:+rl-blend-alpha-premultiply+ #:+rl-blend-color+ #:+rl-blend-custom+
+    #:+rl-blend-dst-alpha+ #:+rl-blend-dst-rgb+ #:+rl-blend-equation+ #:+rl-blend-equation-alpha+
+    #:+rl-blend-equation-rgb+ #:+rl-blend-multiplied+ #:+rl-blend-src-alpha+ #:+rl-blend-src-rgb+
+    #:+rl-blend-subtract-colors+ #:+rl-compute-shader+ #:+rl-constant-alpha+ #:+rl-constant-color+
+    #:+rl-cull-distance-far+ #:+rl-cull-distance-near+ #:+rl-cull-face-front+
+    #:+rl-default-batch-buffer-elements+ #:+rl-default-batch-buffers+ #:+rl-default-batch-drawcalls+
+    #:+rl-default-batch-max-texture-units+ #:+rl-default-shader-attrib-location-boneindices+
+    #:+rl-default-shader-attrib-location-boneweights+ #:+rl-default-shader-attrib-location-color+
+    #:+rl-default-shader-attrib-location-indices+ #:+rl-default-shader-attrib-location-instancetransform+
+    #:+rl-default-shader-attrib-location-normal+ #:+rl-default-shader-attrib-location-position+
+    #:+rl-default-shader-attrib-location-tangent+ #:+rl-default-shader-attrib-location-texcoord+
+    #:+rl-default-shader-attrib-location-texcoord2+ #:+rl-default-shader-attrib-name-boneindices+
+    #:+rl-default-shader-attrib-name-boneweights+ #:+rl-default-shader-attrib-name-color+
+    #:+rl-default-shader-attrib-name-instancetransform+ #:+rl-default-shader-attrib-name-normal+
+    #:+rl-default-shader-attrib-name-position+ #:+rl-default-shader-attrib-name-tangent+
+    #:+rl-default-shader-attrib-name-texcoord+ #:+rl-default-shader-attrib-name-texcoord2+
+    #:+rl-default-shader-sampler2d-name-texture0+ #:+rl-default-shader-sampler2d-name-texture1+
+    #:+rl-default-shader-sampler2d-name-texture2+ #:+rl-default-shader-uniform-name-bonematrices+
+    #:+rl-default-shader-uniform-name-color+ #:+rl-default-shader-uniform-name-model+
+    #:+rl-default-shader-uniform-name-mvp+ #:+rl-default-shader-uniform-name-normal+
+    #:+rl-default-shader-uniform-name-projection+ #:+rl-default-shader-uniform-name-view+
+    #:+rl-draw-framebuffer+ #:+rl-dst-alpha+ #:+rl-dst-color+ #:+rl-dynamic-copy+ #:+rl-dynamic-draw+
+    #:+rl-dynamic-read+ #:+rl-float+ #:+rl-fragment-shader+ #:+rl-func-add+ #:+rl-func-reverse-subtract+
+    #:+rl-func-subtract+ #:+rl-lines+ #:+rl-log-all+ #:+rl-log-debug+ #:+rl-log-error+ #:+rl-log-fatal+
+    #:+rl-log-info+ #:+rl-log-trace+ #:+rl-log-warning+ #:+rl-max+ #:+rl-max-matrix-stack-size+
+    #:+rl-max-shader-locations+ #:+rl-min+ #:+rl-modelview+ #:+rl-one+ #:+rl-one-minus-constant-alpha+
+    #:+rl-one-minus-constant-color+ #:+rl-one-minus-dst-alpha+ #:+rl-one-minus-dst-color+
+    #:+rl-one-minus-src-alpha+ #:+rl-one-minus-src-color+ #:+rl-opengl-11+ #:+rl-opengl-21+ #:+rl-opengl-33+
+    #:+rl-opengl-43+ #:+rl-opengl-es-20+ #:+rl-opengl-software+ #:+rl-pixelformat-compressed-dxt1-rgb+
+    #:+rl-pixelformat-compressed-dxt1-rgba+ #:+rl-pixelformat-compressed-dxt3-rgba+
+    #:+rl-pixelformat-compressed-dxt5-rgba+ #:+rl-pixelformat-compressed-etc1-rgb+
+    #:+rl-pixelformat-compressed-etc2-eac-rgba+ #:+rl-pixelformat-compressed-etc2-rgb+
+    #:+rl-pixelformat-compressed-pvrt-rgb+ #:+rl-pixelformat-compressed-pvrt-rgba+
+    #:+rl-pixelformat-uncompressed-gray-alpha+ #:+rl-pixelformat-uncompressed-grayscale+
+    #:+rl-pixelformat-uncompressed-r16+ #:+rl-pixelformat-uncompressed-r16g16b16+
+    #:+rl-pixelformat-uncompressed-r16g16b16a16+ #:+rl-pixelformat-uncompressed-r32+
+    #:+rl-pixelformat-uncompressed-r32g32b32+ #:+rl-pixelformat-uncompressed-r32g32b32a32+
+    #:+rl-pixelformat-uncompressed-r4g4b4a4+ #:+rl-pixelformat-uncompressed-r5g5b5a1+
+    #:+rl-pixelformat-uncompressed-r5g6b5+ #:+rl-pixelformat-uncompressed-r8g8b8+
+    #:+rl-pixelformat-uncompressed-r8g8b8a8+ #:+rl-projection+ #:+rl-quads+ #:+rl-read-framebuffer+
+    #:+rl-shader-attrib-float+ #:+rl-shader-attrib-vec2+ #:+rl-shader-attrib-vec3+
+    #:+rl-shader-loc-color-ambient+ #:+rl-shader-loc-color-diffuse+ #:+rl-shader-loc-color-specular+
+    #:+rl-shader-loc-map-albedo+ #:+rl-shader-loc-map-cubemap+ #:+rl-shader-loc-map-diffuse+
+    #:+rl-shader-loc-map-emission+ #:+rl-shader-loc-map-height+ #:+rl-shader-loc-map-irradiance+
+    #:+rl-shader-loc-map-metalness+ #:+rl-shader-loc-map-normal+ #:+rl-shader-loc-map-occlusion+
+    #:+rl-shader-loc-map-prefilter+ #:+rl-shader-loc-map-roughness+ #:+rl-shader-loc-map-specular+
+    #:+rl-shader-loc-matrix-model+ #:+rl-shader-loc-matrix-mvp+ #:+rl-shader-loc-matrix-normal+
+    #:+rl-shader-loc-matrix-projection+ #:+rl-shader-loc-matrix-view+ #:+rl-shader-loc-vector-view+
+    #:+rl-shader-loc-vertex-color+ #:+rl-shader-loc-vertex-normal+ #:+rl-shader-loc-vertex-position+
+    #:+rl-shader-loc-vertex-tangent+ #:+rl-shader-loc-vertex-texcoord01+ #:+rl-shader-loc-vertex-texcoord02+
+    #:+rl-shader-uniform-float+ #:+rl-shader-uniform-int+ #:+rl-shader-uniform-ivec2+
+    #:+rl-shader-uniform-ivec3+ #:+rl-shader-uniform-ivec4+ #:+rl-shader-uniform-uint+
+    #:+rl-shader-uniform-uivec2+ #:+rl-shader-uniform-uivec3+ #:+rl-shader-uniform-uivec4+
+    #:+rl-shader-uniform-vec2+ #:+rl-shader-uniform-vec3+ #:+rl-shader-uniform-vec4+ #:+rl-src-alpha+
+    #:+rl-src-alpha-saturate+ #:+rl-src-color+ #:+rl-static-copy+ #:+rl-static-draw+ #:+rl-static-read+
+    #:+rl-stream-copy+ #:+rl-stream-draw+ #:+rl-stream-read+ #:+rl-texture+ #:+rl-texture-filter-anisotropic+
+    #:+rl-texture-filter-anisotropic-16x+ #:+rl-texture-filter-anisotropic-4x+
+    #:+rl-texture-filter-anisotropic-8x+ #:+rl-texture-filter-bilinear+ #:+rl-texture-filter-linear+
+    #:+rl-texture-filter-linear-mip-nearest+ #:+rl-texture-filter-mip-linear+ #:+rl-texture-filter-mip-nearest+
+    #:+rl-texture-filter-nearest+ #:+rl-texture-filter-nearest-mip-linear+ #:+rl-texture-filter-point+
+    #:+rl-texture-filter-trilinear+ #:+rl-texture-mag-filter+ #:+rl-texture-min-filter+
+    #:+rl-texture-mipmap-bias-ratio+ #:+rl-texture-wrap-clamp+ #:+rl-texture-wrap-mirror-clamp+
+    #:+rl-texture-wrap-mirror-repeat+ #:+rl-texture-wrap-repeat+ #:+rl-texture-wrap-s+ #:+rl-texture-wrap-t+
+    #:+rl-triangles+ #:+rl-unsigned-byte+ #:+rl-vertex-shader+ #:+rl-zero+ #:rl-active-draw-buffers
+    #:rl-active-texture-slot #:rl-begin #:rl-bind-framebuffer #:rl-bind-image-texture #:rl-bind-shader-buffer
+    #:rl-blit-framebuffer #:rl-check-errors #:rl-check-render-batch-limit #:rl-clear-color
+    #:rl-clear-screen-buffers #:rl-color-mask #:rl-color3f #:rl-color4f #:rl-color4ub
+    #:rl-compute-shader-dispatch #:rl-copy-framebuffer #:rl-copy-shader-buffer #:rl-cubemap-parameters
+    #:rl-disable-backface-culling #:rl-disable-color-blend #:rl-disable-depth-mask #:rl-disable-depth-test
+    #:rl-disable-framebuffer #:rl-disable-point-mode #:rl-disable-scissor-test #:rl-disable-shader
+    #:rl-disable-smooth-lines #:rl-disable-state-pointer #:rl-disable-stereo-render #:rl-disable-texture
+    #:rl-disable-texture-cubemap #:rl-disable-vertex-array #:rl-disable-vertex-attribute
+    #:rl-disable-vertex-buffer #:rl-disable-vertex-buffer-element #:rl-disable-wire-mode #:rl-draw-render-batch
+    #:rl-draw-render-batch-active #:rl-draw-vertex-array #:rl-draw-vertex-array-elements
+    #:rl-draw-vertex-array-elements-instanced #:rl-draw-vertex-array-instanced #:rl-enable-backface-culling
+    #:rl-enable-color-blend #:rl-enable-depth-mask #:rl-enable-depth-test #:rl-enable-framebuffer
+    #:rl-enable-point-mode #:rl-enable-scissor-test #:rl-enable-shader #:rl-enable-smooth-lines
+    #:rl-enable-state-pointer #:rl-enable-stereo-render #:rl-enable-texture #:rl-enable-texture-cubemap
+    #:rl-enable-vertex-array #:rl-enable-vertex-attribute #:rl-enable-vertex-buffer
+    #:rl-enable-vertex-buffer-element #:rl-enable-wire-mode #:rl-end #:rl-framebuffer-attach
+    #:rl-framebuffer-complete #:rl-frustum #:rl-gen-texture-mipmaps #:rl-get-active-framebuffer
+    #:rl-get-framebuffer-height #:rl-get-framebuffer-width #:rl-get-gl-texture-formats #:rl-get-line-width
+    #:rl-get-location-attrib #:rl-get-location-uniform #:rl-get-matrix-modelview #:rl-get-matrix-projection
+    #:rl-get-matrix-projection-stereo #:rl-get-matrix-transform #:rl-get-matrix-view-offset-stereo
+    #:rl-get-pixel-format-name #:rl-get-point-size #:rl-get-proc-address #:rl-get-shader-buffer-size
+    #:rl-get-shader-id-default #:rl-get-shader-locs-default #:rl-get-texture-id-default #:rl-get-version
+    #:rl-is-stereo-render-enabled #:rl-load-draw-cube #:rl-load-draw-quad #:rl-load-extensions
+    #:rl-load-framebuffer #:rl-load-identity #:rl-load-render-batch #:rl-load-shader #:rl-load-shader-buffer
+    #:rl-load-shader-program #:rl-load-shader-program-compute #:rl-load-shader-program-ex #:rl-load-texture
+    #:rl-load-texture-cubemap #:rl-load-texture-depth #:rl-load-vertex-array #:rl-load-vertex-buffer
+    #:rl-load-vertex-buffer-element #:rl-matrix-mode #:rl-mult-matrixf #:rl-normal3f #:rl-ortho #:rl-pop-matrix
+    #:rl-push-matrix #:rl-read-shader-buffer #:rl-resize-framebuffer #:rl-rotatef #:rl-scalef #:rl-scissor
+    #:rl-set-blend-mode #:rl-set-cull-face #:rl-set-framebuffer-height #:rl-set-framebuffer-width
+    #:rl-set-line-width #:rl-set-matrix-modelview #:rl-set-matrix-projection #:rl-set-matrix-projection-stereo
+    #:rl-set-matrix-view-offset-stereo #:rl-set-point-size #:rl-set-render-batch-active #:rl-set-shader
+    #:rl-set-texture #:rl-set-uniform #:rl-set-uniform-matrices #:rl-set-uniform-matrix
+    #:rl-set-uniform-sampler #:rl-set-vertex-attribute #:rl-set-vertex-attribute-default
+    #:rl-set-vertex-attribute-divisor #:rl-tex-coord2f #:rl-texture-parameters #:rl-translatef
+    #:rl-unload-framebuffer #:rl-unload-render-batch #:rl-unload-shader #:rl-unload-shader-buffer
+    #:rl-unload-shader-program #:rl-unload-texture #:rl-unload-vertex-array #:rl-unload-vertex-buffer
+    #:rl-update-shader-buffer #:rl-update-texture #:rl-update-vertex-buffer #:rl-update-vertex-buffer-elements
+    #:rl-vertex2f #:rl-vertex2i #:rl-vertex3f #:rl-viewport #:rlgl-close #:rlgl-init))

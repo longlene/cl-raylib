@@ -1,109 +1,112 @@
+;;;; raylib [core] example - window letterbox
+;;;;
+;;;; Example complexity rating: [★★☆☆] 2/4
+;;;;
+;;;; Example originally created with raylib 2.5, last time updated with raylib 4.0
+;;;;
+;;;; Example contributed by Anata (@anatagawa) and reviewed by Ramon Santamaria (@raysan5)
+;;;;
+;;;; Example licensed under an unmodified zlib/libpng license, which is an OSI-certified,
+;;;; BSD-like license that allows static linking with closed source software
+;;;;
+;;;; Copyright (c) 2019-2025 Anata (@anatagawa) and Ramon Santamaria (@raysan5)
+;;;; Common Lisp port of raylib/examples/core/core_window_letterbox.c
+
 (require :cl-raylib)
 
-(defpackage :raylib-user
-  (:use :cl :raylib :3d-vectors))
+(defpackage #:raylib-examples/core-window-letterbox
+  (:use #:cl #:raylib))
+(in-package #:raylib-examples/core-window-letterbox)
 
-(in-package :raylib-user)
-
-(defun vector2-clamp (v min-v max-v)
-  "Clamp vector2 between min and max vectors"
-  (vec2 (max (vx min-v) (min (vx max-v) (vx v)))
-        (max (vy min-v) (min (vy max-v) (vy v)))))
-
+;;------------------------------------------------------------------------------------
+;; Program main entry point
+;;------------------------------------------------------------------------------------
 (defun main ()
-  "raylib [core] example - window scale letterbox (and virtual mouse)"
-  (let ((window-width 800)
-        (window-height 450))
-    
+  (let ((screen-width 800)
+        (screen-height 450))
+
     ;; Enable config flags for resizable window and vertical synchro
-    (set-config-flags (list :flag-window-resizable :flag-vsync-hint))
-    (with-window (window-width window-height "raylib [core] example - window scale letterbox")
-      (set-window-min-size 320 240)
-      (set-target-fps 60) ; Set our game to run at 60 FPS
+    (set-config-flags (logior +flag-window-resizable+ +flag-vsync-hint+))
+    (init-window screen-width screen-height "raylib [core] example - window letterbox")
+    (set-window-min-size 320 240)
 
-      (let ((game-screen-width 640)
-            (game-screen-height 480)
-            (colors (make-array 10)))
+    (let* ((game-screen-width 640)
+           (game-screen-height 480)
+           ;; Render texture initialization, used to hold the rendering result so we can easily resize it
+           (target (load-render-texture game-screen-width game-screen-height))
+           (colors (make-array 10)))
+      (set-texture-filter (render-texture-texture target) +texture-filter-bilinear+) ; Texture scale filter to use
 
-        ;; Initialize colors
-        (loop for i from 0 below 10 do
-          (setf (aref colors i) 
-                (make-color (get-random-value 100 250)
-                           (get-random-value 50 150)
-                           (get-random-value 10 100)
-                           255)))
+      (flet ((random-colors ()
+               (dotimes (i 10)
+                 (setf (aref colors i) (list (get-random-value 100 250) (get-random-value 50 150)
+                                             (get-random-value 10 100) 255)))))
+        (random-colors)
 
-        ;; Render texture initialization, used to hold the rendering result so we can easily resize it
-        (let ((target (load-render-texture game-screen-width game-screen-height)))
-          (set-texture-filter (render-texture-texture target) :texture-filter-bilinear)
+        (set-target-fps 60)             ; Set our game to run at 60 frames-per-second
+        ;;--------------------------------------------------------------------------------------
 
-          (loop
-            until (window-should-close) ; Detect window close button or ESC key
-            do (progn
-                 ;; Update
+        ;; Main game loop
+        (loop until (window-should-close) ; Detect window close button or ESC key
+              do ;; Update
+                 ;;----------------------------------------------------------------------------------
                  ;; Compute required framebuffer scaling
-                 (let ((scale (min (/ (get-screen-width) game-screen-width)
-                                   (/ (get-screen-height) game-screen-height))))
+                 (let ((scale (min (/ (float (get-screen-width)) game-screen-width)
+                                   (/ (float (get-screen-height)) game-screen-height))))
 
-                   (when (is-key-pressed :key-space)
+                   (when (is-key-pressed +key-space+)
                      ;; Recalculate random colors for the bars
-                     (loop for i from 0 below 10 do
-                       (setf (aref colors i) 
-                             (make-color (get-random-value 100 250)
-                                        (get-random-value 50 150)
-                                        (get-random-value 10 100)
-                                        255))))
+                     (random-colors))
 
                    ;; Update virtual mouse (clamped mouse value behind game screen)
-                   (let* ((mouse (get-mouse-position))
-                          (virtual-mouse-x (/ (- (vx mouse) 
-                                                 (* (- (get-screen-width) (* game-screen-width scale)) 0.5))
-                                             scale))
-                          (virtual-mouse-y (/ (- (vy mouse) 
-                                                 (* (- (get-screen-height) (* game-screen-height scale)) 0.5))
-                                             scale))
-                          (virtual-mouse (vector2-clamp (vec2 virtual-mouse-x virtual-mouse-y)
-                                                        (vec2 0.0 0.0)
-                                                        (vec2 (float game-screen-width) 
-                                                              (float game-screen-height)))))
+                   (let ((mouse (get-mouse-position))
+                         (virtual-mouse (vec2 0.0 0.0)))
+                     (setf (vx virtual-mouse) (/ (- (vx mouse) (* (- (get-screen-width) (* game-screen-width scale)) 0.5)) scale))
+                     (setf (vy virtual-mouse) (/ (- (vy mouse) (* (- (get-screen-height) (* game-screen-height scale)) 0.5)) scale))
+                     (setf virtual-mouse (vector2-clamp virtual-mouse (vec2 0.0 0.0)
+                                                        (vec2 (float game-screen-width) (float game-screen-height))))
 
-                     ;; Draw everything in the render texture
-                     (with-texture-mode (target)
-                       (clear-background :raywhite)
+                     ;; Apply the same transformation as the virtual mouse to the real mouse (i.e. to work with raygui)
+                     ;;(set-mouse-offset (- (* (- (get-screen-width) (* game-screen-width scale)) 0.5)) (- (* (- (get-screen-height) (* game-screen-height scale)) 0.5)))
+                     ;;(set-mouse-scale (/ 1 scale) (/ 1 scale))
+                     ;;----------------------------------------------------------------------------------
 
-                       ;; Draw colored bars
-                       (loop for i from 0 below 10 do
-                         (draw-rectangle 0 (* (floor (/ game-screen-height 10)) i) 
-                                        game-screen-width (floor (/ game-screen-height 10)) 
-                                        (aref colors i)))
+                     ;; Draw
+                     ;;----------------------------------------------------------------------------------
+                     ;; Draw everything in the render texture, note this will not be rendered on screen, yet
+                     (begin-texture-mode target)
+                     (clear-background +raywhite+) ; Clear render texture background color
 
-                       (draw-text "If executed inside a window,
-you can resize the window,
-and see the screen scaling!" 10 25 20 :white)
-                       (draw-text (format nil "Default Mouse: [~d , ~d]" 
-                                         (floor (vx mouse)) (floor (vy mouse))) 
-                                 350 25 20 :green)
-                       (draw-text (format nil "Virtual Mouse: [~d , ~d]" 
-                                         (floor (vx virtual-mouse)) (floor (vy virtual-mouse))) 
-                                 350 55 20 :yellow))
+                     (dotimes (i 10)
+                       (draw-rectangle 0 (* (truncate game-screen-height 10) i) game-screen-width
+                                       (truncate game-screen-height 10) (aref colors i)))
 
-                     ;; Draw to screen
-                     (with-drawing
-                       (clear-background :black)
+                     (draw-text (format nil "If executed inside a window,~%you can resize the window,~%and see the screen scaling!") 10 25 20 +white+)
+                     (draw-text (text-format "Default Mouse: [%i , %i]" (truncate (vx mouse)) (truncate (vy mouse))) 350 25 20 +green+)
+                     (draw-text (text-format "Virtual Mouse: [%i , %i]" (truncate (vx virtual-mouse)) (truncate (vy virtual-mouse))) 350 55 20 +yellow+)
+                     (end-texture-mode))
 
-                       ;; Draw render texture to screen, properly scaled
-                       (let ((source-rect (make-rectangle :x 0.0 :y 0.0 
-                                                         :width (texture-width (render-texture-texture target))
-                                                         :height (- (texture-height (render-texture-texture target)))))
-                             (dest-rect (make-rectangle 
-                                        :x (* (- (get-screen-width) (* game-screen-width scale)) 0.5)
-                                        :y (* (- (get-screen-height) (* game-screen-height scale)) 0.5)
-                                        :width (* game-screen-width scale)
-                                        :height (* game-screen-height scale))))
-                         (draw-texture-pro (render-texture-texture target) source-rect dest-rect 
-                                          (vec2 0.0 0.0) 0.0 :white)))))))
+                   (begin-drawing)
+                   (clear-background +black+) ; Clear screen background
 
-          ;; Cleanup
-          (unload-render-texture target))))))
+                   ;; Draw render texture to screen, properly scaled
+                   (let ((texture (render-texture-texture target)))
+                     (draw-texture-pro texture
+                                       (make-rectangle :x 0.0 :y 0.0
+                                                       :width (float (texture-width texture))
+                                                       :height (float (- (texture-height texture))))
+                                       (make-rectangle :x (* (- (get-screen-width) (* (float game-screen-width) scale)) 0.5)
+                                                       :y (* (- (get-screen-height) (* (float game-screen-height) scale)) 0.5)
+                                                       :width (* (float game-screen-width) scale)
+                                                       :height (* (float game-screen-height) scale))
+                                       (vec2 0.0 0.0) 0.0 +white+))
+                   (end-drawing)))
+        ;;--------------------------------------------------------------------------------------
+
+        ;; De-Initialization
+        ;;--------------------------------------------------------------------------------------
+        (unload-render-texture target)  ; Unload render texture
+
+        (close-window)))))              ; Close window and OpenGL context
 
 (main)

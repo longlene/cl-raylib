@@ -1087,7 +1087,7 @@ conversions d i u x X o c s f F e E g G %"
   "Load text as separate lines ('\\n'), returns (values lines line-count)"
   (if (null text)
       (values nil 0)
-      (let ((lines (uiop:split-string text :separator '(#\Newline))))
+      (let ((lines (coerce (mapcar #'copy-seq (uiop:split-string text :separator '(#\Newline))) 'simple-vector)))
         (values lines (length lines)))))
 
 (defun unload-text-lines (lines line-count)
