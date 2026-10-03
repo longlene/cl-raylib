@@ -16,9 +16,7 @@
                #:babel
                #:flexi-streams
                #:skippy
-               #:zpng
-               #:chipz
-               #:salza2)
+               #:chipz)
   :serial t
   :pathname "src"
   :components
@@ -33,6 +31,7 @@
    (:file "camera2d")              ; 2D camera system (matches raylib Camera2D)
    (:file "camera3d")
    (:file "color")
+   (:file "stb-image-write")       ; external/stb_image_write.h (used by rtextures.c)
    (:file "textures")
    (:file "sdefl")                 ; external/sdefl.h (used by rcore.c)
    (:file "utils")                 ; Utility functions and logging system (required for raylib compatibility)

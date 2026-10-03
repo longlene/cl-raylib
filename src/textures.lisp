@@ -451,7 +451,7 @@
 ;;;------------------------------------------------------------------------------------
 ;;; Image file decoders/encoders
 ;;; NOTE: raylib uses stb_image/stb_image_write/qoi.h; here PNG/JPG/TGA/PNM go through
-;;; imago, GIF through skippy, PNG writing through zpng, BMP and QOI are implemented here.
+;;; imago, GIF through skippy, PNG/BMP writing through stb-image-write.lisp, QOI is implemented here.
 ;;; Decoded images keep the component count stb_image would report (1..4 channels)
 ;;;------------------------------------------------------------------------------------
 
@@ -963,44 +963,12 @@
         (values (image-data image) channels))))
 
 (defun %encode-png (data width height channels)
-  (let ((png (make-instance 'zpng:png :width width :height height
-                                      :color-type (ecase channels
-                                                    (1 :grayscale) (2 :grayscale-alpha)
-                                                    (3 :truecolor) (4 :truecolor-alpha))
-                                      :image-data (subseq data 0 (* width height channels)))))
-    (flexi-streams:with-output-to-sequence (out)
-      (zpng:write-png-stream png out))))
+  "stbi_write_png_to_mem()"
+  (stbi-write-png-to-mem data (* width channels) width height channels))
 
 (defun %encode-bmp (data width height channels)
-  "Encode a BMP like stbi_write_bmp(): 24bpp, or 32bpp BGRA with V4 header for 4 channels"
-  (let* ((bpp (if (= channels 4) 32 24))
-         (header-size (if (= channels 4) 108 40))
-         (stride (* 4 (ceiling (* width bpp) 32)))
-         (pixel-offset (+ 14 header-size))
-         (file-size (+ pixel-offset (* stride height)))
-         (out (%make-octets file-size)))
-    (flet ((put16 (offset v) (setf (aref out offset) (ldb (byte 8 0) v) (aref out (1+ offset)) (ldb (byte 8 8) v)))
-           (put32 (offset v) (dotimes (k 4) (setf (aref out (+ offset k)) (ldb (byte 8 (* k 8)) v)))))
-      (setf (aref out 0) (char-code #\B) (aref out 1) (char-code #\M))
-      (put32 2 file-size) (put32 10 pixel-offset)
-      (put32 14 header-size) (put32 18 width) (put32 22 height)
-      (put16 26 1) (put16 28 bpp)
-      (put32 30 (if (= channels 4) 3 0))           ; BI_BITFIELDS for alpha bitmaps
-      (put32 34 (* stride height))
-      (when (= channels 4)
-        (put32 54 #x00ff0000) (put32 58 #x0000ff00) (put32 62 #x000000ff) (put32 66 #xff000000)
-        (put32 70 #x73524742))                     ; 'sRGB' color space
-      (dotimes (row height)
-        (let ((y (- height 1 row)))                ; Bottom-up rows
-          (dotimes (x width)
-            (let* ((s (* (+ (* y width) x) channels))
-                   (d (+ pixel-offset (* row stride) (* x (floor bpp 8))))
-                   (r (aref data s))
-                   (g (if (< channels 3) r (aref data (+ s 1))))
-                   (b (if (< channels 3) r (aref data (+ s 2)))))
-              (setf (aref out d) b (aref out (+ d 1)) g (aref out (+ d 2)) r)
-              (when (= channels 4) (setf (aref out (+ d 3)) (aref data (+ s 3)))))))))
-    out))
+  "stbi_write_bmp()"
+  (stbi-write-bmp-to-mem width height channels data))
 
 ;; NOTE: File format depends on fileName extension
 (defun export-image (image file-name)
@@ -1057,9 +1025,19 @@
   "Export image to memory buffer"
   (when (or (zerop (image-width image)) (zerop (image-height image)) (null (image-data image)))
     (return-from export-image-to-memory (values nil 0))) ; Security check
-  (let ((channels (%format->channels (image-pixel-format image))))
-    (if (and (%file-type-p file-type ".png") (> channels 0))
-        (let ((file-data (%encode-png (image-data image) (image-width image) (image-height image) channels)))
+  (let* ((w (image-width image)) (h (image-height image))
+         (channels (alexandria:switch ((image-pixel-format image))
+                     (+pixelformat-uncompressed-grayscale+ 1)
+                     (+pixelformat-uncompressed-gray-alpha+ 2)
+                     (+pixelformat-uncompressed-r8g8b8+ 3)
+                     (t 4))))
+    (if (member file-type '(".png" ".PNG") :test #'equal)
+        ;; NOTE: Other pixel formats are read as 4 channels like C, which reads past the image data
+        ;; (missing bytes are read as 0 here)
+        (let* ((data (image-data image))
+               (size (* w h channels))
+               (pixels (if (>= (length data) size) data (replace (%make-octets size) data)))
+               (file-data (stbi-write-png-to-mem pixels (* w channels) w h channels)))
           (values file-data (length file-data)))
         (values nil 0))))
 
