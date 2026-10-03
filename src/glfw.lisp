@@ -737,11 +737,49 @@ NOTE: On X11 returns the Window (XID) integer instead of a pointer to it"
   "Get clipboard text content"
   (%glfw:get-clipboard-string (%handle)))
 
+(cffi:define-foreign-library %libx11 (:unix (:or "libX11.so.6" "libX11.so")))
+
+(defvar *clipboard-atoms* nil "Lazy-loaded X11 atoms: (clipboard target-type property)")
+
+;; Get clipboard image content
+;; NOTE: Clipboard image is read as image/png from the X11 selection (only the X11 backend is supported, like C)
 (defun get-clipboard-image ()
-  "Get clipboard image content
-NOTE: The C version reads image/png from the X11 selection (or Win32 clipboard), not ported yet"
-  (trace-log-warning "GetClipboardImage() not implemented on target platform")
-  (make-image :data nil :width 0 :height 0 :mipmaps 0 :format 0))
+  "Get clipboard image content"
+  (let ((image (make-image :data nil :width 0 :height 0 :mipmaps 0 :format 0)))
+    (if (= (%glfw-platform) +glfw-platform-x11+)
+        ;; REF: https://github.com/ColleagueRiley/Clipboard-Copy-Paste/blob/main/x11.c
+        (progn
+          (unless (cffi:foreign-library-loaded-p '%libx11) (cffi:load-foreign-library '%libx11))
+          (let ((display (cffi:foreign-funcall "glfwGetX11Display" :pointer))
+                (window (cffi:foreign-funcall "glfwGetX11Window" :pointer (%handle) :unsigned-long)))
+            ;; Lazy-load X11 atoms
+            (unless *clipboard-atoms*
+              (setf *clipboard-atoms*
+                    (mapcar (lambda (name) (cffi:foreign-funcall "XInternAtom" :pointer display :string name :int 0 :unsigned-long))
+                            '("CLIPBOARD" "image/png" "RAYLIB_CLIPBOARD_MANAGER"))))
+            (destructuring-bind (clipboard target-type property) *clipboard-atoms*
+              (cffi:foreign-funcall "XConvertSelection" :pointer display :unsigned-long clipboard :unsigned-long target-type
+                                    :unsigned-long property :unsigned-long window :unsigned-long 0 :int) ; CurrentTime
+              (cffi:foreign-funcall "XSync" :pointer display :int 0 :int)
+              (cffi:with-foreign-objects ((ev :uint8 192)       ; XEvent
+                                          (actual-type :unsigned-long) (actual-format :int)
+                                          (nitems :unsigned-long) (bytes-after :unsigned-long) (data :pointer))
+                ;; Keep calling until we get SelectionNotify
+                (loop until (/= 0 (cffi:foreign-funcall "XCheckTypedEvent" :pointer display :int 31 :pointer ev :int)))
+                (setf (cffi:mem-ref data :pointer) (cffi:null-pointer))
+                (cffi:foreign-funcall "XGetWindowProperty" :pointer display :unsigned-long window :unsigned-long property
+                                      :long 0 :long (lognot 0) :int 0 :unsigned-long 0 ; AnyPropertyType
+                                      :pointer actual-type :pointer actual-format :pointer nitems :pointer bytes-after
+                                      :pointer data :int)
+                (let ((ptr (cffi:mem-ref data :pointer)))
+                  (unless (cffi:null-pointer-p ptr)
+                    (let* ((n (cffi:mem-ref nitems :unsigned-long))
+                           (bytes (make-array n :element-type '(unsigned-byte 8))))
+                      (dotimes (i n) (setf (aref bytes i) (cffi:mem-aref ptr :uint8 i)))
+                      (setf image (load-image-from-memory ".png" bytes n)))
+                    (cffi:foreign-funcall "XFree" :pointer ptr :int)))))))
+        (trace-log +log-warning+ "GetClipboardImage() not implemented on target platform"))
+    image))
 
 (defun show-cursor ()
   "Show mouse cursor"
