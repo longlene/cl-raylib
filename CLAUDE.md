@@ -26,6 +26,7 @@ raylib/src/rtextures.h -> cl-raylib/src/textures.lisp
 raylib/src/raudio.c -> cl-raylib/src/audio.lisp
 raylib/src/external/miniaudio.h (data conversion subset + PulseAudio device) -> cl-raylib/src/miniaudio.lisp
 raylib/src/external/dr_wav.h -> cl-raylib/src/wav.lisp
+raylib/src/external/stb_vorbis.c -> cl-raylib/src/vorbis.lisp
 raylib/src/external/qoa.h + qoaplay.c -> cl-raylib/src/qoa.lisp
 raylib/src/external/dr_flac.h -> cl-raylib/src/flac.lisp (own decoder, dr_flac output semantics)
 raylib/src/utils.h -> cl-raylib/src/utils.lisp

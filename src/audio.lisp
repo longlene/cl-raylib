@@ -12,9 +12,9 @@
 ;;;   - Format wave data (sample rate, size, channels)
 ;;;   - Play/Stop/Pause/Resume loaded audio
 ;;;
-;;; Supported file formats: WAV (wav.lisp), QOA (qoa.lisp), FLAC (flac.lisp)
+;;; Supported file formats: WAV (wav.lisp), OGG (vorbis.lisp), QOA (qoa.lisp), FLAC (flac.lisp)
 ;;; NOTE: SUPPORT_FILEFORMAT_FLAC is enabled (disabled by default in raylib config.h)
-;;; NOTE: OGG, MP3, XM and MOD formats are not supported yet
+;;; NOTE: MP3, XM and MOD formats are not supported yet
 ;;; NOTE: Playback device uses PulseAudio through libpulse-simple (see miniaudio.lisp)
 ;;;
 ;;; NOTE: Sample data is stored in typed arrays: u8 -> (unsigned-byte 8), s16 -> (signed-byte 16),
@@ -412,6 +412,21 @@
                  (drwav-read-pcm-frames-s16 wav (wave-frame-count wave) (wave-data wave)))
                (trace-log +log-warning+ "WAVE: Failed to load WAV data"))
            (when wav (drwav-uninit wav))))
+        ((type-p ".ogg" ".OGG")
+         (let ((ogg-data (stb-vorbis-open-memory file-data data-size)))
+           (if ogg-data
+               (multiple-value-bind (channels sample-rate) (stb-vorbis-get-info ogg-data)
+                 (setf (wave-sample-rate wave) sample-rate
+                       (wave-sample-size wave) 16      ; By default, ogg data is 16 bit per sample (short)
+                       (wave-channels wave) channels
+                       (wave-frame-count wave) (stb-vorbis-stream-length-in-samples ogg-data)   ; NOTE: It returns frames!
+                       (wave-data wave) (make-array (* (wave-frame-count wave) channels)
+                                                    :element-type '(signed-byte 16) :initial-element 0))
+                 ;; NOTE: Get the number of samples to process (be careful! asking for number of shorts, not bytes!)
+                 (stb-vorbis-get-samples-short-interleaved ogg-data channels (wave-data wave)
+                                                           (* (wave-frame-count wave) channels))
+                 (stb-vorbis-close ogg-data))
+               (trace-log +log-warning+ "WAVE: Failed to load OGG data"))))
         ((type-p ".qoa" ".QOA")
          (let* ((qoa (make-qoa-desc))
                 (data (qoa-decode file-data data-size qoa)))
@@ -775,6 +790,19 @@
                  (music-frame-count music) (drwav-total-pcm-frame-count ctx-wav)
                  (music-looping music) t)   ; Looping enabled by default
            t))))
+    (:ogg
+     ;; Open ogg audio stream
+     (let ((ctx-ogg (stb-vorbis-open-memory data data-size)))
+       (when ctx-ogg
+         (multiple-value-bind (channels sample-rate) (stb-vorbis-get-info ctx-ogg)
+           ;; OGG bit rate defaults to 16 bit, it's enough for compressed format
+           (setf (music-ctx-type music) +music-audio-ogg+
+                 (music-ctx-data music) ctx-ogg
+                 (music-stream music) (load-audio-stream sample-rate 16 channels)
+                 ;; WARNING: It seems this function returns length in frames, not samples, so multiply by channels
+                 (music-frame-count music) (stb-vorbis-stream-length-in-samples ctx-ogg)
+                 (music-looping music) t)
+           t))))
     (:qoa
      (let ((ctx-qoa (when (and data (> data-size 0)) (qoaplay-open-memory data data-size))))
        (when ctx-qoa
@@ -804,6 +832,7 @@
   "Load music stream from file"
   (let* ((music (make-music))
          (type (cond ((is-file-extension file-name ".wav") :wav)
+                     ((is-file-extension file-name ".ogg") :ogg)
                      ((is-file-extension file-name ".qoa") :qoa)
                      ((is-file-extension file-name ".flac") :flac)))
          (music-loaded (when type
@@ -826,6 +855,7 @@
   (let* ((music (make-music))
          (type (flet ((type-p (&rest types) (member file-type types :test #'string=)))
                  (cond ((type-p ".wav" ".WAV") :wav)
+                       ((type-p ".ogg" ".OGG") :ogg)
                        ((type-p ".qoa" ".QOA") :qoa)
                        ((type-p ".flac" ".FLAC") :flac))))
          (music-loaded (when type (%load-music-context music type data data-size))))
@@ -856,6 +886,7 @@
   (unload-audio-stream (music-stream music))
   (when (music-ctx-data music)
     (cond ((= (music-ctx-type music) +music-audio-wav+) (drwav-uninit (music-ctx-data music)))
+          ((= (music-ctx-type music) +music-audio-ogg+) (stb-vorbis-close (music-ctx-data music)))
           ((= (music-ctx-type music) +music-audio-qoa+) (qoaplay-close (music-ctx-data music)))
           ((= (music-ctx-type music) +music-audio-flac+) (drflac-close (music-ctx-data music))))))
 
@@ -881,6 +912,7 @@
   (let ((ctx (music-ctx-data music)))
     (case (music-ctx-type music)
       (#.+music-audio-wav+ (drwav-seek-to-first-pcm-frame ctx))
+      (#.+music-audio-ogg+ (stb-vorbis-seek-start ctx))
       (#.+music-audio-qoa+ (qoaplay-rewind ctx))
       (#.+music-audio-flac+ (drflac-seek-to-first-frame ctx)))))
 
@@ -895,6 +927,7 @@
         (ctx (music-ctx-data music)))
     (case (music-ctx-type music)
       (#.+music-audio-wav+ (drwav-seek-to-pcm-frame ctx position-in-frames))
+      (#.+music-audio-ogg+ (stb-vorbis-seek-frame ctx position-in-frames))
       (#.+music-audio-qoa+
        (let ((qoa-frame (floor position-in-frames +qoa-frame-len+)))
          (qoaplay-seek-frame ctx qoa-frame) ; Seeks to QOA frame, not PCM frame
@@ -960,6 +993,16 @@
                          (if (= frame-count-still-needed 0)
                              (return)
                              (drwav-seek-to-first-pcm-frame ctx))))))
+                  (#.+music-audio-ogg+
+                   (loop
+                     (let ((frame-count-read (stb-vorbis-get-samples-short-interleaved
+                                              ctx channels pcm-buffer (* frame-count-still-needed channels)
+                                              (* frame-count-read-total channels))))
+                       (incf frame-count-read-total frame-count-read)
+                       (decf frame-count-still-needed frame-count-read)
+                       (if (= frame-count-still-needed 0)
+                           (return)
+                           (stb-vorbis-seek-start ctx)))))
                   (#.+music-audio-qoa+
                    (incf frame-count-read-total (qoaplay-decode ctx pcm-buffer frames-to-stream)))
                   (#.+music-audio-flac+

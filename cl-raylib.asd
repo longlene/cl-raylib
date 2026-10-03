@@ -48,6 +48,7 @@
    (:file "text")                  ; rtext.c
    (:file "miniaudio")             ; miniaudio.h subset: data conversion + PulseAudio playback device
    (:file "wav")                   ; dr_wav.h (used by raudio.c)
+   (:file "vorbis")                ; stb_vorbis.c (used by raudio.c)
    (:file "qoa")                   ; qoa.h + qoaplay.c (used by raudio.c)
    (:file "flac")                  ; dr_flac.h replacement (used by raudio.c)
    (:file "audio")                 ; raudio.c
