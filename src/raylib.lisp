@@ -287,114 +287,119 @@
   (rotation 0.0 :type single-float)      ; Camera rotation in degrees
   (zoom 1.0 :type single-float))         ; Camera zoom (scaling), should be 1.0f by default
 
-;;; Mesh structure
+;;; Mesh, vertex data and vao/vbo
+;;; NOTE: Vertex data arrays are specialized vectors (NIL for C NULL):
+;;; float data -> (simple-array single-float (*)), colors/bone indices -> (unsigned-byte 8),
+;;; indices -> (unsigned-byte 16)
 (defstruct mesh
-  "3D mesh containing vertices and indices"
-  (vertex-count 0 :type fixnum)                 ; Number of vertices
-  (triangle-count 0 :type fixnum)               ; Number of triangles
-  (vertices nil :type list)                     ; List of vertex structures
-  (indices nil :type list)                      ; List of triangle indices (groups of 3)
-  (vbo-vertices 0 :type fixnum)                 ; OpenGL VBO for vertices
-  (vbo-indices 0 :type fixnum)                  ; OpenGL VBO for indices
-  (vao 0 :type fixnum)                          ; OpenGL VAO
-  (uploaded nil :type boolean))                 ; Whether mesh is uploaded to GPU
+  (vertex-count 0 :type fixnum)         ; Number of vertices stored in arrays
+  (triangle-count 0 :type fixnum)       ; Number of triangles stored (indexed or not)
+  ;; Vertex attributes data
+  (vertices nil)                        ; Vertex position (XYZ - 3 components per vertex) (shader-location = 0)
+  (texcoords nil)                       ; Vertex texture coordinates (UV - 2 components per vertex) (shader-location = 1)
+  (texcoords2 nil)                      ; Vertex texture second coordinates (UV - 2 components per vertex) (shader-location = 5)
+  (normals nil)                         ; Vertex normals (XYZ - 3 components per vertex) (shader-location = 2)
+  (tangents nil)                        ; Vertex tangents (XYZW - 4 components per vertex) (shader-location = 4)
+  (colors nil)                          ; Vertex colors (RGBA - 4 components per vertex) (shader-location = 3)
+  (indices nil)                         ; Vertex indices (in case vertex data comes indexed)
+  ;; Skin data for animation
+  (bone-count 0 :type fixnum)           ; Number of bones (MAX: 256 bones)
+  (bone-indices nil)                    ; Vertex bone indices, up to 4 bones influence by vertex (skinning) (shader-location = 6)
+  (bone-weights nil)                    ; Vertex bone weight, up to 4 bones influence by vertex (skinning) (shader-location = 7)
+  ;; Runtime animation vertex data (CPU skinning)
+  ;; NOTE: In case of GPU skinning, not used, pointers are NULL
+  (anim-vertices nil)                   ; Animated vertex positions (after bones transformations)
+  (anim-normals nil)                    ; Animated normals (after bones transformations)
+  ;; OpenGL identifiers
+  (vao-id 0)                            ; OpenGL Vertex Array Object id
+  (vbo-id nil))                         ; OpenGL Vertex Buffer Objects id (default vertex data)
 
-;;; MaterialMap structure (matches raylib MaterialMap)
+;;; MaterialMap
 (defstruct material-map
-  "Material map structure matching raylib MaterialMap"
-  (texture nil :type (or null texture))         ; Material map texture
-  (color (list 255 255 255 255) :type list)     ; Material map color (WHITE)
-  (value 1.0 :type single-float))               ; Material map value
+  (texture (make-texture :id 0 :width 0 :height 0 :mipmaps 0 :format 0) :type texture) ; Material map texture
+  (color (list 0 0 0 0))                ; Material map color
+  (value 0.0 :type single-float))       ; Material map value
 
-;;; Material map index constants (matching raylib)
-(defconstant +material-map-albedo+ 0)          ; Albedo material (same as MATERIAL_MAP_DIFFUSE)
-(defconstant +material-map-metalness+ 1)       ; Metalness material (same as MATERIAL_MAP_SPECULAR)
-(defconstant +material-map-normal+ 2)          ; Normal material
-(defconstant +material-map-roughness+ 3)       ; Roughness material
-(defconstant +material-map-occlusion+ 4)       ; Ambient occlusion material
-(defconstant +material-map-emission+ 5)        ; Emission material
-(defconstant +material-map-height+ 6)          ; Heightmap material
-(defconstant +material-map-cubemap+ 7)         ; Cubemap material
-(defconstant +material-map-irradiance+ 8)      ; Irradiance material
-(defconstant +material-map-prefilter+ 9)       ; Prefilter material
-(defconstant +material-map-brdf+ 10)           ; Brdf material
+;;; Material map index
+(defconstant +material-map-albedo+ 0 "Albedo material (same as: MATERIAL_MAP_DIFFUSE)")
+(defconstant +material-map-metalness+ 1 "Metalness material (same as: MATERIAL_MAP_SPECULAR)")
+(defconstant +material-map-normal+ 2 "Normal material")
+(defconstant +material-map-roughness+ 3 "Roughness material")
+(defconstant +material-map-occlusion+ 4 "Ambient occlusion material")
+(defconstant +material-map-emission+ 5 "Emission material")
+(defconstant +material-map-height+ 6 "Heightmap material")
+(defconstant +material-map-cubemap+ 7 "Cubemap material (NOTE: Uses GL_TEXTURE_CUBE_MAP)")
+(defconstant +material-map-irradiance+ 8 "Irradiance material (NOTE: Uses GL_TEXTURE_CUBE_MAP)")
+(defconstant +material-map-prefilter+ 9 "Prefilter material (NOTE: Uses GL_TEXTURE_CUBE_MAP)")
+(defconstant +material-map-brdf+ 10 "Brdf material")
 
-;;; Aliases for compatibility
 (defconstant +material-map-diffuse+ +material-map-albedo+)
 (defconstant +material-map-specular+ +material-map-metalness+)
-(defconstant +max-material-maps+ 12)           ; Maximum number of material maps
+(defconstant +max-material-maps+ 12 "Maximum number of maps supported")
 
-;;; Material structure (matches raylib Material)
+;;; Material, includes shader and maps
 (defstruct material
-  "Material structure matching raylib Material"
-  (shader nil :type (or null shader))                                    ; Material shader
-  (maps (make-array +max-material-maps+ :initial-element nil) :type simple-vector) ; Material maps array
-  (params (make-array 4 :initial-element 0.0 :element-type 'single-float) :type (simple-array single-float (4)))) ; Material generic parameters
+  (shader (make-shader) :type shader)   ; Material shader
+  (maps nil :type (or null simple-vector)) ; Material maps array (MAX_MATERIAL_MAPS)
+  (params (make-array 4 :element-type 'single-float :initial-element 0.0)
+   :type (simple-array single-float (4)))) ; Material generic parameters (if required)
 
+;;; Transform, vertex transformation data
+(defstruct transform
+  (translation (vec3 0.0 0.0 0.0) :type vec3) ; Translation
+  (rotation (vec4 0.0 0.0 0.0 0.0) :type vec4) ; Rotation (Quaternion)
+  (scale (vec3 0.0 0.0 0.0) :type vec3)) ; Scale
 
-;;; Model structure
+;;; ModelAnimPose, an array of Transform[] (simple-vector of transform)
+
+;;; Bone, skeletal animation bone
+(defstruct bone-info
+  (name "" :type string)                ; Bone name (char[32])
+  (parent 0 :type fixnum))              ; Bone parent
+
+;;; Skeleton, animation bones hierarchy
+(defstruct model-skeleton
+  (bone-count 0 :type fixnum)           ; Number of bones
+  (bones nil)                           ; Bones information (skeleton) (simple-vector of bone-info)
+  (bind-pose nil))                      ; Bones base transformation (Transform[])
+
+;;; Model, meshes, materials and animation data
 (defstruct model
-  "3D model containing mesh and material data"
-  (meshes nil :type list)                       ; List of mesh structures
-  (materials nil :type list)                    ; List of material structures
-  (mesh-count 0 :type fixnum)                   ; Number of meshes
-  (material-count 0 :type fixnum)               ; Number of materials
-  (transform (meye 4) :type mat4)               ; Model transformation matrix
-  (bounding-box nil :type (or null list)))      ; Bounding box (min-max Vector3 pair)
+  (transform (meye 4) :type mat4)       ; Local transform matrix
+  (mesh-count 0 :type fixnum)           ; Number of meshes
+  (material-count 0 :type fixnum)       ; Number of materials
+  (meshes nil)                          ; Meshes array (simple-vector of mesh)
+  (materials nil)                       ; Materials array (simple-vector of material)
+  (mesh-material nil)                   ; Mesh material number (vector of fixnum)
+  ;; Animation data
+  (skeleton (make-model-skeleton))      ; Skeleton for animation
+  ;; Runtime animation data (CPU/GPU skinning)
+  (current-pose nil)                    ; Current animation pose (Transform[])
+  (bone-matrices nil))                  ; Bones animated transformation matrices (simple-vector of mat4)
 
-;;; Ray for casting
+;;; ModelAnimation, contains a full animation sequence
+(defstruct model-animation
+  (name "" :type string)                ; Animation name (char[32])
+  (bone-count 0 :type fixnum)           ; Number of bones (per pose)
+  (keyframe-count 0 :type fixnum)       ; Number of animation key frames
+  (keyframe-poses nil))                 ; Animation sequence keyframe poses [keyframe][pose]
+
+;;; Ray, ray for raycasting
 (defstruct ray
-  "Ray structure for 3D ray casting"
-  (position (vec3 0.0 0.0 0.0))                 ; Ray position (origin)
-  (direction (vec3 0.0 0.0 -1.0)))              ; Ray direction (normalized)
+  (position (vec3 0.0 0.0 0.0))         ; Ray position (origin)
+  (direction (vec3 0.0 0.0 0.0)))       ; Ray direction (normalized)
 
-;;; Ray collision result
+;;; RayCollision, ray hit information
 (defstruct ray-collision
-  "Ray collision result structure (matches raylib RayCollision)"
-  (hit nil :type boolean)                       ; Did the ray hit something?
-  (distance 0.0 :type single-float)             ; Distance to the nearest hit
-  (point (vec3 0.0 0.0 0.0) :type vec3)         ; Point of the nearest hit
-  (normal (vec3 0.0 0.0 0.0) :type vec3))       ; Surface normal of hit
+  (hit nil :type boolean)               ; Did the ray hit something?
+  (distance 0.0 :type single-float)     ; Distance to the nearest hit
+  (point (vec3 0.0 0.0 0.0) :type vec3) ; Point of the nearest hit
+  (normal (vec3 0.0 0.0 0.0) :type vec3)) ; Surface normal of hit
 
-;;; Bounding box structure
+;;; BoundingBox
 (defstruct bounding-box
-  "3D bounding box"
-  (min (vec3 0.0 0.0 0.0) :type vec3)           ; Minimum point
-  (max (vec3 0.0 0.0 0.0) :type vec3))          ; Maximum point
-
-;;; 2D geometry structures for collision detection
-
-;;; Circle structure for 2D collision detection
-(defstruct circle
-  "2D circle structure for collision detection"
-  (center (vec2 0.0 0.0) :type vec2)            ; Circle center
-  (radius 0.0 :type single-float))              ; Circle radius
-
-;;; AABB (Axis-Aligned Bounding Box) structure for 2D collision detection
-(defstruct aabb
-  "2D axis-aligned bounding box for collision detection"
-  (min (vec2 0.0 0.0) :type vec2)               ; Minimum point
-  (max (vec2 0.0 0.0) :type vec2))              ; Maximum point
-
-;;; Line segment structure for 2D collision detection
-(defstruct line-segment
-  "2D line segment for collision detection"
-  (start (vec2 0.0 0.0) :type vec2)             ; Start point
-  (end (vec2 0.0 0.0) :type vec2))              ; End point
-
-;;; 3D geometry structures
-
-;;; Sphere structure for 3D collision detection
-(defstruct sphere
-  "3D sphere structure for collision detection"
-  (center (vec3 0.0 0.0 0.0) :type vec3)        ; Sphere center
-  (radius 0.0 :type single-float))              ; Sphere radius
-
-;;; AABB3D structure for 3D collision detection
-(defstruct aabb3d
-  "3D axis-aligned bounding box for collision detection"
-  (min (vec3 0.0 0.0 0.0) :type vec3)           ; Minimum point
-  (max (vec3 0.0 0.0 0.0) :type vec3))          ; Maximum point
+  (min (vec3 0.0 0.0 0.0) :type vec3)   ; Minimum vertex box-corner
+  (max (vec3 0.0 0.0 0.0) :type vec3))  ; Maximum vertex box-corner
 
 ;;; File path list structure for file drop handling
 (defstruct file-path-list

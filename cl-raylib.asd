@@ -9,8 +9,6 @@
                #:bordeaux-threads
                #:3d-matrices
                #:3d-vectors
-               #:3d-transforms
-               #:3d-quaternions
                #:alexandria
                #:uiop
                #:imago
@@ -38,6 +36,8 @@
    (:file "textures")
    (:file "utils")                 ; Utility functions and logging system (required for raylib compatibility)
    (:file "shapes")
+   (:file "par-shapes")            ; external/par_shapes.h (used by rmodels.c)
+   (:file "models")                ; rmodels.c
    (:file "truetype")              ; stb_truetype.h + stb_rect_pack.h (used by rtext.c)
    (:file "text")                  ; rtext.c
    (:file "miniaudio")             ; miniaudio.h subset: data conversion + PulseAudio playback device

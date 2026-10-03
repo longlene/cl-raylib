@@ -1034,8 +1034,13 @@ conversions d i u x X o c s f F e E g G %"
                                      ;; NOTE: C varargs promote float to double
                                      (let* ((v (float (next-arg) 1d0))
                                             (prec (or precision 6))
-                                            (sign (cond ((minusp v) "-") (plus "+") (space " ") (t "")))
+                                            ;; NOTE: Sign bit is used (C prints -0.000000 and -nan)
+                                            (sign (cond ((minusp (float-sign v)) "-") (plus "+") (space " ") (t "")))
                                             (digits
+                                              (cond
+                                                ((sb-ext:float-nan-p v) (if (upper-case-p conv) "NAN" "nan"))
+                                                ((sb-ext:float-infinity-p v) (if (upper-case-p conv) "INF" "inf"))
+                                                (t
                                               (case conv
                                                 ((#\f #\F) (%c-format-fixed v prec))
                                                 ((#\e #\E) (%c-format-exp v prec (char= conv #\E)))
@@ -1055,7 +1060,7 @@ conversions d i u x X o c s f F e E g G %"
                                                            (setf mant (string-right-trim "0" mant))
                                                            (setf mant (string-right-trim "." mant)))
                                                          (setf s (concatenate 'string mant expo))))
-                                                     s))))))
+                                                     s))))))))
                                        (concatenate 'string sign digits)))
                                     (t (string conv)))))
                            (incf i)

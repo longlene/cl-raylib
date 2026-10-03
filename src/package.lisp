@@ -2,9 +2,7 @@
   (:nicknames #:raylib)
   (:use #:cl
         #:3d-vectors
-        #:3d-matrices
-        #:org.shirakumo.flare.quaternion
-        #:org.shirakumo.flare.transform)
+        #:3d-matrices)
   (:import-from #:alexandria
                 #:clamp)
   (:local-nicknames
@@ -93,88 +91,68 @@
    #:check-collision-point-poly #:check-collision-circle-rec #:check-collision-lines
    #:check-collision-point-line #:check-collision-circle-line
 
-   ;; 3D drawing functions
+   ;; rmodels: basic geometric 3D shapes drawing functions
+   #:draw-line-3d #:draw-point-3d #:draw-circle-3d #:draw-triangle-3d #:draw-triangle-strip-3d
    #:draw-cube #:draw-cube-v #:draw-cube-wires #:draw-cube-wires-v
-   #:draw-sphere #:draw-sphere-ex #:draw-sphere-wires #:draw-cylinder #:draw-cylinder-wires
-   #:draw-capsule #:draw-capsule-wires #:draw-plane #:draw-grid #:draw-ray #:draw-line-3d #:draw-point-3d
-   #:draw-triangle-3d #:push-matrix #:pop-matrix #:translate-3d #:rotate-3d
-   #:scale-3d #:with-matrix
-   
-   ;; Collision functions
+   #:draw-sphere #:draw-sphere-ex #:draw-sphere-wires
+   #:draw-cylinder #:draw-cylinder-ex #:draw-cylinder-wires #:draw-cylinder-wires-ex
+   #:draw-capsule #:draw-capsule-wires #:draw-plane #:draw-ray #:draw-grid
+
+   ;; 2D collision functions (rshapes)
    #:check-collision-point-rec #:check-collision-recs #:check-collision-point-circle
    #:check-collision-circles #:get-collision-rec #:check-collision-point-triangle
-   #:check-collision-point-box #:get-ray-collision-sphere #:get-ray-collision-box
-   #:check-collision-circle-rectangle #:check-collision-line-rectangle
-   #:check-collision-sphere-aabb3d #:check-collision-rectangle-rectangle
-   #:init-collision-system #:cleanup-collision-system
-   
-   ;; 2D Geometry structures and functions
-   #:circle #:make-circle #:circle-center #:circle-radius #:make-circle-at
-   #:aabb #:make-aabb #:aabb-min #:aabb-max #:make-aabb-from-center-size
-   #:get-aabb-center #:get-aabb-width #:get-aabb-height
-   #:line-segment #:make-line-segment #:line-segment-start #:line-segment-end
-   
-   ;; 3D Geometry structures and functions
-   #:sphere #:make-sphere #:sphere-center #:sphere-radius #:make-sphere-at
-   #:aabb3d #:make-aabb3d #:aabb3d-min #:aabb3d-max #:make-aabb3d-from-center-size
-   
-   ;; 3D Model and Mesh structures
-   #:vertex #:make-vertex #:vertex-position #:vertex-normal #:vertex-texcoord #:vertex-color
-   #:mesh #:make-mesh #:mesh-vertices #:mesh-indices #:mesh-vertex-count #:mesh-triangle-count
-   #:mesh-vbo-vertices #:mesh-vbo-indices #:mesh-vao #:mesh-uploaded
+
+   ;; rmodels: model, mesh and material types
+   #:mesh #:make-mesh #:mesh-vertex-count #:mesh-triangle-count #:mesh-vertices #:mesh-texcoords
+   #:mesh-texcoords2 #:mesh-normals #:mesh-tangents #:mesh-colors #:mesh-indices #:mesh-bone-count
+   #:mesh-bone-indices #:mesh-bone-weights #:mesh-anim-vertices #:mesh-anim-normals #:mesh-vao-id #:mesh-vbo-id
    #:material-map #:make-material-map #:material-map-texture #:material-map-color #:material-map-value
    #:material #:make-material #:material-shader #:material-maps #:material-params
-   #:model #:make-model #:model-meshes #:model-materials #:model-mesh-count
-   #:model-material-count #:model-transform #:model-bounding-box
+   #:transform #:make-transform #:transform-translation #:transform-rotation #:transform-scale
+   #:bone-info #:make-bone-info #:bone-info-name #:bone-info-parent
+   #:model-skeleton #:make-model-skeleton #:model-skeleton-bone-count #:model-skeleton-bones #:model-skeleton-bind-pose
+   #:model #:make-model #:model-transform #:model-mesh-count #:model-material-count #:model-meshes
+   #:model-materials #:model-mesh-material #:model-skeleton #:model-current-pose #:model-bone-matrices
+   #:model-animation #:make-model-animation #:model-animation-name #:model-animation-bone-count
+   #:model-animation-keyframe-count #:model-animation-keyframe-poses
+   #:ray #:make-ray #:ray-position #:ray-direction
    #:bounding-box #:make-bounding-box #:bounding-box-min #:bounding-box-max
-   
-   ;; Mesh creation and generation
-   #:create-mesh #:create-vertex #:gen-mesh-cube #:gen-mesh-sphere #:gen-mesh-plane
-   #:gen-mesh-poly #:gen-mesh-hemisphere #:gen-mesh-cylinder #:gen-mesh-cone #:gen-mesh-torus
-   #:gen-mesh-knot #:gen-mesh-heightmap #:gen-mesh-cubicmap
-   #:calculate-mesh-bounds #:mesh-calculate-normals #:mesh-transform
-   #:create-model #:load-model-from-mesh #:create-material #:load-material-default
-   #:set-material-texture #:get-material-texture #:set-material-color #:get-material-color
-   #:is-material-valid #:unload-material #:material-set-texture
-   
-   ;; Mesh GPU functions
-   #:upload-mesh #:unload-mesh #:is-mesh-valid #:is-model-valid #:cleanup-models
-   
-   ;; OBJ file loading
-   #:load-model-obj #:export-mesh-obj #:load-model-cube #:load-model-sphere
-   #:load-model-plane #:get-model-info #:get-mesh-info
-   
-   ;; Model rendering functions
+
+   ;; rmodels: model management functions
+   #:load-model #:load-model-from-mesh #:is-model-valid #:unload-model #:get-model-bounding-box
+
+   ;; rmodels: model drawing functions
    #:draw-model #:draw-model-ex #:draw-model-wires #:draw-model-wires-ex
-   #:draw-mesh #:draw-mesh-instanced #:update-mesh-buffer #:get-mesh-bounding-box
-   #:gen-mesh-tangents #:draw-cube-model #:draw-sphere-model
-   #:draw-plane-model #:draw-model-billboard #:draw-model-points
-   
-   ;; Billboard drawing functions
-   #:draw-billboard #:draw-billboard-rec #:draw-billboard-pro
-   
-   ;; Model loading and management
-   #:load-model #:unload-model #:load-model-from-mesh
-   
-   ;; Model transformations
-   #:transform-model #:scale-model #:translate-model #:rotate-model
-   
-   ;; Bounding box and collision
-   #:get-model-bounding-box #:check-collision-boxes #:draw-bounding-box
-   
-   ;; Material map constants
+   #:draw-bounding-box #:draw-billboard #:draw-billboard-rec #:draw-billboard-pro
+
+   ;; rmodels: mesh management functions
+   #:upload-mesh #:update-mesh-buffer #:unload-mesh #:draw-mesh #:draw-mesh-instanced
+   #:get-mesh-bounding-box #:gen-mesh-tangents #:export-mesh #:export-mesh-as-code
+
+   ;; rmodels: mesh generation functions
+   #:gen-mesh-poly #:gen-mesh-plane #:gen-mesh-cube #:gen-mesh-sphere #:gen-mesh-hemi-sphere
+   #:gen-mesh-cylinder #:gen-mesh-cone #:gen-mesh-torus #:gen-mesh-knot
+   #:gen-mesh-heightmap #:gen-mesh-cubicmap
+
+   ;; rmodels: material loading/unloading functions
+   #:load-materials #:load-material-default #:is-material-valid #:unload-material
+   #:set-material-texture #:set-model-mesh-material
+
+   ;; rmodels: model animations loading/unloading functions
+   #:load-model-animations #:update-model-animation #:update-model-animation-ex
+   #:unload-model-animations #:is-model-animation-valid
+
+   ;; rmodels: collision detection functions
+   #:check-collision-spheres #:check-collision-boxes #:check-collision-box-sphere
+   #:get-ray-collision-sphere #:get-ray-collision-box #:get-ray-collision-mesh
+   #:get-ray-collision-triangle #:get-ray-collision-quad
+
+   ;; Material map index
    #:+material-map-albedo+ #:+material-map-metalness+ #:+material-map-normal+ #:+material-map-roughness+
    #:+material-map-occlusion+ #:+material-map-emission+ #:+material-map-height+ #:+material-map-cubemap+
    #:+material-map-irradiance+ #:+material-map-prefilter+ #:+material-map-brdf+
    #:+material-map-diffuse+ #:+material-map-specular+ #:+max-material-maps+
-   
-   ;; Utility functions
-   #:color-normalize #:color-multiply #:matrix4-rotate-axis
-   
-   ;; Rendering control
-   #:set-wireframe-mode #:set-lighting-enabled #:unload-model
-   #:begin-batch-rendering #:end-batch-rendering #:with-batch-rendering
-   
+
    ;; Image/Texture structures
    #:image #:make-image #:image-data #:image-width #:image-height
    #:image-mipmaps #:image-format
@@ -548,42 +526,6 @@
    #:get-supported-image-formats #:is-image-format-supported #:init-image-processing-system
    #:cleanup-image-processing-system
    
-   ;; 2D Collision shapes
-   #:circle #:aabb #:obb #:polygon #:line-segment
-   #:make-circle #:make-aabb #:make-obb #:make-polygon #:make-line-segment
-   #:make-circle-at #:make-aabb-from-points #:make-aabb-from-center-size #:make-obb-at
-   #:circle-center #:circle-radius #:aabb-min #:aabb-max #:obb-center #:obb-half-extents #:obb-rotation
-   
-   ;; 3D Collision shapes
-   #:sphere #:aabb3d #:obb3d #:plane3d #:capsule
-   #:make-sphere #:make-aabb3d #:make-obb3d #:make-plane3d #:make-capsule
-   #:make-sphere-at #:make-aabb3d-from-points #:make-aabb3d-from-center-size
-   #:sphere-center #:sphere-radius #:aabb3d-min #:aabb3d-max
-   
-   ;; Shape properties
-   #:get-aabb-width #:get-aabb-height #:get-aabb-center #:get-aabb3d-size #:get-aabb3d-center
-   
-   ;; 2D Collision detection
-   #:check-collision-point-circle #:check-collision-point-rectangle #:check-collision-circles
-   #:check-collision-rectangle-rectangle #:check-collision-circle-rectangle
-   #:check-collision-line-circle #:check-collision-line-rectangle
-   
-   ;; 3D Collision detection
-   #:check-collision-point-sphere #:check-collision-point-aabb3d #:check-collision-spheres
-   #:check-collision-aabb3d-aabb3d #:check-collision-sphere-aabb3d
-   #:check-collision-ray-sphere #:check-collision-ray-aabb3d
-   
-   ;; Collision information
-   #:collision-info #:collision-info-3d #:make-collision-info #:make-collision-info-3d
-   #:get-collision-info-circles #:get-collision-info-rectangles
-   #:collision-info-colliding #:collision-info-normal #:collision-info-penetration #:collision-info-contact-point
-   
-   ;; Collision utilities
-   #:get-aabb-from-circle #:get-aabb3d-from-sphere #:expand-aabb #:expand-aabb3d
-   
-   ;; Collision system compatibility (no-ops for raylib stateless design)
-   #:init-collision-system #:cleanup-collision-system
-   
    ;; Audio data structures
    #:wave #:sound #:music #:audio-stream
    #:make-wave #:make-sound #:make-music #:make-audio-stream
@@ -633,12 +575,6 @@
    #:init-compression-system #:cleanup-compression-system
    #:get-supported-compression-formats #:get-compression-system-info
    #:clear-compression-cache #:get-compression-cache-info
-   
-   ;; GLTF loader system
-   #:gltf-asset #:gltf-buffer #:gltf-buffer-view #:gltf-accessor #:gltf-material
-   #:gltf-texture #:gltf-image #:gltf-primitive #:gltf-mesh #:gltf-node
-   #:gltf-scene #:gltf-data #:load-gltf-file #:load-model-gltf #:get-gltf-info
-   #:gltf-to-model #:parse-gltf-json #:validate-gltf-data
    
    ;; Shader system
    #:shader #:make-shader #:shader-id #:shader-locs

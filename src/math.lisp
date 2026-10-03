@@ -38,6 +38,15 @@
     ((< angle (- +pi+)) (+ angle (* 2 +pi+)))
     (t angle)))
 
+;; C sqrtf(): NaN for negative or NaN arguments
+;; NOTE: CL SQRT returns a complex for negative arguments, and SBCL rejects a NaN result
+(declaim (inline %sqrtf))
+(defun %sqrtf (x)
+  (let ((x (float x 1.0)))
+    (if (or (sb-ext:float-nan-p x) (minusp x))
+        (sb-kernel:make-single-float -4194304) ; -NaN, as x86-64 sqrtss
+        (sqrt x))))
+
 ;; Matrix field access by raylib index: (%m mat 12) <=> mat.m12
 (defmacro %m (mat index)
   `(mcref4 ,mat ,(mod index 4) ,(floor index 4)))
@@ -121,7 +130,7 @@
 
 (defun vector2-length (v)
   "Calculate vector length"
-  (sqrt (+ (* (vx v) (vx v)) (* (vy v) (vy v)))))
+  (%sqrtf (+ (* (vx v) (vx v)) (* (vy v) (vy v)))))
 
 (defun vector2-length-sqr (v)
   "Calculate vector square length"
@@ -137,7 +146,7 @@
 
 (defun vector2-distance (v1 v2)
   "Calculate distance between two vectors"
-  (sqrt (vector2-distance-sqr v1 v2)))
+  (%sqrtf (vector2-distance-sqr v1 v2)))
 
 (defun vector2-distance-sqr (v1 v2)
   "Calculate square distance between two vectors"
@@ -177,7 +186,7 @@ Current implementation should be aligned with glm::angle"
 
 (defun vector2-normalize (v)
   "Normalize provided vector"
-  (let ((length (sqrt (+ (* (vx v) (vx v)) (* (vy v) (vy v))))))
+  (let ((length (%sqrtf (+ (* (vx v) (vx v)) (* (vy v) (vy v))))))
     (if (> length 0)
         (let ((ilength (/ 1.0 length)))
           (vec2 (* (vx v) ilength) (* (vy v) ilength)))
@@ -225,7 +234,7 @@ Current implementation should be aligned with glm::angle"
     (if (or (= value 0)
             (and (>= max-distance 0) (<= value (* max-distance max-distance))))
         target
-        (let ((dist (sqrt value)))
+        (let ((dist (%sqrtf value)))
           (vec2 (+ (vx v) (* (/ dx dist) max-distance))
                 (+ (vy v) (* (/ dy dist) max-distance)))))))
 
@@ -242,7 +251,7 @@ Current implementation should be aligned with glm::angle"
   "Clamp the magnitude of the vector between two min and max values"
   (let ((length (+ (* (vx v) (vx v)) (* (vy v) (vy v)))))
     (if (> length 0.0)
-        (let ((length (sqrt length))
+        (let ((length (%sqrtf length))
               (scale 1))                ; By default, 1 as the neutral element
           (cond ((< length min) (setf scale (/ min length)))
                 ((> length max) (setf scale (/ max length))))
@@ -263,7 +272,7 @@ r: ratio of the refractive index of the medium from where the ray comes
   (let* ((dot (+ (* (vx v) (vx n)) (* (vy v) (vy n))))
          (d (- 1.0 (* r r (- 1.0 (* dot dot))))))
     (if (>= d 0.0)
-        (let ((d (sqrt d)))
+        (let ((d (%sqrtf d)))
           (vec2 (- (* r (vx v)) (* (+ (* r dot) d) (vx n)))
                 (- (* r (vy v)) (* (+ (* r dot) d) (vy n)))))
         (vec2 0.0 0.0))))
@@ -324,7 +333,7 @@ r: ratio of the refractive index of the medium from where the ray comes
 
 (defun vector3-length (v)
   "Calculate vector length"
-  (sqrt (+ (* (vx v) (vx v)) (* (vy v) (vy v)) (* (vz v) (vz v)))))
+  (%sqrtf (+ (* (vx v) (vx v)) (* (vy v) (vy v)) (* (vz v) (vz v)))))
 
 (defun vector3-length-sqr (v)
   "Calculate vector square length"
@@ -336,7 +345,7 @@ r: ratio of the refractive index of the medium from where the ray comes
 
 (defun vector3-distance (v1 v2)
   "Calculate distance between two vectors"
-  (sqrt (vector3-distance-sqr v1 v2)))
+  (%sqrtf (vector3-distance-sqr v1 v2)))
 
 (defun vector3-distance-sqr (v1 v2)
   "Calculate square distance between two vectors"
@@ -461,7 +470,7 @@ Ref.: https://en.wikipedia.org/w/index.php?title=Euler%E2%80%93Rodrigues_formula
     (if (or (= value 0)
             (and (>= max-distance 0) (<= value (* max-distance max-distance))))
         target
-        (let ((dist (sqrt value)))
+        (let ((dist (%sqrtf value)))
           (vec3 (+ (vx v) (* (/ dx dist) max-distance))
                 (+ (vy v) (* (/ dy dist) max-distance))
                 (+ (vz v) (* (/ dz dist) max-distance)))))))
@@ -555,7 +564,7 @@ min and max values specified by the given vectors"
   "Clamp the magnitude of the vector between two values"
   (let ((length (vector3-length-sqr v)))
     (if (> length 0.0)
-        (let ((length (sqrt length))
+        (let ((length (%sqrtf length))
               (scale 1))                ; By default, 1 as the neutral element
           (cond ((< length min) (setf scale (/ min length)))
                 ((> length max) (setf scale (/ max length))))
@@ -577,7 +586,7 @@ r: ratio of the refractive index of the medium from where the ray comes
   (let* ((dot (vector3-dot-product v n))
          (d (- 1.0 (* r r (- 1.0 (* dot dot))))))
     (if (>= d 0.0)
-        (let ((d (sqrt d)))
+        (let ((d (%sqrtf d)))
           (vec3 (- (* r (vx v)) (* (+ (* r dot) d) (vx n)))
                 (- (* r (vy v)) (* (+ (* r dot) d) (vy n)))
                 (- (* r (vz v)) (* (+ (* r dot) d) (vz n)))))
@@ -606,7 +615,7 @@ r: ratio of the refractive index of the medium from where the ray comes
   (vec4 (- (vx v) add) (- (vy v) add) (- (vz v) add) (- (vw v) add)))
 
 (defun vector4-length (v)
-  (sqrt (vector4-length-sqr v)))
+  (%sqrtf (vector4-length-sqr v)))
 
 (defun vector4-length-sqr (v)
   (+ (* (vx v) (vx v)) (* (vy v) (vy v)) (* (vz v) (vz v)) (* (vw v) (vw v))))
@@ -616,7 +625,7 @@ r: ratio of the refractive index of the medium from where the ray comes
 
 (defun vector4-distance (v1 v2)
   "Calculate distance between two vectors"
-  (sqrt (vector4-distance-sqr v1 v2)))
+  (%sqrtf (vector4-distance-sqr v1 v2)))
 
 (defun vector4-distance-sqr (v1 v2)
   "Calculate square distance between two vectors"
@@ -672,7 +681,7 @@ r: ratio of the refractive index of the medium from where the ray comes
     (if (or (= value 0)
             (and (>= max-distance 0) (<= value (* max-distance max-distance))))
         target
-        (let ((dist (sqrt value)))
+        (let ((dist (%sqrtf value)))
           (vec4 (+ (vx v) (* (/ dx dist) max-distance))
                 (+ (vy v) (* (/ dy dist) max-distance))
                 (+ (vz v) (* (/ dz dist) max-distance))
@@ -811,7 +820,7 @@ NOTE: Angle should be provided in radians"
   (let* ((x (vx axis)) (y (vy axis)) (z (vz axis))
          (length-squared (+ (* x x) (* y y) (* z z))))
     (when (and (/= length-squared 1.0) (/= length-squared 0.0))
-      (let ((ilength (/ 1.0 (sqrt length-squared))))
+      (let ((ilength (/ 1.0 (%sqrtf length-squared))))
         (setf x (* x ilength)
               y (* y ilength)
               z (* z ilength))))
@@ -1051,7 +1060,7 @@ NOTE: Fovy angle must be provided in radians"
       ((> cos-half-theta 0.95) (quaternion-nlerp q1 q2 amount))
       (t
        (let ((half-theta (acos cos-half-theta))
-             (sin-half-theta (sqrt (- 1.0 (* cos-half-theta cos-half-theta)))))
+             (sin-half-theta (%sqrtf (- 1.0 (* cos-half-theta cos-half-theta)))))
          (if (< (abs sin-half-theta) +epsilon+)
              (vec4 (+ (* (vx q1) 0.5) (* (vx q2) 0.5))
                    (+ (* (vy q1) 0.5) (* (vy q2) 0.5))
@@ -1090,7 +1099,7 @@ as described in the GLTF 2.0 specification: https://registry.khronos.org/glTF/sp
     ;; NOTE: Normalize to essentially nlerp the original and identity to 0.5
     (quaternion-normalize
      (vec4 (vx cross) (vy cross) (vz cross)
-           (+ (sqrt (+ (* (vx cross) (vx cross)) (* (vy cross) (vy cross))
+           (+ (%sqrtf (+ (* (vx cross) (vx cross)) (* (vy cross) (vy cross))
                        (* (vz cross) (vz cross)) (* cos2-theta cos2-theta)))
               cos2-theta)))))
 
@@ -1112,7 +1121,7 @@ as described in the GLTF 2.0 specification: https://registry.khronos.org/glTF/sp
       (when (> four-z-squared-minus1 four-biggest-squared-minus1)
         (setf four-biggest-squared-minus1 four-z-squared-minus1
               biggest-index 3))
-      (let* ((biggest-val (* (sqrt (+ four-biggest-squared-minus1 1.0)) 0.5))
+      (let* ((biggest-val (* (%sqrtf (+ four-biggest-squared-minus1 1.0)) 0.5))
              (mult (/ 0.25 biggest-val)))
         (ecase biggest-index
           (0 (vec4 (* (- m6 m9) mult) (* (- m8 m2) mult) (* (- m1 m4) mult) biggest-val))
@@ -1159,7 +1168,7 @@ Returns (values axis angle)"
     (setf q (quaternion-normalize q)))
   (let ((res-axis (vec3 0.0 0.0 0.0))
         (res-angle (* 2.0 (acos (vw q))))
-        (den (sqrt (- 1.0 (* (vw q) (vw q))))))
+        (den (%sqrtf (- 1.0 (* (vw q) (vw q))))))
     (if (> den +epsilon+)
         (setf res-axis (vec3 (/ (vx q) den) (/ (vy q) den) (/ (vz q) den)))
         ;; This occurs when the angle is zero
