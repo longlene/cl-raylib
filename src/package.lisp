@@ -12,12 +12,12 @@
    ;; Re-export 3d-math functions for compatibility
    #:vec2 #:vec3 #:vec4 #:vx #:vy #:vz #:vw #:vx2 #:vy2 #:vx3 #:vy3 #:vz3 #:vx4 #:vy4 #:vz4 #:vw4
    #:vec #:vec2-p #:vec3-p #:vec4-p #:vec-p #:vcopy #:vcopy2 #:vcopy3 #:vcopy4
-   
+
    ;; Matrix4 functions (re-exported from 3d-matrices)
    #:meye #:mtranslation #:mscaling #:mrotation #:mlookat
    #:mperspective #:mfrustum #:mortho #:m* #:minv #:mtranspose
    #:mdet #:mat4 #:mat4-p #:marr4 #:nm* #:mcol #:mrow
-   
+
    ;; Camera2D functions
    #:camera2d #:make-camera2d #:camera2d-offset #:camera2d-target #:camera2d-rotation #:camera2d-zoom
    #:make-camera-2d #:camera2d-default #:get-camera-matrix-2d #:get-world-to-screen-ex #:get-screen-to-world-ray #:get-screen-to-world-ray-ex
@@ -29,7 +29,7 @@
    #:camera2d-lerp #:camera2d-animate-to #:camera2d-handle-pan-input #:camera2d-handle-zoom-input
    #:camera2d-handle-rotation-input #:camera2d-fit-to-bounds #:camera2d-is-point-visible
    #:camera2d-is-rectangle-visible #:camera2d-get-info #:camera2d-draw-debug-info
-   
+
    ;; Camera3D functions
    #:camera3d #:make-camera3d #:camera3d-position #:camera3d-target #:camera3d-up
    #:camera3d-fovy #:camera3d-projection #:get-camera-matrix
@@ -40,30 +40,30 @@
    #:camera-yaw #:camera-pitch #:camera-roll
    #:get-camera-view-matrix #:get-camera-projection-matrix #:update-camera #:update-camera-pro
    #:get-world-to-screen #:begin-mode-3d #:end-mode-3d #:with-mode-3d
-   
+
    ;; Ray functions
    #:ray #:make-ray #:ray-position #:ray-direction #:get-mouse-ray
    #:get-screen-to-world-ray #:get-screen-to-world-ray-ex
-   
+
    ;; Ray collision functions
    #:ray-collision #:make-ray-collision #:ray-collision-hit #:ray-collision-distance
    #:ray-collision-point #:ray-collision-normal
-   
+
    ;; Camera constants
    #:+camera-perspective+ #:+camera-orthographic+ #:+camera-custom+ #:+camera-free+
    #:+camera-orbital+ #:+camera-first-person+ #:+camera-third-person+
-   
+
    ;; Color functions
-   #:color #:color-r #:color-g #:color-b #:color-a
+    #:color-r #:color-g #:color-b #:color-a
    #:make-color #:color-from-hsv #:color-to-hsv
    #:color-alpha #:color-alpha-blend #:color-fade #:fade #:keyword-to-color
-   
+
    ;; Predefined colors
    #:+black+ #:+white+ #:+red+ #:+green+ #:+blue+ #:+yellow+
    #:+magenta+ #:+cyan+ #:+gray+ #:+lightgray+ #:+darkgray+
    #:+raywhite+ #:+blank+ #:+maroon+ #:+orange+ #:+darkgreen+
    #:+darkblue+ #:+skyblue+ #:+purple+ #:+lime+ #:+beige+ #:+brown+ #:+gold+ #:+violet+ #:+darkpurple+
-   
+
    ;; 2D drawing functions
    #:draw-pixel #:draw-pixel-v
    #:draw-line #:draw-line-v #:draw-line-ex #:draw-line-strip #:draw-line-bezier
@@ -161,24 +161,24 @@
    #:rectangle #:make-rectangle #:rectangle-x #:rectangle-y
    #:rectangle-width #:rectangle-height
    #:render-texture #:make-render-texture
-   
+
    ;; Image loading functions
    #:load-image #:load-image-raw #:load-image-anim #:load-image-anim-from-memory
    #:load-image-from-memory #:load-image-from-screen
    #:export-image #:export-image-to-memory #:export-image-as-code
    #:load-texture-cubemap #:load-render-texture-ex #:update-texture-rec #:gen-texture-mipmaps
    #:+npatch-nine-patch+ #:+npatch-three-patch-vertical+ #:+npatch-three-patch-horizontal+
-   
+
    ;; Image generation functions
    #:gen-image-color #:gen-image-gradient-linear #:gen-image-gradient-radial
    #:gen-image-checked #:gen-image-white-noise #:gen-image-perlin-noise
    #:gen-image-cellular #:gen-image-gradient-square
-   
+
    ;; Image manipulation functions
    #:image-copy #:image-from-image
    #:image-color-tint #:image-color-grayscale #:image-color-invert
    #:image-flip-vertical #:image-flip-horizontal
-   #:unload-image #:get-pixel #:set-pixel
+   #:unload-image
    #:is-image-valid #:gen-image-text #:image-crop #:image-format #:image-text #:image-text-ex
    #:image-from-channel #:image-resize #:image-resize-nn #:image-resize-canvas #:image-to-pot
    #:image-alpha-crop #:image-alpha-clear #:image-alpha-mask #:image-alpha-premultiply
@@ -220,31 +220,31 @@
    #:+pixelformat-compressed-etc2-eac-rgba+ #:+pixelformat-compressed-pvrt-rgb+
    #:+pixelformat-compressed-pvrt-rgba+ #:+pixelformat-compressed-astc-4x4-rgba+
    #:+pixelformat-compressed-astc-8x8-rgba+ #:+pixelformat-uncompressed-rgba+
-   
+
    ;; GPU Texture functions
-   #:load-texture-from-image #:load-texture 
+   #:load-texture-from-image #:load-texture
    #:is-texture-valid #:unload-texture #:update-texture
    #:set-texture-filter #:set-texture-wrap
    #:draw-texture #:draw-texture-v #:draw-texture-ex #:draw-texture-rec #:draw-texture-pro
    #:draw-texture-npatch #:get-texture-data #:get-texture-format
    #:load-image-from-texture
-   
-   ;; Render Texture functions  
+
+   ;; Render Texture functions
    #:load-render-texture #:is-render-texture-valid #:unload-render-texture
    #:begin-texture-mode #:end-texture-mode #:with-texture-mode
    #:render-texture #:render-texture-id #:render-texture-texture #:render-texture-depth
-   
+
    ;; Texture constants
    #:+texture-filter-point+ #:+texture-filter-bilinear+ #:+texture-filter-trilinear+
    #:+texture-filter-anisotropic-4x+ #:+texture-filter-anisotropic-8x+ #:+texture-filter-anisotropic-16x+
    #:+texture-wrap-repeat+ #:+texture-wrap-clamp+ #:+texture-wrap-mirror-repeat+ #:+texture-wrap-mirror-clamp+
    #:+cubemap-layout-auto-detect+ #:+cubemap-layout-line-vertical+ #:+cubemap-layout-line-horizontal+
    #:+cubemap-layout-cross-three-by-four+ #:+cubemap-layout-cross-four-by-three+
-   
+
    ;; NPatch info
    #:npatch-info #:make-npatch-info #:npatch-info-source #:npatch-info-left
    #:npatch-info-top #:npatch-info-right #:npatch-info-bottom #:npatch-info-layout
-   
+
    ;; Window management functions
    #:set-config-flags #:init-window #:close-window #:window-should-close #:set-target-fps
    #:begin-drawing #:end-drawing #:with-drawing #:clear-background
@@ -276,7 +276,7 @@
 
    #:set-window-opacity
    #:disable-cursor #:enable-cursor #:hide-cursor #:show-cursor #:is-cursor-hidden
-   
+
    ;; File drop functions
    #:file-path-list #:make-file-path-list #:file-path-list-count #:file-path-list-paths
    #:is-file-dropped #:load-dropped-files #:unload-dropped-files #:file-path-list-path
@@ -289,14 +289,14 @@
    #:set-gestures-enabled #:is-gesture-detected #:get-gesture-detected #:get-gesture-hold-duration
    #:get-gesture-drag-vector #:get-gesture-drag-angle #:get-gesture-pinch-vector #:get-gesture-pinch-angle
    #:unload-codepoints #:text-is-equal #:text-to-float
-   
+
    ;; Window flags
    #:+flag-window-resizable+ #:+flag-window-undecorated+ #:+flag-window-hidden+
    #:+flag-window-minimized+ #:+flag-window-maximized+ #:+flag-window-unfocused+
    #:+flag-window-topmost+ #:+flag-window-always-run+ #:+flag-window-transparent+ #:+flag-fullscreen-mode+
    #:+flag-window-highdpi+ #:+flag-window-mouse-passthrough+ #:+flag-window-borderless-windowed-mode+
    #:+flag-vsync-hint+ #:+flag-msaa-4x-hint+ #:+flag-interlaced-hint+
-   
+
    ;; Input functions
  #:is-key-pressed #:is-key-down #:is-key-released #:is-key-up
    #:get-key-pressed #:get-char-pressed #:set-exit-key
@@ -304,12 +304,12 @@
    #:get-mouse-position #:get-mouse-x #:get-mouse-y #:set-mouse-position
    #:get-mouse-delta #:get-mouse-wheel-move #:get-mouse-wheel-move-v
    #:set-mouse-cursor #:keyword-to-key #:keyword-to-mouse-button
-   
+
    ;; Gamepad functions
    #:is-gamepad-available #:get-gamepad-name
    #:is-gamepad-button-pressed #:is-gamepad-button-down #:is-gamepad-button-released #:is-gamepad-button-up
    #:get-gamepad-axis-count #:get-gamepad-axis-movement
-   
+
    ;; Key constants
    #:+key-null+ #:+key-space+ #:+key-escape+ #:+key-enter+ #:+key-tab+ #:+key-backspace+
    #:+key-insert+ #:+key-delete+ #:+key-right+ #:+key-left+ #:+key-down+ #:+key-up+
@@ -329,21 +329,18 @@
    #:+key-y+ #:+key-z+ #:+key-f1+ #:+key-f2+ #:+key-f3+ #:+key-f4+ #:+key-f5+
    #:+key-f6+ #:+key-f7+ #:+key-f8+ #:+key-f9+ #:+key-f10+ #:+key-f11+ #:+key-f12+
    #:+key-left-shift+ #:+key-left-control+ #:+key-left-alt+
-   
+
    ;; Mouse constants
    #:+mouse-button-left+ #:+mouse-button-right+ #:+mouse-button-middle+
    #:+mouse-button-side+ #:+mouse-button-extra+ #:+mouse-button-forward+
    #:+mouse-button-back+
-   ;; Alternative mouse button names for compatibility
-
-   
    ;; Math constants and utilities
    #:+pi+ #:+deg2rad+ #:+rad2deg+ #:+epsilon+ #:clamp
    #:degrees-to-radians #:radians-to-degrees #:lerp #:clamp-angle
-   
+
    ;; Core math utility functions
    #:float-equals #:lerp #:normalize #:remap #:wrap
-   
+
    ;; Vector2 math functions
    #:vector2-zero #:vector2-one #:vector2-add #:vector2-subtract #:vector2-scale
    #:vector2-multiply #:vector2-negate #:vector2-divide #:vector2-normalize
@@ -353,7 +350,7 @@
    #:vector2-line-angle #:vector2-reflect #:vector2-rotate #:vector2-move-towards
    #:vector2-invert #:vector2-clamp-value #:vector2-equals #:vector2-transform
    #:vector2-refract
-   
+
    ;; Vector3 math functions
    #:vector3-zero #:vector3-one #:vector3-add #:vector3-subtract #:vector3-scale
    #:vector3-cross-product #:vector3-length #:vector3-length-sqr #:vector3-dot-product
@@ -372,7 +369,7 @@
    #:vector4-distance #:vector4-distance-sqr #:vector4-scale #:vector4-multiply
    #:vector4-negate #:vector4-divide #:vector4-normalize #:vector4-min #:vector4-max
    #:vector4-lerp #:vector4-move-towards #:vector4-invert #:vector4-equals
-   
+
    ;; Matrix math functions
    #:matrix-determinant #:matrix-trace #:matrix-transpose #:matrix-invert
    #:matrix-identity #:matrix-add #:matrix-subtract #:matrix-multiply
@@ -380,7 +377,7 @@
    #:matrix-rotate-z #:matrix-rotate-xyz #:matrix-rotate-zyx #:matrix-scale
    #:matrix-frustum #:matrix-perspective #:matrix-ortho #:matrix-look-at
    #:matrix-to-float-v #:matrix-multiply-value #:matrix-compose #:matrix-decompose
-   
+
    ;; Quaternion math functions
    #:quaternion-identity #:quaternion-length #:quaternion-normalize #:quaternion-invert
    #:quaternion-multiply #:quaternion-divide #:quaternion-lerp #:quaternion-nlerp
@@ -389,18 +386,18 @@
    #:quaternion-scale #:quaternion-from-vector3-to-vector3 #:quaternion-from-euler
    #:quaternion-to-euler #:quaternion-transform #:quaternion-add #:quaternion-add-value
    #:quaternion-subtract #:quaternion-subtract-value #:quaternion-cubic-hermite-spline
-   
+
    ;; Re-export 3d-math symbols
    #:vec #:vx #:vy #:vz #:v+ #:v- #:v* #:vunit #:vc #:vscale
-   #:vx2 #:vy2 #:vz2 #:vw2 #:vx3 #:vy3 #:vz3 #:vw3 #:vx4 #:vy4 #:vz4 #:vw4
-   
+   #:vx2 #:vy2   #:vx3 #:vy3 #:vz3  #:vx4 #:vy4 #:vz4 #:vw4
+
    ;; Timing system functions
    #:get-time #:get-frame-time #:get-fps #:set-target-fps
  #:wait-time
    #:performance-timer #:create-timer #:start-timer #:stop-timer #:get-timer-elapsed
-   #:with-timer #:time-execution #:begin-frame #:end-frame
+   #:with-timer #:time-execution
    #:get-timing-info #:reset-timing #:init-timer
-   
+
    ;; Logging system functions (now in utils.lisp)
    #:set-trace-log-level #:get-trace-log-level #:set-trace-log-callback #:trace-log
    #:trace-log-trace #:trace-log-debug #:trace-log-info #:trace-log-warning
@@ -411,11 +408,11 @@
    #:make-log-context #:create-log-context #:context-trace-log #:enable-performance-logging
    #:log-performance #:log-and-continue #:log-and-abort #:with-error-logging
    #:log-system-info #:cleanup-logging-system #:init-logging-system
-   
+
    ;; Utility functions (utils.lisp) - Memory management and math utilities
    #:mem-alloc #:mem-realloc #:mem-free #:clamp
-   
-   ;; File I/O system functions  
+
+   ;; File I/O system functions
    #:directory-exists #:get-file-length #:get-file-extension #:is-file-extension
    #:file-exists #:is-file-hidden #:get-file-mod-time #:is-path-directory #:is-path-absolute
    #:is-file-name-valid #:make-directory #:file-rename #:file-remove #:file-copy #:file-move
@@ -424,108 +421,62 @@
    #:compute-crc32 #:compute-md5 #:compute-sha1 #:compute-sha256 #:get-file-name
    #:get-file-name-without-ext #:get-directory-path #:get-working-directory #:change-directory
    #:load-file-data #:save-file-data #:unload-file-data #:load-file-text #:save-file-text
-   #:get-directory-files #:copy-file #:move-file #:delete-file-safe #:file-data
+
    #:get-prev-directory-path #:get-application-directory #:export-data-as-code
    #:load-directory-files #:load-directory-files-ex #:unload-directory-files
    #:is-path-file #:set-load-file-data-callback #:set-save-file-data-callback
    #:set-load-file-text-callback #:set-save-file-text-callback
    #:compress-data #:decompress-data #:encode-data-base64 #:decode-data-base64
-   
+
    ;; Random system functions
-   #:set-random-seed #:get-random-value #:get-random-float #:get-random-float-01
-   #:get-random-vector2 #:get-random-vector3 #:get-random-color #:get-random-boolean
-   #:get-random-choice #:shuffle-list #:get-random-angle #:random-walker #:create-random-walker
-   
+   #:set-random-seed #:get-random-value
+
    ;; Font and glyph structures
    #:font #:make-font #:font-p #:font-base-size #:font-glyph-count #:font-glyph-padding
    #:font-texture #:font-recs #:font-glyphs
    #:glyph-info #:make-glyph-info #:glyph-info-p #:glyph-info-value #:glyph-info-offset-x
    #:glyph-info-offset-y #:glyph-info-advance-x #:glyph-info-image
-   
+
    ;; Font management functions
    #:get-font-default #:is-font-valid #:load-font-default #:unload-font-default
  #:load-font #:load-font-ex #:load-font-from-image
    #:load-font-from-memory #:unload-font
-   
+
    ;; Glyph functions
    #:get-glyph-index #:get-glyph-info #:get-glyph-atlas-rec
-   
+
    ;; Text drawing functions
    #:draw-text #:draw-text-ex #:draw-text-pro #:draw-text-codepoint #:draw-text-codepoints
    #:draw-fps
-   
+
    ;; Text measurement functions
    #:measure-text #:measure-text-ex #:measure-text-codepoints #:set-text-line-spacing
    #:+font-default+ #:+font-bitmap+ #:+font-sdf+
    #:text-remove-spaces #:get-text-between #:text-replace-alloc #:text-replace-between
    #:text-replace-between-alloc #:text-insert-alloc #:load-text-lines #:unload-text-lines
    #:load-utf8 #:unload-utf8 #:codepoint-to-utf8 #:load-codepoints
-   
+
    ;; Font atlas functions
    #:gen-image-font-atlas #:load-font-data #:unload-font-data #:export-font-as-code
-   
+
    ;; Font atlas system
-   #:font-atlas #:atlas-node #:create-font-atlas #:atlas-pack-glyph
-   #:gen-image-font-atlas #:get-font-atlas-info #:debug-draw-font-atlas
-   
+   #:gen-image-font-atlas
+
    ;; Advanced text rendering
-   #:draw-text-with-shadow #:draw-text-outlined #:draw-text-gradient
-   #:draw-text-wrapped #:draw-text-box #:draw-text-centered #:draw-text-right-aligned
    #:color-lerp
-   
-   ;; Text input system
-   #:text-input #:create-text-input #:text-input-insert #:text-input-delete-char
-   #:text-input-move-cursor #:text-input-text #:text-input-cursor-pos
-   #:text-input-active #:text-input-max-length
-   
+
    ;; Text manipulation functions (rtext.c)
    #:text-length #:text-subtext #:text-to-upper #:text-to-lower #:text-replace
    #:text-to-integer #:text-copy #:text-insert #:text-join #:text-split #:text-append
    #:text-find-index #:text-to-pascal #:text-to-snake #:text-to-camel #:text-format
-   
+
    ;; Unicode and codepoint functions
-   #:get-codepoint #:get-codepoint-next #:get-codepoint-previous #:get-codepoint-count 
+   #:get-codepoint #:get-codepoint-next #:get-codepoint-previous #:get-codepoint-count
    #:codepoint-to-utf8 #:load-codepoints
-   
+
    ;; Text line spacing
-   #:set-text-line-spacing #:get-text-line-spacing
-   
-   ;; Font loading system
-   #:font-loader-config #:create-font-loader-config #:get-default-font-chars
-   #:detect-font-format #:load-font-cached #:load-bitmap-font #:load-image-font
-   #:load-truetype-font #:bitmap-font-info #:bitmap-glyph-data #:parse-fnt-file
-   
-   ;; Font cache management
-   #:font-cache-entry #:get-font-cache-info #:clear-font-cache #:cache-font
-   #:get-cached-font #:cleanup-font-cache
-   
-   ;; Font management utilities
-   #:get-loaded-fonts #:get-font-info #:unload-font-by-name #:reload-font
-   #:validate-font #:test-font-rendering #:get-supported-font-formats
-   #:is-font-format-supported #:get-font-format-info
-   
-   ;; TTF/OTF parsing system
-   #:ttf-header #:ttf-table-entry #:ttf-font-data #:detect-font-format
-   #:parse-truetype-data #:parse-ttf-header #:parse-ttf-table-directory
-   #:parse-essential-tables #:generate-basic-glyphs #:create-font-atlas-from-truetype
-   #:create-simple-glyph-bitmap #:create-font-from-atlas #:read-uint32-be #:read-uint16-be
-   #:read-int16-be #:read-tag
-   
-   ;; Text performance optimization
-   #:text-perf-stats #:text-render-batch #:text-cache-entry #:gpu-font-atlas
-   #:reset-text-perf-stats #:get-text-perf-stats #:begin-text-batch #:end-text-batch
-   #:draw-text-optimized #:analyze-text-performance #:enable-text-optimizations
-   #:disable-text-optimizations #:get-text-optimization-info #:cleanup-text-optimizations
-   #:get-cached-text #:clear-text-cache #:create-gpu-font-atlas #:get-gpu-font-atlas
-   
-   ;; Advanced image processing
-   #:advanced-image #:make-advanced-image #:detect-image-format #:verify-image-format
-   #:load-image-advanced #:save-image-advanced #:resize-image-advanced #:apply-image-filter
-   #:convert-from-opticl-image #:convert-to-opticl-image #:get-magic-bytes
-   #:extract-exif-data #:get-image-metadata #:set-image-metadata #:copy-advanced-image
-   #:get-supported-image-formats #:is-image-format-supported #:init-image-processing-system
-   #:cleanup-image-processing-system
-   
+   #:set-text-line-spacing
+
    ;; Audio data structures
    #:wave #:sound #:music #:audio-stream
    #:make-wave #:make-sound #:make-music #:make-audio-stream
@@ -568,14 +519,8 @@
    #:attach-audio-mixed-processor #:detach-audio-mixed-processor
 
    ;; Compression system
-   #:compression-format-info #:make-compression-format-info #:register-compression-format
-   #:get-compression-format-by-name #:get-compression-format-by-extension
-   #:is-compression-format-enabled #:compress-data #:decompress-data
-   #:compress-file #:decompress-file #:detect-compression-format
-   #:init-compression-system #:cleanup-compression-system
-   #:get-supported-compression-formats #:get-compression-system-info
-   #:clear-compression-cache #:get-compression-cache-info
-   
+    #:compress-data #:decompress-data
+
    ;; Shader system
    #:shader #:make-shader #:shader-id #:shader-locs
    #:load-shader #:load-shader-from-memory #:unload-shader
@@ -593,7 +538,7 @@
    #:vr-stereo-config-left-screen-center #:vr-stereo-config-right-screen-center
    #:vr-stereo-config-scale #:vr-stereo-config-scale-in
    #:begin-vr-stereo-mode #:end-vr-stereo-mode #:load-vr-stereo-config #:unload-vr-stereo-config
-   
+
    ;; Shader location constants
    #:+shader-loc-vertex-position+ #:+shader-loc-vertex-texcoord01+ #:+shader-loc-vertex-texcoord02+
    #:+shader-loc-vertex-normal+ #:+shader-loc-vertex-tangent+ #:+shader-loc-vertex-color+
@@ -606,20 +551,20 @@
    #:+shader-loc-map-prefilter+ #:+shader-loc-map-brdf+ #:+shader-loc-vertex-boneids+
    #:+shader-loc-vertex-boneweights+ #:+shader-loc-matrix-bonetransforms+ #:+shader-loc-vertex-instancetransform+
    #:+shader-loc-map-diffuse+ #:+shader-loc-map-specular+
-   
+
    ;; Shader uniform type constants
    #:+shader-uniform-float+ #:+shader-uniform-vec2+ #:+shader-uniform-vec3+ #:+shader-uniform-vec4+
    #:+shader-uniform-int+ #:+shader-uniform-ivec2+ #:+shader-uniform-ivec3+ #:+shader-uniform-ivec4+
    #:+shader-uniform-uint+ #:+shader-uniform-uivec2+ #:+shader-uniform-uivec3+ #:+shader-uniform-uivec4+
    #:+shader-uniform-sampler2d+
    #:+shader-attrib-float+ #:+shader-attrib-vec2+ #:+shader-attrib-vec3+ #:+shader-attrib-vec4+
-   
+
    ;; Render texture system
    #:render-texture #:make-render-texture #:render-texture-id #:render-texture-texture #:render-texture-depth
    #:load-render-texture #:is-render-texture-valid #:unload-render-texture
    #:begin-texture-mode #:end-texture-mode #:with-texture-mode
    #:get-render-texture-texture #:get-render-texture-depth
-   
+
    ;; GUI Functions (raygui)
    #:gui-enable #:gui-disable #:gui-lock #:gui-unlock #:gui-is-locked
    #:gui-set-alpha #:gui-set-state #:gui-get-state
