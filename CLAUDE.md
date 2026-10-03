@@ -22,6 +22,7 @@ raylib/src/rmodels.c -> cl-raylib/src/models.lisp
 raylib/src/external/par_shapes.h (subset used by rmodels.c) -> cl-raylib/src/par-shapes.lisp
 raylib/src/external/tinyobj_loader_c.h -> cl-raylib/src/tinyobj.lisp
 raylib/src/external/vox_loader.h -> cl-raylib/src/vox.lisp
+raylib/src/external/cgltf.h (parser/loader subset used by rmodels.c) -> cl-raylib/src/gltf.lisp
 raylib/src/rshapes.h -> cl-raylib/src/shapes.lisp
 raylib/src/rtext.h -> cl-raylib/src/text.lisp
 raylib/src/external/stb_truetype.h + stb_rect_pack.h -> cl-raylib/src/truetype.lisp

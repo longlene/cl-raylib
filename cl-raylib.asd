@@ -39,6 +39,7 @@
    (:file "par-shapes")            ; external/par_shapes.h (used by rmodels.c)
    (:file "tinyobj")               ; external/tinyobj_loader_c.h (used by rmodels.c)
    (:file "vox")                   ; external/vox_loader.h (used by rmodels.c)
+   (:file "gltf")                  ; external/cgltf.h (used by rmodels.c)
    (:file "models")                ; rmodels.c
    (:file "truetype")              ; stb_truetype.h + stb_rect_pack.h (used by rtext.c)
    (:file "text")                  ; rtext.c

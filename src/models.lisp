@@ -3006,7 +3006,810 @@ CAP-FACES is a list of (c w1 w2 w3 w4), MIDDLE-FACES a list of (w1 w2 w3 w4)"
   (trace-log +log-warning+ "MODEL: [~a] Model file format loading not implemented yet" file-name)
   (make-model))
 
-(defun %load-gltf (file-name) (%unsupported-model-format file-name))
+
+;; Load image from different glTF provided methods (uri, path, buffer_view)
+(defun %load-image-from-cgltf-image (cgltf-image tex-path)
+  (let ((image (make-image)))
+    (unless cgltf-image (return-from %load-image-from-cgltf-image image))
+
+    (let ((uri (cgltf-image-uri cgltf-image))
+          (view (cgltf-image-buffer-view cgltf-image)))
+      (cond (uri                        ; Check if image data is provided as an uri (base64 or path)
+             (if (and (> (length uri) 5) (string= uri "data:" :end1 5)) ; Check if image is provided as base64 text data
+                 ;; Data URI Format: data:<mediatype>;base64,<data>
+                 ;; Find the comma
+                 (let ((i (position #\, uri)))
+                   (if (null i)
+                       (trace-log +log-warning+ "IMAGE: glTF data URI is not a valid image")
+                       (let ((base64-size (- (length uri) i 1)))
+                         (loop while (char= (char uri (+ i base64-size)) #\=) do (decf base64-size)) ; Ignore optional paddings
+                         (let* ((number-of-encoded-bits (- (* base64-size 6) (mod (* base64-size 6) 8))) ; Encoded bits minus extra bits, so it becomes a multiple of 8 bits
+                                (out-size (ash number-of-encoded-bits -3))) ; Actual encoded bytes
+                           (multiple-value-bind (result data) (cgltf-load-buffer-base64 out-size uri (1+ i))
+                             (when (eq result :success)
+                               (setf image (load-image-from-memory ".png" data out-size))))))))
+                 ;; Check if image is provided as image path
+                 (setf image (load-image (format nil "~a/~a" tex-path uri)))))
+            ;; Check if image is provided as data buffer
+            ((and view (cgltf-buffer-data (cgltf-buffer-view-buffer view)))
+             (let* ((size (cgltf-buffer-view-size view))
+                    (data (make-array size :element-type '(unsigned-byte 8)))
+                    (buffer (cgltf-buffer-data (cgltf-buffer-view-buffer view)))
+                    (offset (cgltf-buffer-view-offset view))
+                    (stride (if (/= (cgltf-buffer-view-stride view) 0) (cgltf-buffer-view-stride view) 1))
+                    (mime-type (cgltf-image-mime-type cgltf-image)))
+               ;; Copy buffer data to memory for loading
+               (dotimes (i size)
+                 (setf (aref data i) (%gltf-u8 buffer offset))
+                 (incf offset stride))
+
+               ;; Check mime_type for image: (cgltfImage->mime_type == "image/png")
+               ;; NOTE: Detected that some models define mime_type as "image\\/png"
+               (cond ((member mime-type '("image\\/png" "image/png") :test #'equal)
+                      (setf image (load-image-from-memory ".png" data size)))
+                     ((member mime-type '("image\\/jpeg" "image/jpeg") :test #'equal)
+                      (setf image (load-image-from-memory ".jpg" data size)))
+                     (t (trace-log +log-warning+ "MODEL: glTF image data MIME type not recognized")))))))
+    image))
+
+(defun %c-name32 (string)
+  "snprintf(char[32], \"%s\", STRING)"
+  (let ((bytes (babel:string-to-octets string :encoding :utf-8)))
+    (babel:octets-to-string bytes :end (min (length bytes) 31) :encoding :utf-8 :errorp nil)))
+
+;; Load bone info from GLTF skin data
+(defun %load-bone-info-gltf (skin)
+  "Returns (values bones bone-count)"
+  (let* ((joints (or (cgltf-skin-joints skin) #()))
+         (joints-count (length joints))
+         (bones (make-array joints-count)))
+    (dotimes (i joints-count)
+      (let ((node (svref joints i))
+            (bone (make-bone-info)))
+        (setf (svref bones i) bone)
+        (when (cgltf-node-name node) (setf (bone-info-name bone) (%c-name32 (cgltf-node-name node))))
+
+        ;; Find parent bone index by walking up the node tree past any
+        ;; non-joint ancestors (intermediate transform nodes used by some
+        ;; DCC exporters), until we hit a node that is also in skin.joints.
+        (let ((parent-index -1)
+              (ancestor (cgltf-node-parent node)))
+          (loop while (and ancestor (= parent-index -1))
+                do (let ((j (position ancestor joints)))
+                     (when j (setf parent-index j)))
+                   (when (= parent-index -1) (setf ancestor (cgltf-node-parent ancestor))))
+          (setf (bone-info-parent bone) parent-index))))
+    (values bones joints-count)))
+
+(defun %gltf-matrix (m)
+  "Matrix from a column-major cgltf float[16]"
+  (%matrix (aref m 0) (aref m 1) (aref m 2) (aref m 3) (aref m 4) (aref m 5) (aref m 6) (aref m 7)
+           (aref m 8) (aref m 9) (aref m 10) (aref m 11) (aref m 12) (aref m 13) (aref m 14) (aref m 15)))
+
+(defun %gltf-load-attribute (accessor num-comp src-type)
+  "LOAD_ATTRIBUTE(): ACCESSOR count*NUM-COMP raw values of SRC-TYPE (:float, :u8, :s8, :u16, :s16, :u32)"
+  (let* ((view (cgltf-accessor-buffer-view accessor))
+         (data (and view (cgltf-buffer-data (cgltf-buffer-view-buffer view))))
+         (size (ecase src-type ((:u8 :s8) 1) ((:u16 :s16) 2) ((:float :u32) 4)))
+         (reader (ecase src-type
+                   (:float #'%gltf-f32) (:u8 #'%gltf-u8) (:s8 #'%gltf-s8)
+                   (:u16 #'%gltf-u16) (:s16 #'%gltf-s16) (:u32 #'%gltf-u32)))
+         (count (cgltf-accessor-count accessor))
+         (out (make-array (* count num-comp)))
+         ;; buffer = (srcType *)buffer->data + view->offset/sizeof(srcType) + accessor->offset/sizeof(srcType)
+         (base (if view (+ (floor (cgltf-buffer-view-offset view) size) (floor (cgltf-accessor-offset accessor) size)) 0))
+         (step (floor (cgltf-accessor-stride accessor) size))
+         (n 0))
+    (dotimes (k count)
+      (dotimes (l num-comp)
+        (setf (svref out (+ (* num-comp k) l)) (funcall reader data (* size (+ base n l)))))
+      (incf n step))
+    out))
+
+(defun %gltf-copy-into (target values &optional (key #'identity))
+  "Copy VALUES into TARGET (C writes past a too small allocation are dropped)"
+  (dotimes (i (min (length target) (length values)) target)
+    (setf (aref target i) (funcall key (svref values i)))))
+
+(defun %c-float-to-uchar (x)
+  "C (unsigned char) conversion of a float"
+  (logand (%c-float-to-int x) #xff))
+
+;; Load glTF file into model struct, .gltf and .glb supported
+(defun %load-gltf (file-name)
+  "
+    Function implemented by Wilhem Barbier(@wbrbr), with modifications by Tyler Bezera(@gamerfiend)
+    Transform handling implemented by Paul Melis (@paulmelis)
+    Reviewed by Ramon Santamaria (@raysan5)
+
+    FEATURES:
+      - Supports .gltf and .glb files
+      - Supports embedded (base64) or external textures
+      - Supports PBR metallic/roughness flow, loads material textures, values and colors
+                 PBR specular/glossiness flow and extended texture flows not supported
+      - Supports multiple meshes per model (every primitives is loaded as a separate mesh)
+      - Supports basic animations
+      - Transforms, including parent-child relations, are applied on the mesh data,
+        but the hierarchy is not kept (as it can't be represented)
+      - Mesh instances in the glTF file (a.e. same mesh linked from multiple nodes)
+        are turned into separate raylib Meshes
+
+    RESTRICTIONS:
+      - Only triangle meshes supported
+      - Vertex attribute types and formats supported:
+          > Vertices (position): vec3: float
+          > Normals: vec3: float
+          > Texcoords: vec2: float
+          > Colors: vec4: u8, u16, f32 (normalized)
+          > Indices: u16, u32 (truncated to u16)
+      - Scenes defined in the glTF file are ignored. All nodes in the file are used
+"
+  (let ((model (make-model)))
+    ;; glTF file loading
+    (multiple-value-bind (file-data data-size) (load-file-data file-name)
+      (unless file-data (return-from %load-gltf model))
+
+      ;; glTF data loading
+      (multiple-value-bind (result data) (cgltf-parse file-data data-size)
+        (unless (eq result :success)
+          (trace-log +log-warning+ "MODEL: [~a] Failed to load glTF data" file-name)
+          (return-from %load-gltf model))
+
+        (case (cgltf-data-file-type data)
+          (:glb (trace-log +log-info+ "MODEL: [~a] Model basic data (glb) loaded successfully" file-name))
+          (:gltf (trace-log +log-info+ "MODEL: [~a] Model basic data (glTF) loaded successfully" file-name))
+          (t (trace-log +log-warning+ "MODEL: [~a] Model format not recognized" file-name)))
+
+        (trace-log +log-info+ "    > Meshes count: ~d" (length (cgltf-data-meshes data)))
+        (trace-log +log-info+ "    > Materials count: ~d (+1 default)" (length (cgltf-data-materials data)))
+        (trace-log +log-debug+ "    > Buffers count: ~d" (length (cgltf-data-buffers data)))
+        (trace-log +log-debug+ "    > Images count: ~d" (length (cgltf-data-images data)))
+        (trace-log +log-debug+ "    > Textures count: ~d" (length (cgltf-data-textures data)))
+
+        ;; Force reading data buffers (fills buffer_view->buffer->data)
+        ;; NOTE: If an uri is defined to base64 data or external path, it's automatically loaded
+        (unless (eq (cgltf-load-buffers data file-name) :success)
+          (trace-log +log-info+ "MODEL: [~a] Failed to load mesh/material buffers" file-name))
+
+        (let ((primitives-count 0)
+              (draco-compression nil)
+              (nodes (cgltf-data-nodes data))
+              (materials (cgltf-data-materials data)))
+          ;; NOTE: Load every primitive in the glTF as a separate raylib Mesh
+          ;; Determine total number of meshes needed from the node hierarchy
+          (loop for node across nodes
+                for mesh = (cgltf-node-mesh node)
+                when mesh
+                  do (loop for prim across (or (cgltf-mesh-primitives mesh) #())
+                           do (cond ((cgltf-primitive-has-draco-mesh-compression prim)
+                                     (setf draco-compression t)
+                                     (trace-log +log-warning+ "MODEL: [~a] Failed to load mesh data, Draco compression not supported" file-name)
+                                     (return))
+                                    ((eq (cgltf-primitive-type prim) :triangles) (incf primitives-count)))))
+
+          (when draco-compression
+            (trace-log +log-warning+ "MODEL: [~a] Failed to load glTF data" file-name)
+            (return-from %load-gltf model))
+
+          (trace-log +log-debug+ "    > Primitives (triangles only) count based on hierarchy : ~d" primitives-count)
+
+          ;; Load our model data: meshes and materials
+          (setf (model-mesh-count model) primitives-count
+                (model-meshes model) (let ((v (make-array primitives-count)))
+                                       (dotimes (i primitives-count v) (setf (aref v i) (make-mesh)))))
+
+          ;; NOTE: Keep an extra slot for default material, in case some mesh requires it
+          (setf (model-material-count model) (+ (length materials) 1)
+                (model-materials model) (make-array (model-material-count model)))
+          (setf (aref (model-materials model) 0) (load-material-default)) ; Load default material (index: 0)
+
+          ;; Load mesh-material indices, by default all meshes are mapped to material index: 0
+          (setf (model-mesh-material model) (make-array primitives-count :initial-element 0))
+
+          ;; Load materials data
+          ;;----------------------------------------------------------------------------------------------------
+          (loop for i from 0 below (length materials)
+                for j from 1
+                do (let ((material (load-material-default))
+                         (gltf-material (aref materials i))
+                         (tex-path (get-directory-path file-name)))
+                     (setf (aref (model-materials model) j) material)
+                     (flet ((mmap (index) (%material-map material index))
+                            (view-image (view)
+                              (let ((texture (cgltf-texture-view-texture view)))
+                                (and texture (%load-image-from-cgltf-image (cgltf-texture-image texture) tex-path)))))
+                       ;; Check glTF material flow: PBR metallic/roughness flow
+                       ;; NOTE: Alternatively, materials can follow PBR specular/glossiness flow
+                       (when (cgltf-material-has-pbr-metallic-roughness gltf-material)
+                         ;; Load base color texture (albedo)
+                         (let ((im-albedo (view-image (cgltf-material-base-color-texture gltf-material))))
+                           (when (and im-albedo (image-data im-albedo))
+                             (setf (material-map-texture (mmap +material-map-albedo+)) (load-texture-from-image im-albedo))
+                             (unload-image im-albedo)))
+                         ;; Load base color factor (tint)
+                         (let ((factor (cgltf-material-base-color-factor gltf-material)))
+                           (setf (material-map-color (mmap +material-map-albedo+))
+                                 (loop for k below 4 collect (%c-float-to-uchar (* (aref factor k) 255.0)))))
+
+                         ;; Load metallic/roughness texture
+                         (when (cgltf-texture-view-texture (cgltf-material-metallic-roughness-texture gltf-material))
+                           (let ((im-metallic-roughness (view-image (cgltf-material-metallic-roughness-texture gltf-material))))
+                             (when (image-data im-metallic-roughness)
+                               (let* ((width (image-width im-metallic-roughness))
+                                      (height (image-height im-metallic-roughness))
+                                      (im-metallic (make-image :data (make-array (* width height) :element-type '(unsigned-byte 8) :initial-element 0)
+                                                               :width width :height height :mipmaps 1
+                                                               :format +pixelformat-uncompressed-grayscale+))
+                                      (im-roughness (make-image :data (make-array (* width height) :element-type '(unsigned-byte 8) :initial-element 0)
+                                                                :width width :height height :mipmaps 1
+                                                                :format +pixelformat-uncompressed-grayscale+)))
+                                 (dotimes (x width)
+                                   (dotimes (y height)
+                                     (let ((color (get-image-color im-metallic-roughness x y)))
+                                       (setf (aref (image-data im-roughness) (+ (* y width) x)) (second color) ; Roughness color channel
+                                             (aref (image-data im-metallic) (+ (* y width) x)) (third color))))) ; Metallic color channel
+
+                                 (setf (material-map-texture (mmap +material-map-roughness+)) (load-texture-from-image im-roughness)
+                                       (material-map-texture (mmap +material-map-metalness+)) (load-texture-from-image im-metallic))
+
+                                 (unload-image im-roughness)
+                                 (unload-image im-metallic)
+                                 (unload-image im-metallic-roughness))))
+
+                           ;; Load metallic/roughness material properties
+                           (setf (material-map-value (mmap +material-map-roughness+)) (cgltf-material-roughness-factor gltf-material)
+                                 (material-map-value (mmap +material-map-metalness+)) (cgltf-material-metallic-factor gltf-material)))
+
+                         ;; Load normal texture
+                         (let ((im-normal (view-image (cgltf-material-normal-texture gltf-material))))
+                           (when (and im-normal (image-data im-normal))
+                             (setf (material-map-texture (mmap +material-map-normal+)) (load-texture-from-image im-normal))
+                             (unload-image im-normal)))
+
+                         ;; Load ambient occlusion texture
+                         (let ((im-occlusion (view-image (cgltf-material-occlusion-texture gltf-material))))
+                           (when (and im-occlusion (image-data im-occlusion))
+                             (setf (material-map-texture (mmap +material-map-occlusion+)) (load-texture-from-image im-occlusion))
+                             (unload-image im-occlusion)))
+
+                         ;; Load emissive texture
+                         (when (cgltf-texture-view-texture (cgltf-material-emissive-texture gltf-material))
+                           (let ((im-emissive (view-image (cgltf-material-emissive-texture gltf-material))))
+                             (when (image-data im-emissive)
+                               (setf (material-map-texture (mmap +material-map-emission+)) (load-texture-from-image im-emissive))
+                               (unload-image im-emissive)))
+
+                           ;; Load emissive color factor
+                           (let ((factor (cgltf-material-emissive-factor gltf-material)))
+                             (setf (material-map-color (mmap +material-map-emission+))
+                                   (list (%c-float-to-uchar (* (aref factor 0) 255.0))
+                                         (%c-float-to-uchar (* (aref factor 1) 255.0))
+                                         (%c-float-to-uchar (* (aref factor 2) 255.0))
+                                         255))))))
+
+                     ;; Other possible materials not supported by raylib pipeline:
+                     ;; has_clearcoat, has_transmission, has_volume, has_ior, has specular, has_sheen
+                     ))
+          ;;----------------------------------------------------------------------------------------------------
+
+          ;; Load meshes data
+          ;;
+          ;; NOTE: Visit each node in the hierarchy and process any mesh linked from it
+          ;;  - Each primitive within a glTF node becomes a raylib Mesh
+          ;;  - The local-to-world transform of each node is used to transform the points/normals/tangents of the created Mesh(es)
+          ;;  - Any glTF mesh linked from more than one Node (a.e. instancing) is turned into multiple Mesh's, as each Node will have its own transform applied
+          ;;
+          ;; WARNING: The code below disregards the scenes defined in the file, all nodes are used
+          ;;----------------------------------------------------------------------------------------------------
+          (let ((mesh-index 0))
+            (loop for node across nodes
+                  for gltf-mesh = (cgltf-node-mesh node)
+                  when gltf-mesh
+                    do (let* ((world-matrix (%gltf-matrix (cgltf-node-transform-world node)))
+                              (world-matrix-normals (matrix-transpose (matrix-invert world-matrix))))
+                         (loop for prim across (or (cgltf-mesh-primitives gltf-mesh) #())
+                               ;; NOTE: Only support primitives defined by triangles
+                               ;; Other alternatives: points, lines, line_strip, triangle_strip
+                               when (eq (cgltf-primitive-type prim) :triangles)
+                                 do (let ((mesh (aref (model-meshes model) mesh-index)))
+                                      ;; NOTE: Attributes data could be provided in several data formats (8, 8u, 16u, 32...),
+                                      ;; Only some formats for each attribute type are supported, read info at the top of this function!
+                                      (loop for attr across (or (cgltf-primitive-attributes prim) #())
+                                            do (%load-gltf-mesh-attribute file-name mesh attr world-matrix world-matrix-normals))
+
+                                      ;; Load primitive indices data (if provided)
+                                      (let ((attribute (cgltf-primitive-indices prim)))
+                                        (if (and attribute (cgltf-accessor-buffer-view attribute))
+                                            (progn
+                                              (setf (mesh-triangle-count mesh) (truncate (%i32 (logand (cgltf-accessor-count attribute) #xffffffff)) 3))
+                                              (if (mesh-indices mesh)
+                                                  (trace-log +log-warning+ "MODEL: [~a] Indices attribute data already loaded" file-name)
+                                                  (flet ((load-indices (src-type)
+                                                           ;; Init raylib mesh indices to copy glTF attribute data
+                                                           (setf (mesh-indices mesh)
+                                                                 (%gltf-copy-into (make-array (cgltf-accessor-count attribute) :element-type '(unsigned-byte 16))
+                                                                                  (%gltf-load-attribute attribute 1 src-type)
+                                                                                  (lambda (v) (logand v #xffff))))))
+                                                    (case (cgltf-accessor-component-type attribute)
+                                                      ;; Load unsigned short data type into mesh.indices
+                                                      (:r-16u (load-indices :u16))
+                                                      (:r-8u (load-indices :u8))
+                                                      (:r-32u
+                                                       (load-indices :u32)
+                                                       (trace-log +log-warning+ "MODEL: [~a] Indices data converted from u32 to u16, possible loss of data" file-name))
+                                                      (t (trace-log +log-warning+ "MODEL: [~a] Indices data format not supported, use u16" file-name))))))
+                                            ;; Unindexed mesh
+                                            (setf (mesh-triangle-count mesh) (truncate (mesh-vertex-count mesh) 3))))
+
+                                      ;; Assign to the primitive mesh the corresponding material index
+                                      ;; NOTE: If no material defined, mesh uses the already assigned default material (index: 0)
+                                      (let ((m (position (cgltf-primitive-material prim) materials)))
+                                        ;; The primitive actually keeps the pointer to the corresponding material,
+                                        ;; raylib instead assigns to the mesh the by its index, as loaded in model.materials array
+                                        ;; To get the index, check if material pointers match, and assign the corresponding index,
+                                        ;; skipping index 0, the default material
+                                        (when (and m (cgltf-primitive-material prim))
+                                          (setf (aref (model-mesh-material model) mesh-index) (+ m 1))))
+
+                                      (incf mesh-index))))))     ; Move to next mesh
+          ;;----------------------------------------------------------------------------------------------------
+
+          ;; Load animation data
+          ;; REF: https://www.khronos.org/registry/glTF/specs/2.0/glTF-2.0.html#skins
+          ;; REF: https://www.khronos.org/registry/glTF/specs/2.0/glTF-2.0.html#skinned-mesh-attributes
+          ;;
+          ;; LIMITATIONS:
+          ;;  - Only supports 1 armature per file, and skips loading it if there are multiple armatures
+          ;;  - Only supports linear interpolation (default method in Blender when checked "Always Sample Animations" when exporting a GLTF file)
+          ;;  - Only supports translation/rotation/scale animation channel.path, weights not considered (a.e. morph targets)
+          ;;----------------------------------------------------------------------------------------------------
+          (let ((skins (cgltf-data-skins data)))
+            (when (> (length skins) 0)
+              (let ((skin (aref skins 0)))
+                (multiple-value-bind (bones bone-count) (%load-bone-info-gltf skin)
+                  (let ((bind-pose (make-array bone-count))
+                        (joints (cgltf-skin-joints skin))
+                        (inverse-bind-matrices (cgltf-skin-inverse-bind-matrices skin)))
+                    (setf (model-skeleton model) (make-model-skeleton :bone-count bone-count :bones bones :bind-pose bind-pose))
+                    (dotimes (i bone-count)
+                      (let ((bind-matrix nil)
+                            (inverse-bind-transform (%cgltf-floats 16)))
+                        (if (and inverse-bind-matrices
+                                 (>= (cgltf-accessor-count inverse-bind-matrices) (length joints))
+                                 (cgltf-accessor-read-float inverse-bind-matrices i inverse-bind-transform 16))
+                            (setf bind-matrix (matrix-invert (%gltf-matrix inverse-bind-transform)))
+                            (setf bind-matrix (%gltf-matrix (cgltf-node-transform-world (svref joints i)))))
+                        (multiple-value-bind (translation rotation scale) (matrix-decompose bind-matrix)
+                          (setf (svref bind-pose i)
+                                (make-transform :translation translation :rotation rotation :scale scale)))))))
+
+                (when (> (length skins) 1)
+                  (trace-log +log-warning+ "MODEL: [~a] can only load one skin (armature) per model, but gltf skins_count == ~d"
+                             file-name (length skins))))))
+
+          (let ((mesh-index 0)
+                (bone-count (model-skeleton-bone-count (model-skeleton model))))
+            (loop for node across nodes
+                  for gltf-mesh = (cgltf-node-mesh node)
+                  when gltf-mesh
+                    do (loop for prim across (or (cgltf-mesh-primitives gltf-mesh) #())
+                             ;; NOTE: Only support primitives defined by triangles
+                             when (eq (cgltf-primitive-type prim) :triangles)
+                               do (let ((mesh (aref (model-meshes model) mesh-index))
+                                        (has-joints nil))
+                                    (loop for attr across (or (cgltf-primitive-attributes prim) #())
+                                          do (case (cgltf-attribute-type attr)
+                                               ;; NOTE: JOINTS_1 + WEIGHT_1 will be used for +4 joints influencing a vertex -> Not supported by raylib
+                                               (:joints
+                                                (setf has-joints t)
+                                                (%load-gltf-mesh-joints file-name mesh (cgltf-attribute-data attr)))
+                                               (:weights
+                                                (%load-gltf-mesh-weights file-name mesh (cgltf-attribute-data attr)))))
+
+                                    ;; Check if animated, and the mesh was not given any bone assignments, but is the child of a bone node
+                                    ;; in this case, all the verts need to be attached to the parent bone so it will animate with the bone
+                                    (when (and (> (length (cgltf-data-skins data)) 0) (not has-joints)
+                                               (cgltf-node-parent node) (null (cgltf-node-mesh (cgltf-node-parent node))))
+                                      (let ((parent-bone-id (or (loop for joint below bone-count
+                                                                      when (eq (svref (cgltf-skin-joints (aref (cgltf-data-skins data) 0)) joint)
+                                                                               (cgltf-node-parent node))
+                                                                        return joint)
+                                                                -1)))
+                                        (when (>= parent-bone-id 0)
+                                          (let ((n (* (mesh-vertex-count mesh) 4)))
+                                            (setf (mesh-bone-indices mesh) (make-array n :element-type '(unsigned-byte 8) :initial-element 0)
+                                                  (mesh-bone-weights mesh) (%floats n))
+                                            (loop for vertex-index from 0 below n by 4
+                                                  do (setf (aref (mesh-bone-indices mesh) vertex-index) (logand parent-bone-id #xff)
+                                                           (aref (mesh-bone-weights mesh) vertex-index) 1.0))))))
+
+                                    ;; Animated vertex data (CPU skinning)
+                                    (let ((n (* (mesh-vertex-count mesh) 3)))
+                                      (setf (mesh-anim-vertices mesh) (%gltf-copy-into (%floats n) (coerce (or (mesh-vertices mesh) #()) 'simple-vector))
+                                            (mesh-anim-normals mesh) (%floats n))
+                                      (when (mesh-normals mesh)
+                                        (%gltf-copy-into (mesh-anim-normals mesh) (coerce (mesh-normals mesh) 'simple-vector))))
+                                    (setf (mesh-bone-count mesh) bone-count)
+
+                                    (incf mesh-index))))) ; Move to next mesh
+
+          ;; Initialize runtime animation data: current pose and bone matrices
+          ;; NOTE: Unused allocated memory is not kept in case of no bones defined
+          (let ((bone-count (model-skeleton-bone-count (model-skeleton model))))
+            (when (> bone-count 0)
+              (setf (model-current-pose model)
+                    (let ((v (make-array bone-count)))
+                      (dotimes (j bone-count v)
+                        (setf (aref v j) (make-transform :translation (vec3 0.0 0.0 0.0) :rotation (vec4 0.0 0.0 0.0 0.0)
+                                                         :scale (vec3 0.0 0.0 0.0)))))
+                    (model-bone-matrices model)
+                    (let ((v (make-array bone-count)))
+                      (dotimes (j bone-count v) (setf (aref v j) (matrix-identity)))))))
+          ;;----------------------------------------------------------------------------------------------------
+          )))
+    model))
+
+(defun %load-gltf-mesh-attribute (file-name mesh attr world-matrix world-matrix-normals)
+  "LoadGLTF() mesh attributes loading: POSITION, NORMAL, TANGENT, TEXCOORD_n, COLOR_n"
+  (let* ((attribute (cgltf-attribute-data attr))
+         (type (cgltf-accessor-type attribute))
+         (component-type (cgltf-accessor-component-type attribute))
+         (count (cgltf-accessor-count attribute)))
+    (flet ((load-floats (num-comp src-type &optional (convert (lambda (v) (float v 1.0))))
+             (%gltf-copy-into (%floats (* count num-comp)) (%gltf-load-attribute attribute num-comp src-type) convert))
+           (transform (array stride matrix &optional normalize)
+             (dotimes (k count array)
+               (let ((vt (vector3-transform (vec3 (aref array (* stride k)) (aref array (+ (* stride k) 1)) (aref array (+ (* stride k) 2)))
+                                            matrix)))
+                 (when normalize (setf vt (vector3-normalize vt)))
+                 (setf (aref array (* stride k)) (vx vt)
+                       (aref array (+ (* stride k) 1)) (vy vt)
+                       (aref array (+ (* stride k) 2)) (vz vt))))))
+      (case (cgltf-attribute-type attr)
+        (:position                      ; POSITION, vec3, float
+         ;; WARNING: SPECS: POSITION accessor MUST have its min and max properties defined
+         (if (mesh-vertices mesh)
+             (trace-log +log-warning+ "MODEL: [~a] Vertices attribute data already loaded" file-name)
+             (let ((src-type (and (eq type :vec3) (case component-type (:r-32f :float) (:r-16u :u16) (:r-16 :s16)))))
+               (if src-type
+                   ;; Init raylib mesh vertices to copy glTF attribute data
+                   (setf (mesh-vertex-count mesh) (%i32 (logand count #xffffffff))
+                         ;; Load 3 components into mesh.vertices, converted to float
+                         ;; Transform the vertices
+                         (mesh-vertices mesh) (transform (load-floats 3 src-type) 3 world-matrix))
+                   (trace-log +log-warning+ "MODEL: [~a] Vertices attribute data format not supported, use vec3 float" file-name)))))
+        (:normal                        ; NORMAL, vec3, float
+         (if (mesh-normals mesh)
+             (trace-log +log-warning+ "MODEL: [~a] Normals attribute data already loaded" file-name)
+             (let ((src-type (and (eq type :vec3) (case component-type (:r-32f :float) (:r-16 :s16) (:r-8u :u8) (:r-8 :s8)))))
+               (if src-type
+                   ;; Init raylib mesh normals to copy glTF attribute data
+                   ;; Transform the normals (normalized for integer data)
+                   (setf (mesh-normals mesh) (transform (load-floats 3 src-type) 3 world-matrix-normals (not (eq src-type :float))))
+                   (trace-log +log-warning+ "MODEL: [~a] Normals attribute data format not supported, use vec3 float" file-name)))))
+        (:tangent                       ; TANGENT, vec4, float, w is tangent basis sign
+         (if (mesh-tangents mesh)
+             (trace-log +log-warning+ "MODEL: [~a] Tangents attribute data already loaded" file-name)
+             (if (and (eq type :vec4) (eq component-type :r-32f))
+                 ;; Load 4 components of float data type into mesh.tangents
+                 ;; Transform the tangents
+                 (setf (mesh-tangents mesh) (transform (load-floats 4 :float) 4 world-matrix))
+                 (trace-log +log-warning+ "MODEL: [~a] Tangents attribute data format not supported, use vec4 float" file-name))))
+        (:texcoord                      ; TEXCOORD_n, vec2, float/u8n/u16n
+         ;; Support up to 2 texture coordinates attributes
+         (let ((texcoord-ptr nil))
+           (if (eq type :vec2)
+               (case component-type
+                 (:r-32f (setf texcoord-ptr (load-floats 2 :float))) ; vec2, float
+                 (:r-8u (setf texcoord-ptr (load-floats 2 :u8 (lambda (v) (/ (float v 1.0) 255.0))))) ; vec2, u8n
+                 (:r-16u (setf texcoord-ptr (load-floats 2 :u16 (lambda (v) (/ (float v 1.0) 65535.0))))) ; vec2, u16n
+                 (t (trace-log +log-warning+ "MODEL: [~a] Texcoords attribute data format not supported" file-name)))
+               (trace-log +log-warning+ "MODEL: [~a] Texcoords attribute data format not supported, use vec2 float" file-name))
+
+           (case (cgltf-attribute-index attr)
+             (0 (setf (mesh-texcoords mesh) texcoord-ptr))
+             (1 (setf (mesh-texcoords2 mesh) texcoord-ptr))
+             (t (trace-log +log-warning+ "MODEL: [~a] No more than 2 texture coordinates attributes supported" file-name)))))
+        (:color                         ; COLOR_n, vec3/vec4, float/u8n/u16n
+         ;; WARNING: SPECS: All components of each COLOR_n accessor element MUST be clamped to [0.0, 1.0] range
+         (if (mesh-colors mesh)
+             (trace-log +log-warning+ "MODEL: [~a] Colors attribute data already loaded" file-name)
+             (let ((convert (case component-type
+                              (:r-8u #'identity)
+                              (:r-16u (lambda (v) (%c-float-to-uchar (* (/ (float v 1.0) 65535.0) 255.0))))
+                              (:r-32f (lambda (v) (%c-float-to-uchar (* v 255.0))))))
+                   (src-type (case component-type (:r-8u :u8) (:r-16u :u16) (:r-32f :float))))
+               (cond ((not (member type '(:vec3 :vec4)))
+                      (trace-log +log-warning+ "MODEL: [~a] Color attribute data format not supported" file-name))
+                     ((null convert)
+                      (trace-log +log-warning+ "MODEL: [~a] Color attribute data format not supported" file-name))
+                     ((eq type :vec3)   ; RGB
+                      ;; Convert data to raylib color data type (4 bytes)
+                      (let ((temp (%gltf-load-attribute attribute 3 src-type))
+                            (colors (make-array (* count 4) :element-type '(unsigned-byte 8) :initial-element 0)))
+                        (loop for c from 0 by 4
+                              for k from 0 by 3
+                              while (< c (- (* count 4) 3))
+                              do (setf (aref colors c) (funcall convert (svref temp k))
+                                       (aref colors (+ c 1)) (funcall convert (svref temp (+ k 1)))
+                                       (aref colors (+ c 2)) (funcall convert (svref temp (+ k 2)))
+                                       (aref colors (+ c 3)) 255))
+                        (setf (mesh-colors mesh) colors)))
+                     (t                 ; RGBA
+                      (setf (mesh-colors mesh)
+                            (%gltf-copy-into (make-array (* count 4) :element-type '(unsigned-byte 8) :initial-element 0)
+                                             (%gltf-load-attribute attribute 4 src-type) convert)))))))
+        ;; NOTE: Attributes related to animations data are processed after mesh data loading
+        ))))
+
+(defun %load-gltf-mesh-joints (file-name mesh attribute)
+  "JOINTS_n (vec4: 4 bones max per vertex / u8, u16)"
+  ;; NOTE: JOINTS_n can only be vec4 and u8/u16
+  ;; SPECS: https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#meshes-overview
+
+  ;; WARNING: raylib only supports model.meshes[].boneIndices as u8 (unsigned char),
+  ;; if data is provided in any other format, it is converted to supported format but
+  ;; it could imply data loss (a warning message is issued in that case)
+  (if (eq (cgltf-accessor-type attribute) :vec4)
+      (case (cgltf-accessor-component-type attribute)
+        (:r-8u
+         ;; Load attribute: vec4, u8 (unsigned char)
+         (setf (mesh-bone-indices mesh)
+               (%gltf-copy-into (make-array (* (mesh-vertex-count mesh) 4) :element-type '(unsigned-byte 8) :initial-element 0)
+                                (%gltf-load-attribute attribute 4 :u8))))
+        (:r-16u
+         ;; Load data into a temp buffer to be converted to raylib data type
+         (let ((temp (%gltf-copy-into (make-array (* (mesh-vertex-count mesh) 4) :initial-element 0)
+                                      (%gltf-load-attribute attribute 4 :u16)))
+               (bone-indices (make-array (* (mesh-vertex-count mesh) 4) :element-type '(unsigned-byte 8) :initial-element 0))
+               (bone-id-overflow-warning nil))
+           ;; Convert data to raylib color data type (4 bytes)
+           (dotimes (b (length bone-indices))
+             (when (and (> (svref temp b) 255) (not bone-id-overflow-warning))
+               (trace-log +log-warning+ "MODEL: [~a] Joint attribute data format (u16) overflow" file-name)
+               (setf bone-id-overflow-warning t))
+             ;; Despite the possible overflow, convert data to unsigned char
+             (setf (aref bone-indices b) (logand (svref temp b) #xff)))
+           (setf (mesh-bone-indices mesh) bone-indices)))
+        (t (trace-log +log-warning+ "MODEL: [~a] Joint attribute data format not supported" file-name)))
+      (trace-log +log-warning+ "MODEL: [~a] Joint attribute data format not supported" file-name)))
+
+(defun %load-gltf-mesh-weights (file-name mesh attribute)
+  "WEIGHTS_n (vec4, u8n/u16n/f32)"
+  (if (eq (cgltf-accessor-type attribute) :vec4)
+      (let ((weights (%floats (* (mesh-vertex-count mesh) 4))))
+        (case (cgltf-accessor-component-type attribute)
+          (:r-8u
+           ;; Convert data to raylib bone weight data type (4 bytes)
+           (setf (mesh-bone-weights mesh)
+                 (%gltf-copy-into weights (%gltf-load-attribute attribute 4 :u8) (lambda (v) (/ (float v 1.0) 255.0)))))
+          (:r-16u
+           ;; Convert data to raylib bone weight data type
+           (setf (mesh-bone-weights mesh)
+                 (%gltf-copy-into weights (%gltf-load-attribute attribute 4 :u16) (lambda (v) (/ (float v 1.0) 65535.0)))))
+          (:r-32f
+           ;; Load 4 components of float data type into mesh.boneWeights
+           (setf (mesh-bone-weights mesh) (%gltf-copy-into weights (%gltf-load-attribute attribute 4 :float))))
+          (t (trace-log +log-warning+ "MODEL: [~a] Joint weight attribute data format not supported, use vec4 float" file-name))))
+      (trace-log +log-warning+ "MODEL: [~a] Joint weight attribute data format not supported, use vec4 float" file-name)))
+
+;; Get interpolated pose for bone sampler at a specific time
+(defun %get-pose-at-time-gltf (interpolation-type input output time value)
+  "Returns (values success value), VALUE (vec3 or vec4) is returned unchanged when not computed"
+  (when (eq interpolation-type :max-enum) (return-from %get-pose-at-time-gltf (values nil value)))
+
+  ;; Input and output should have the same count
+  (let ((tstart 0.0) (tend 0.0)
+        (keyframe 0)                    ; Defaults to first pose
+        (found nil)
+        (tmp1 (%cgltf-floats 1))
+        (input-count (%i32 (logand (cgltf-accessor-count input) #xffffffff))))
+    (flet ((read-time (index)
+             (unless (cgltf-accessor-read-float input index tmp1 1)
+               (return-from %get-pose-at-time-gltf (values nil value)))
+             (aref tmp1 0)))
+      (loop for i from 0 below (- input-count 1)
+            do (setf tstart (read-time i)
+                     tend (read-time (+ i 1)))
+               (when (and (<= tstart time) (< time tend))
+                 (setf keyframe i found t)
+                 (return)))
+
+      ;; No interval contains a time at (or past) the last keyframe, because the
+      ;; search above requires time < tend: clamp to the edge interval instead of
+      ;; falling back to keyframe 0, which returns a pose from the start
+      (when (and (not found) (>= input-count 2))
+        (setf keyframe (- input-count 2))
+        (let ((tfirst (read-time 0)))
+          (when (< time tfirst) (setf keyframe 0)))
+        (setf tstart (read-time keyframe)
+              tend (read-time (+ keyframe 1)))))
+
+    ;; Constant animation, no need to interpolate
+    (when (float-equals tend tstart) (setf interpolation-type :step))
+
+    (let* ((duration (%fmax (- tend tstart) +epsilon+))
+           (tt (/ (- time tstart) duration)))
+      (setf tt (if (< tt 0.0) 0.0 tt))
+      (setf tt (if (> tt 1.0) 1.0 tt))
+
+      (unless (eq (cgltf-accessor-component-type output) :r-32f)
+        (return-from %get-pose-at-time-gltf (values nil value)))
+
+      (case (cgltf-accessor-type output)
+        (:vec3
+         (let ((tmp (%cgltf-floats 3)))
+           (flet ((read-v3 (index)
+                    (cgltf-accessor-read-float output index tmp 3)
+                    (vec3 (aref tmp 0) (aref tmp 1) (aref tmp 2))))
+             (case interpolation-type
+               (:step (setf value (read-v3 keyframe)))
+               (:linear
+                (let* ((v1 (read-v3 keyframe))
+                       (v2 (read-v3 (+ keyframe 1))))
+                  (setf value (vector3-lerp v1 v2 tt))))
+               (:cubic-spline
+                (let* ((v1 (read-v3 (+ (* 3 keyframe) 1)))
+                       (tangent1 (read-v3 (+ (* 3 keyframe) 2)))
+                       (v2 (read-v3 (+ (* 3 (+ keyframe 1)) 1)))
+                       (tangent2 (read-v3 (* 3 (+ keyframe 1)))))
+                  (setf value (vector3-cubic-hermite v1 tangent1 v2 tangent2 tt))))))))
+        (:vec4
+         ;; Only v4 is for rotations, so it's a quaternion
+         (let ((tmp (%cgltf-floats 4)))
+           (flet ((read-v4 (index &optional tangent)
+                    (cgltf-accessor-read-float output index tmp 4)
+                    (vec4 (aref tmp 0) (aref tmp 1) (aref tmp 2) (if tangent 0.0 (aref tmp 3)))))
+             (case interpolation-type
+               (:step (setf value (read-v4 keyframe)))
+               (:linear
+                (let* ((v1 (read-v4 keyframe))
+                       (v2 (read-v4 (+ keyframe 1))))
+                  (setf value (quaternion-slerp v1 v2 tt))))
+               (:cubic-spline
+                (let* ((v1 (read-v4 (+ (* 3 keyframe) 1)))
+                       (out-tangent1 (read-v4 (+ (* 3 keyframe) 2) t))
+                       (v2 (read-v4 (+ (* 3 (+ keyframe 1)) 1)))
+                       (in-tangent2 (read-v4 (* 3 (+ keyframe 1)) t)))
+                  (setf v1 (quaternion-normalize v1)
+                        v2 (quaternion-normalize v2))
+                  (when (< (vector4-dot-product v1 v2) 0.0)
+                    (setf v2 (vector4-negate v2)))
+                  (setf out-tangent1 (vector4-scale out-tangent1 duration)
+                        in-tangent2 (vector4-scale in-tangent2 duration))
+                  (setf value (quaternion-cubic-hermite-spline v1 out-tangent1 v2 in-tangent2 tt)))))))))
+      (values t value))))
+
+(defconstant +gltf-framerate+ 60.0 "glTF animation framerate (frames per second)")
+
+(defun %load-model-animations-gltf (file-name)
+  (multiple-value-bind (file-data data-size) (load-file-data file-name)
+    ;; glTF data loading
+    (multiple-value-bind (result data) (cgltf-parse file-data data-size)
+      (unless (eq result :success)
+        (trace-log +log-warning+ "MODEL: [~a] Failed to load glTF data" file-name)
+        (return-from %load-model-animations-gltf (values nil 0)))
+
+      (let ((animations nil) (anim-count 0)
+            (result (cgltf-load-buffers data file-name)))
+        (unless (eq result :success) (trace-log +log-info+ "MODEL: [~a] Failed to load animation buffers" file-name))
+
+        (when (eq result :success)
+          (let ((skins (cgltf-data-skins data)))
+            (when (> (length skins) 0)
+              (let* ((skin (aref skins 0))
+                     (joints (cgltf-skin-joints skin))
+                     ;; Precompute, per joint, the static transform contributed by any
+                     ;; intermediate non-joint nodes between the joint and its nearest
+                     ;; joint ancestor. This handles exporters (e.g. wow.export) that
+                     ;; store bone offsets on dummy parent nodes rather than on the
+                     ;; joints themselves. Depends only on the skin, not the animation.
+                     (joint-count (length joints))
+                     (ext-offset (make-array joint-count)))
+                (setf anim-count (length (cgltf-data-animations data))
+                      animations (make-array anim-count))
+
+                (dotimes (k joint-count)
+                  (setf (svref ext-offset k) (matrix-identity))
+                  (loop for n = (cgltf-node-parent (svref joints k)) then (cgltf-node-parent n)
+                        while n
+                        do (when (find n joints) (return))
+                           ;; Compose the intermediate node's local TRS (scale, then rotation, then translation)
+                           (let* ((s (cgltf-node-scale n)) (r (cgltf-node-rotation n)) (tr (cgltf-node-translation n))
+                                  (node-scale (matrix-scale (aref s 0) (aref s 1) (aref s 2)))
+                                  (node-rotation (quaternion-to-matrix (vec4 (aref r 0) (aref r 1) (aref r 2) (aref r 3))))
+                                  (node-translation (matrix-translate (aref tr 0) (aref tr 1) (aref tr 2)))
+                                  (node-transform (matrix-multiply (matrix-multiply node-scale node-rotation) node-translation)))
+                             (setf (svref ext-offset k) (matrix-multiply (svref ext-offset k) node-transform)))))
+
+                (dotimes (a anim-count)
+                  (multiple-value-bind (bones bone-count) (%load-bone-info-gltf skin)
+                    (let* ((anim-data (aref (cgltf-data-animations data) a))
+                           (animation (make-model-animation :bone-count bone-count))
+                           ;; struct Channels { translate, rotate, scale }
+                           (bone-channels (make-array bone-count :initial-element nil))
+                           (anim-duration 0.0)
+                           (tmp1 (%cgltf-floats 1)))
+                      (setf (svref animations a) animation)
+                      (dotimes (k bone-count) (setf (svref bone-channels k) (list nil nil nil)))
+
+                      (loop for channel across (or (cgltf-animation-channels anim-data) #())
+                            for j from 0
+                            do (let ((bone-index (or (position (cgltf-animation-channel-target-node channel) joints) -1)))
+                                 (unless (or (= bone-index -1) ; Animation channel for a node not in the skeleton
+                                             (null (cgltf-animation-channel-target-node channel)))
+                                   (let ((sampler (cgltf-animation-channel-sampler channel)))
+                                     (if (not (eq (cgltf-animation-sampler-interpolation sampler) :max-enum))
+                                         (case (cgltf-animation-channel-target-path channel)
+                                           (:translation (setf (first (svref bone-channels bone-index)) channel))
+                                           (:rotation (setf (second (svref bone-channels bone-index)) channel))
+                                           (:scale (setf (third (svref bone-channels bone-index)) channel))
+                                           (t (trace-log +log-warning+ "MODEL: [~a] Unsupported target_path on channel ~d's sampler for animation ~d. Skipping."
+                                                         file-name j a)))
+                                         (trace-log +log-warning+ "MODEL: [~a] Invalid interpolation curve encountered for GLTF animation." file-name))
+
+                                     (let ((input (cgltf-animation-sampler-input sampler)))
+                                       (if (not (cgltf-accessor-read-float input (1- (cgltf-accessor-count input)) tmp1 1))
+                                           (trace-log +log-warning+ "MODEL: [~a] Failed to load input time" file-name)
+                                           (let ((time (aref tmp1 0)))
+                                             (setf anim-duration (if (> time anim-duration) time anim-duration)))))))))
+
+                      (when (cgltf-animation-name anim-data)
+                        (setf (model-animation-name animation) (%c-name32 (cgltf-animation-name anim-data))))
+
+                      (let* ((keyframe-count (+ (%c-float-to-int (* anim-duration +gltf-framerate+)) 1))
+                             (keyframe-poses (make-array keyframe-count)))
+                        (setf (model-animation-keyframe-count animation) keyframe-count
+                              (model-animation-keyframe-poses animation) keyframe-poses)
+
+                        (dotimes (j keyframe-count)
+                          (let ((poses (make-array bone-count))
+                                (time (/ (float j 1.0) +gltf-framerate+)))
+                            (setf (svref keyframe-poses j) poses)
+                            (dotimes (k bone-count)
+                              (let* ((joint (svref joints k))
+                                     (translation (let ((v (cgltf-node-translation joint))) (vec3 (aref v 0) (aref v 1) (aref v 2))))
+                                     (rotation (let ((v (cgltf-node-rotation joint))) (vec4 (aref v 0) (aref v 1) (aref v 2) (aref v 3))))
+                                     (scale (let ((v (cgltf-node-scale joint))) (vec3 (aref v 0) (aref v 1) (aref v 2)))))
+                                (destructuring-bind (translate rotate scale-channel) (svref bone-channels k)
+                                  (flet ((pose (channel current what)
+                                           (let ((sampler (cgltf-animation-channel-sampler channel)))
+                                             (multiple-value-bind (ok new-value)
+                                                 (%get-pose-at-time-gltf (cgltf-animation-sampler-interpolation sampler)
+                                                                         (cgltf-animation-sampler-input sampler)
+                                                                         (cgltf-animation-sampler-output sampler)
+                                                                         time current)
+                                               (unless ok
+                                                 (trace-log +log-info+ "MODEL: [~a] Failed to load ~a pose data for bone ~a"
+                                                            file-name what (bone-info-name (svref bones k))))
+                                               new-value))))
+                                    (when translate (setf translation (pose translate translation "translate")))
+                                    (when rotate (setf rotation (pose rotate rotation "rotate")))
+                                    (when scale-channel (setf scale (pose scale-channel scale "scale")))))
+
+                                ;; Compose joint local TRS, then prepend the static
+                                ;; intermediate non-joint offsets so the final TRS is
+                                ;; expressed relative to the joint's skeleton parent.
+                                (let* ((s (matrix-scale (vx scale) (vy scale) (vz scale)))
+                                       (r (quaternion-to-matrix rotation))
+                                       (tm (matrix-translate (vx translation) (vy translation) (vz translation)))
+                                       (joint-local (matrix-multiply (matrix-multiply s r) tm))
+                                       (combined (matrix-multiply joint-local (svref ext-offset k))))
+                                  (multiple-value-bind (tr-translation tr-rotation tr-scale) (matrix-decompose combined)
+                                    (setf (svref poses k) (make-transform :translation tr-translation :rotation tr-rotation
+                                                                          :scale tr-scale))))))
+
+                            (%build-pose-from-parent-joints bones bone-count poses))))
+
+                      (trace-log +log-info+ "MODEL: [~a] Loaded animation: ~a | Frames: ~d | Duration: ~as" file-name
+                                 (or (cgltf-animation-name anim-data) "NULL") (model-animation-keyframe-count animation)
+                                 (%sprintf "%f" anim-duration)))))))
+
+            (when (> (length skins) 1)
+              (trace-log +log-warning+ "MODEL: [~a] Expected one unique skin to load animation data from, but found ~d"
+                         file-name (length skins)))))
+
+        (values animations anim-count)))))
+
 (defun %load-m3d (file-name) (%unsupported-model-format file-name))
-(defun %load-model-animations-gltf (file-name) (declare (ignore file-name)) (values nil 0))
 (defun %load-model-animations-m3d (file-name) (declare (ignore file-name)) (values nil 0))

@@ -26,16 +26,26 @@
 ;;; File I/O Functions
 
 (defun load-file-data (filename)
-  "Load file data as bytes - matches raylib LoadFileData"
-  (handler-case
-    (with-open-file (stream filename :direction :input :element-type '(unsigned-byte 8))
-      (let* ((file-size (file-length stream))
-             (data (make-array file-size :element-type '(unsigned-byte 8))))
-        (read-sequence data stream)
-        (values data file-size)))
-    (error (e)
-      (trace-log-warning "FILEIO: [~a] Failed to load file data: ~a" filename e)
-      (values nil 0))))
+  "Load file data as byte array (read), returns (values data data-size), NIL on failure"
+  (unless filename
+    (trace-log +log-warning+ "FILEIO: File name provided is not valid")
+    (return-from load-file-data (values nil 0)))
+  (let ((stream (ignore-errors (open filename :direction :input :element-type '(unsigned-byte 8)))))
+    (unless stream
+      (trace-log +log-warning+ "FILEIO: [~a] Failed to open file" filename)
+      (return-from load-file-data (values nil 0)))
+    (with-open-stream (stream stream)
+      (let ((size (file-length stream)))
+        (if (> size 0)
+            (let* ((data (make-array size :element-type '(unsigned-byte 8) :initial-element 0))
+                   (count (read-sequence data stream)))
+              (if (/= count size)
+                  (trace-log +log-warning+ "FILEIO: [~a] File partially loaded (~d bytes out of ~d)" filename count size)
+                  (trace-log +log-info+ "FILEIO: [~a] File loaded successfully" filename))
+              (values (if (/= count size) (subseq data 0 count) data) count))
+            (progn
+              (trace-log +log-warning+ "FILEIO: [~a] Failed to read file" filename)
+              (values nil 0)))))))
 
 (defun unload-file-data (data)
   "Unload file data - matches raylib UnloadFileData (no-op in Lisp)"
