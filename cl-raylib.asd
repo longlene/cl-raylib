@@ -11,7 +11,8 @@
                #:3d-transforms
                #:3d-quaternions
                #:alexandria
-               #:uiop)
+               #:uiop
+               #:imago)
   :serial t
   :pathname "src"
   :components
@@ -24,7 +25,6 @@
    (:file "camera2d")              ; 2D camera system (matches raylib Camera2D)
    (:file "camera3d")
    (:file "color")
-   (:file "texture")
    (:file "textures")
    (:file "gl")                    ; OpenGL abstraction layer (matches raylib rlgl.h functionality)
    (:file "shaders")               ; Shader system (matches raylib rlgl.c shader functionality)
@@ -36,5 +36,6 @@
    (:file "collision")             ; Collision detection (stateless, matches raylib design)
    (:file "models")                ; 3D models and meshes (matching raylib rmodels.c)
    (:file "text")                  ; Text rendering system (fixed implementation)
-   (:file "audio")                  ; Text rendering system (fixed implementation)
+   (:file "audio")                 ; Audio system
+   (:file "raygui")                ; GUI system (immediate mode GUI)
    (:file "macro")))

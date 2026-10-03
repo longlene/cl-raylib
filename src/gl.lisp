@@ -149,8 +149,8 @@
 (defconstant +gl-projection+ #x1701 "GL_PROJECTION matrix mode")
 (defconstant +gl-modelview+ #x1700 "GL_MODELVIEW matrix mode")
 (defconstant +gl-texture+ #x1702 "GL_TEXTURE matrix mode")
-(defconstant +gl-color-buffer-bit+ #x4000 "GL_COLOR_BUFFER_BIT")
-(defconstant +gl-depth-buffer-bit+ #x100 "GL_DEPTH_BUFFER_BIT")
+(defconstant +gl-color-buffer-bit+ (the fixnum #x4000) "GL_COLOR_BUFFER_BIT")
+(defconstant +gl-depth-buffer-bit+ (the fixnum #x100) "GL_DEPTH_BUFFER_BIT")
 
 ;;; Data structures
 

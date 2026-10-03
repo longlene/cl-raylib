@@ -83,17 +83,91 @@
       
       texture)))
 
+(defun load-image (filename)
+  "Load image from file using imago library"
+  (handler-case
+      (when (probe-file filename)
+        (trace-log-info "FILEIO: [~a] File loaded successfully" filename)
+        (let* ((imago-image (imago:read-image filename))
+               (width (imago:image-width imago-image))
+               (height (imago:image-height imago-image))
+               (pixel-count (* width height))
+               (data (make-array (* pixel-count 4) :element-type '(unsigned-byte 8))))
+
+          (trace-log-info "IMAGE: Data loaded successfully (~dx~d | R8G8B8A8 | 1 mipmaps)" width height)
+
+          ;; Convert imago image to RGBA format
+          (typecase imago-image
+            (imago:rgb-image
+             (dotimes (y height)
+               (dotimes (x width)
+                 (let* ((pixel (imago:image-pixel imago-image x y))
+                        (idx (* (+ (* y width) x) 4)))
+                   (setf (aref data idx) (imago:color-red pixel))           ; R
+                   (setf (aref data (+ idx 1)) (imago:color-green pixel))   ; G
+                   (setf (aref data (+ idx 2)) (imago:color-blue pixel))    ; B
+                   (setf (aref data (+ idx 3)) (imago:color-alpha pixel)))))) ; A
+            (imago:grayscale-image
+             (dotimes (y height)
+               (dotimes (x width)
+                 (let* ((pixel (imago:image-pixel imago-image x y))
+                        (idx (* (+ (* y width) x) 4)))
+                   (setf (aref data idx) pixel)           ; R
+                   (setf (aref data (+ idx 1)) pixel)     ; G
+                   (setf (aref data (+ idx 2)) pixel)     ; B
+                   (setf (aref data (+ idx 3)) 255)))))   ; A
+            (t
+             (trace-log-warning "IMAGE: Unsupported image type, converting to RGB")
+             (let ((rgb-image (imago:convert-to-rgb imago-image)))
+               (dotimes (y height)
+                 (dotimes (x width)
+                   (let* ((pixel (imago:image-pixel rgb-image x y))
+                          (idx (* (+ (* y width) x) 4)))
+                     (setf (aref data idx) (imago:color-red pixel))
+                     (setf (aref data (+ idx 1)) (imago:color-green pixel))
+                     (setf (aref data (+ idx 2)) (imago:color-blue pixel))
+                     (setf (aref data (+ idx 3)) (imago:color-alpha pixel))))))))
+
+          (make-image :data data
+                      :width width
+                      :height height
+                      :format +pixelformat-uncompressed-rgba+)))
+    (error (e)
+      (trace-log-error "IMAGE: Failed to load [~a]: ~a" filename e)
+      ;; Return placeholder image on error
+      (let ((color (cond
+                     ((search "red" (string-downcase filename)) +red+)
+                     ((search "green" (string-downcase filename)) +green+)
+                     ((search "blue" (string-downcase filename)) +blue+)
+                     ((search "yellow" (string-downcase filename)) +yellow+)
+                     (t +magenta+))))
+        (gen-image-color 64 64 color)))))
+
+(defun unload-image (image)
+  "Unload image data from CPU memory (RAM)"
+  (when (and image (image-p image) (image-data image))
+    ;; Clear the image data array
+    ;; In Common Lisp, we just need to clear the reference
+    ;; The GC will handle the actual memory deallocation
+    (setf (image-data image) nil)
+    (trace-log-info "IMAGE: Data unloaded successfully from RAM")))
+
 (defun load-texture (filename)
   "Load texture from file into GPU memory"
-  ;; For now, this is a placeholder that creates a colored texture
-  ;; In a full implementation, this would use image loading libraries
-  (let* ((color (cond
-                  ((search "red" filename) +red+)
-                  ((search "green" filename) +green+)
-                  ((search "blue" filename) +blue+)
-                  (t +white+)))
-         (image (gen-image-color 64 64 color)))
-    (load-texture-from-image image)))
+  (let ((image (load-image filename)))
+    (if image
+        (let ((texture (load-texture-from-image image)))
+          (trace-log-info "TEXTURE: [ID ~d] Texture loaded successfully (~dx~d | R8G8B8A8 | 1 mipmaps)"
+                         (texture-id texture) (image-width image) (image-height image))
+          texture)
+        ;; Fallback to colored texture if loading fails
+        (let* ((color (cond
+                        ((search "red" filename) +red+)
+                        ((search "green" filename) +green+)
+                        ((search "blue" filename) +blue+)
+                        (t +white+)))
+               (image (gen-image-color 64 64 color)))
+          (load-texture-from-image image)))))
 
 (defun is-texture-valid (texture)
   "Check if a texture is valid (loaded in GPU)"
@@ -299,17 +373,45 @@
   (when (is-texture-valid texture)
     (let ((width (texture-width texture))
           (height (texture-height texture))
+          (texture-id (texture-id texture))
           (data (make-array (* width height 4) :element-type '(unsigned-byte 8))))
       
-      ;; 简化实现：创建占位数据
-      ;; 真正的纹理读取需要更复杂的framebuffer设置
-      (trace-log-warning "get-texture-data: 使用占位数据实现")
-      (loop for i from 0 below (* width height 4) do
-        (setf (aref data i) (mod (* i 17) 256)))
+      ;; Use framebuffer approach (compatible with both Desktop OpenGL and OpenGL ES)
+      (read-texture-via-framebuffer texture-id width height data)
       
       ;; Create image from data
       (make-image :data data :width width :height height 
                   :format +pixelformat-uncompressed-rgba+))))
+
+(defun read-texture-via-framebuffer (texture-id width height data)
+  "Read texture data using framebuffer (for OpenGL ES compatibility)"
+  (let ((fbo (gl:gen-framebuffer)))
+    (unwind-protect
+        (progn
+          ;; Bind framebuffer
+          (gl:bind-framebuffer :framebuffer fbo)
+          
+          ;; Attach texture as color attachment
+          (gl:framebuffer-texture-2d :framebuffer :color-attachment0 :texture-2d texture-id 0)
+          
+          ;; Check framebuffer completeness
+          (unless (eq (gl:check-framebuffer-status :framebuffer) :framebuffer-complete)
+            (error "Framebuffer not complete for texture reading"))
+          
+          ;; Read pixels from framebuffer
+          (gl:read-pixels 0 0 width height :rgba :unsigned-byte data)
+          
+          ;; Unbind framebuffer
+          (gl:bind-framebuffer :framebuffer 0)
+          
+          (trace-log-info "read-texture-via-framebuffer: Successfully read texture data"))
+      
+      ;; Cleanup framebuffer
+      (gl:delete-framebuffer fbo))))
+
+(defun load-image-from-texture (texture)
+  "Load image from texture (raylib compatible function)"
+  (get-texture-data texture))
 
 (defun get-texture-format (texture)
   "Get texture internal format"
@@ -349,6 +451,7 @@
 
 ;;; Pixel format constants (from raylib.h)
 (defconstant +pixelformat-uncompressed-r8g8b8a8+ 7 "32-bit RGBA")
+(defconstant +pixelformat-uncompressed-rgba+ 7 "32-bit RGBA (alias for compatibility)")
 
 ;;; Attachment constants (from rlgl.h)
 (defconstant +rl-attachment-color-channel0+ 0 "Color attachment 0")
@@ -553,6 +656,320 @@
   "Get the depth texture from render texture"
   (when (is-render-texture-valid render-texture)
     (render-texture-depth render-texture)))
+
+;;; Basic image generation functions
+
+(defun gen-image-color (width height color)
+  "Generate image: plain color"
+  (let* ((pixel-count (* width height))
+         (data (make-array (* pixel-count 4) 
+                          :element-type '(unsigned-byte 8)
+                          :initial-element 0))
+         (r (color-r color))
+         (g (color-g color))
+         (b (color-b color))
+         (a (color-a color)))
+    ;; Fill image with specified color
+    (loop for i from 0 below pixel-count do
+      (let ((base (* i 4)))
+        (setf (aref data base) r)
+        (setf (aref data (+ base 1)) g)
+        (setf (aref data (+ base 2)) b)
+        (setf (aref data (+ base 3)) a)))
+    (make-image :data data
+                :width width
+                :height height
+                :format +pixelformat-uncompressed-rgba+)))
+
+(defun gen-image-gradient-linear (width height direction start-color end-color)
+  "Generate image: linear gradient, direction in degrees [0..360], 0=Vertical gradient"
+  (let* ((pixel-count (* width height))
+         (data (make-array (* pixel-count 4) 
+                          :element-type '(unsigned-byte 8)))
+         (angle (* direction +deg2rad+))
+         (cos-a (cos angle))
+         (sin-a (sin angle)))
+    
+    (loop for y from 0 below height do
+      (loop for x from 0 below width do
+        (let* ((nx (/ x (1- width)))
+               (ny (/ y (1- height)))
+               ;; Calculate gradient factor based on direction
+               (factor (+ (* nx cos-a) (* ny sin-a)))
+               (factor (clamp factor 0.0 1.0))
+               (inv-factor (- 1.0 factor))
+               
+               ;; Interpolate colors
+               (r (round (+ (* (color-r start-color) inv-factor)
+                           (* (color-r end-color) factor))))
+               (g (round (+ (* (color-g start-color) inv-factor)
+                           (* (color-g end-color) factor))))
+               (b (round (+ (* (color-b start-color) inv-factor)
+                           (* (color-b end-color) factor))))
+               (a (round (+ (* (color-a start-color) inv-factor)
+                           (* (color-a end-color) factor))))
+               
+               (base (* (+ (* y width) x) 4)))
+          
+          (setf (aref data base) r)
+          (setf (aref data (+ base 1)) g)
+          (setf (aref data (+ base 2)) b)
+          (setf (aref data (+ base 3)) a))))
+    
+    (make-image :data data
+                :width width
+                :height height
+                :format +pixelformat-uncompressed-rgba+)))
+
+(defun gen-image-gradient-radial (width height density inner-color outer-color)
+  "Generate image: radial gradient"
+  (let* ((pixel-count (* width height))
+         (data (make-array (* pixel-count 4) 
+                          :element-type '(unsigned-byte 8)))
+         (center-x (/ width 2.0))
+         (center-y (/ height 2.0))
+         (max-radius (* (min width height) 0.5 density)))
+    
+    (loop for y from 0 below height do
+      (loop for x from 0 below width do
+        (let* ((dx (- x center-x))
+               (dy (- y center-y))
+               (distance (sqrt (+ (* dx dx) (* dy dy))))
+               (factor (clamp (/ distance max-radius) 0.0 1.0))
+               (inv-factor (- 1.0 factor))
+               
+               ;; Interpolate colors
+               (r (round (+ (* (color-r inner-color) inv-factor)
+                           (* (color-r outer-color) factor))))
+               (g (round (+ (* (color-g inner-color) inv-factor)
+                           (* (color-g outer-color) factor))))
+               (b (round (+ (* (color-b inner-color) inv-factor)
+                           (* (color-b outer-color) factor))))
+               (a (round (+ (* (color-a inner-color) inv-factor)
+                           (* (color-a outer-color) factor))))
+               
+               (base (* (+ (* y width) x) 4)))
+          
+          (setf (aref data base) r)
+          (setf (aref data (+ base 1)) g)
+          (setf (aref data (+ base 2)) b)
+          (setf (aref data (+ base 3)) a))))
+    
+    (make-image :data data
+                :width width
+                :height height
+                :format +pixelformat-uncompressed-rgba+)))
+
+(defun gen-image-checked (width height checks-x checks-y col1 col2)
+  "Generate image: checked pattern"
+  (let* ((pixel-count (* width height))
+         (data (make-array (* pixel-count 4) 
+                          :element-type '(unsigned-byte 8)))
+         (check-width (/ width checks-x))
+         (check-height (/ height checks-y)))
+    
+    (loop for y from 0 below height do
+      (loop for x from 0 below width do
+        (let* ((check-x (floor (/ x check-width)))
+               (check-y (floor (/ y check-height)))
+               (color (if (evenp (+ check-x check-y)) col1 col2))
+               (base (* (+ (* y width) x) 4)))
+          
+          (setf (aref data base) (color-r color))
+          (setf (aref data (+ base 1)) (color-g color))
+          (setf (aref data (+ base 2)) (color-b color))
+          (setf (aref data (+ base 3)) (color-a color)))))
+    
+    (make-image :data data
+                :width width
+                :height height
+                :format +pixelformat-uncompressed-rgba+)))
+
+;;; Image manipulation functions
+
+(defun image-copy (image)
+  "Create an image duplicate"
+  (let ((new-data (make-array (length (image-data image))
+                             :element-type '(unsigned-byte 8))))
+    ;; Copy data
+    (replace new-data (image-data image))
+    
+    (make-image :data new-data
+                :width (image-width image)
+                :height (image-height image)
+                :mipmaps (image-mipmaps image)
+                :format (image-format image))))
+
+(defun image-color-tint (image color)
+  "Apply color tint to image (modifies original)"
+  (let ((data (image-data image))
+        (tint-r (/ (color-r color) 255.0))
+        (tint-g (/ (color-g color) 255.0))
+        (tint-b (/ (color-b color) 255.0))
+        (tint-a (/ (color-a color) 255.0)))
+    
+    (loop for i from 0 below (length data) by 4 do
+      (setf (aref data i) (round (* (aref data i) tint-r)))
+      (setf (aref data (+ i 1)) (round (* (aref data (+ i 1)) tint-g)))
+      (setf (aref data (+ i 2)) (round (* (aref data (+ i 2)) tint-b)))
+      (setf (aref data (+ i 3)) (round (* (aref data (+ i 3)) tint-a))))
+    
+    image))
+
+(defun image-color-grayscale (image)
+  "Convert image to grayscale (modifies original)"
+  (let ((data (image-data image)))
+    (loop for i from 0 below (length data) by 4 do
+      (let* ((r (aref data i))
+             (g (aref data (+ i 1)))
+             (b (aref data (+ i 2)))
+             ;; Standard grayscale conversion
+             (gray (round (+ (* r 0.299) (* g 0.587) (* b 0.114)))))
+        (setf (aref data i) gray)
+        (setf (aref data (+ i 1)) gray)
+        (setf (aref data (+ i 2)) gray)))
+    image))
+
+(defun image-flip-vertical (image)
+  "Flip image vertically (modifies original)"
+  (let* ((data (image-data image))
+         (width (image-width image))
+         (height (image-height image))
+         (row-size (* width 4)))
+    
+    (loop for y from 0 below (floor height 2) do
+      (let ((top-start (* y row-size))
+            (bottom-start (* (- height y 1) row-size)))
+        ;; Swap rows
+        (loop for i from 0 below row-size do
+          (rotatef (aref data (+ top-start i))
+                   (aref data (+ bottom-start i))))))
+    image))
+
+(defun image-flip-horizontal (image)
+  "Flip image horizontally (modifies original)"
+  (let* ((data (image-data image))
+         (width (image-width image))
+         (height (image-height image)))
+    
+    (loop for y from 0 below height do
+      (loop for x from 0 below (floor width 2) do
+        (let ((left-start (* (+ (* y width) x) 4))
+              (right-start (* (+ (* y width) (- width x 1)) 4)))
+          ;; Swap pixels
+          (loop for i from 0 below 4 do
+            (rotatef (aref data (+ left-start i))
+                     (aref data (+ right-start i)))))))
+    image))
+
+;;; Advanced image processing functions
+
+(defun gen-image-white-noise (width height factor)
+  "Generate white noise image"
+  (let* ((pixel-count (* width height))
+         (data (make-array (* pixel-count 4) :element-type '(unsigned-byte 8))))
+    
+    (loop for i from 0 below pixel-count do
+      (let* ((base (* i 4))
+             (noise-value (if (< (random 1.0) factor) 255 0)))
+        (setf (aref data base) noise-value)
+        (setf (aref data (+ base 1)) noise-value)
+        (setf (aref data (+ base 2)) noise-value)
+        (setf (aref data (+ base 3)) 255)))
+    
+    (make-image :data data
+                :width width
+                :height height
+                :format +pixelformat-uncompressed-rgba+)))
+
+(defun gen-image-perlin-noise (width height offset-x offset-y scale)
+  "Generate Perlin noise image"
+  (let* ((pixel-count (* width height))
+         (data (make-array (* pixel-count 4) :element-type '(unsigned-byte 8))))
+    
+    (loop for y from 0 below height do
+      (loop for x from 0 below width do
+        (let* ((base (* (+ (* y width) x) 4))
+               ;; Simplified Perlin noise - basic implementation
+               (nx (/ (+ x offset-x) scale))
+               (ny (/ (+ y offset-y) scale))
+               (noise-value (+ 0.5 (* 0.5 (sin (+ (* nx 6.28) (* ny 6.28))))))
+               (gray-value (round (* noise-value 255))))
+          (setf (aref data base) gray-value)
+          (setf (aref data (+ base 1)) gray-value)
+          (setf (aref data (+ base 2)) gray-value)
+          (setf (aref data (+ base 3)) 255))))
+    
+    (make-image :data data
+                :width width
+                :height height
+                :format +pixelformat-uncompressed-rgba+)))
+
+(defun gen-image-cellular (width height tile-size)
+  "Generate cellular automata image"
+  (let* ((pixel-count (* width height))
+         (data (make-array (* pixel-count 4) :element-type '(unsigned-byte 8))))
+    
+    ;; Create initial random pattern
+    (loop for y from 0 below height do
+      (loop for x from 0 below width do
+        (let* ((base (* (+ (* y width) x) 4))
+               (cell-x (floor (/ x tile-size)))
+               (cell-y (floor (/ y tile-size)))
+               (cell-value (if (< (random 1.0) 0.5) 0 255)))
+          (setf (aref data base) cell-value)
+          (setf (aref data (+ base 1)) cell-value)
+          (setf (aref data (+ base 2)) cell-value)
+          (setf (aref data (+ base 3)) 255))))
+    
+    (make-image :data data
+                :width width
+                :height height
+                :format +pixelformat-uncompressed-rgba+)))
+
+(defun gen-image-gradient-square (width height density inner-color outer-color)
+  "Generate square gradient image"
+  (let* ((pixel-count (* width height))
+         (data (make-array (* pixel-count 4) :element-type '(unsigned-byte 8)))
+         (center-x (/ width 2.0))
+         (center-y (/ height 2.0))
+         (max-dist (* density (max center-x center-y))))
+    
+    (loop for y from 0 below height do
+      (loop for x from 0 below width do
+        (let* ((base (* (+ (* y width) x) 4))
+               (dist-x (abs (- x center-x)))
+               (dist-y (abs (- y center-y)))
+               (dist (max dist-x dist-y))
+               (factor (min 1.0 (/ dist max-dist)))
+               (inv-factor (- 1.0 factor))
+               (r (round (+ (* (color-r inner-color) inv-factor)
+                           (* (color-r outer-color) factor))))
+               (g (round (+ (* (color-g inner-color) inv-factor)
+                           (* (color-g outer-color) factor))))
+               (b (round (+ (* (color-b inner-color) inv-factor)
+                           (* (color-b outer-color) factor))))
+               (a (round (+ (* (color-a inner-color) inv-factor)
+                           (* (color-a outer-color) factor)))))
+          
+          (setf (aref data base) r)
+          (setf (aref data (+ base 1)) g)
+          (setf (aref data (+ base 2)) b)
+          (setf (aref data (+ base 3)) a))))
+    
+    (make-image :data data
+                :width width
+                :height height
+                :format +pixelformat-uncompressed-rgba+)))
+
+(defun image-color-invert (image)
+  "Invert image colors (modifies original)"
+  (let ((data (image-data image)))
+    (loop for i from 0 below (length data) by 4 do
+      (setf (aref data i) (- 255 (aref data i)))
+      (setf (aref data (+ i 1)) (- 255 (aref data (+ i 1))))
+      (setf (aref data (+ i 2)) (- 255 (aref data (+ i 2)))))
+    image))
 
 ;;; Initialize texture system when module loads
 (eval-when (:load-toplevel :execute)

@@ -92,8 +92,8 @@
   (input-gamepad-axis-count (make-array +max-gamepads+ :initial-element 0) :type simple-vector)
   (input-gamepad-ready (make-array +max-gamepads+ :initial-element nil) :type simple-vector)
   (input-gamepad-name (make-array +max-gamepads+ :initial-element "") :type simple-vector)
-  (input-gamepad-current-button-state (make-array (list +max-gamepads+ +max-gamepad-buttons+) :initial-element nil) :type simple-array)
-  (input-gamepad-previous-button-state (make-array (list +max-gamepads+ +max-gamepad-buttons+) :initial-element nil) :type simple-array)
+  (input-gamepad-current-button-state (make-array (list +max-gamepads+ +max-gamepad-buttons+) :initial-element nil :element-type 'boolean) :type (simple-array boolean (* *)))
+  (input-gamepad-previous-button-state (make-array (list +max-gamepads+ +max-gamepad-buttons+) :initial-element nil :element-type 'boolean) :type (simple-array boolean (* *)))
   (input-gamepad-axis-state (make-array (list +max-gamepads+ +max-gamepad-axes+) :initial-element 0.0 :element-type 'single-float) :type (simple-array single-float (* *)))
   
   ;; Time subsystem
@@ -274,7 +274,7 @@
             1.0))
       1.0))
 
-(declaim (ftype (function () boolean) window-should-close))
+(declaim (ftype (function () (values boolean &optional)) window-should-close))
 (defun window-should-close ()
   "Check if window should close"
   ;; First check if ESC key is currently pressed (direct polling)
@@ -284,9 +284,9 @@
     (setf (glfw:should-close-p (platform-data-handle *platform*)) t))
   
   ;; Return true if any close condition is met
-  (or (core-data-window-should-close *core*)
-      (when (platform-data-handle *platform*)
-        (glfw:should-close-p (platform-data-handle *platform*)))))
+  (values (or (core-data-window-should-close *core*)
+              (when (platform-data-handle *platform*)
+                (glfw:should-close-p (platform-data-handle *platform*))))))
 
 ;;; Drawing management
 (declaim (ftype (function () (values)) begin-drawing))

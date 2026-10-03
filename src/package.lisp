@@ -215,13 +215,17 @@
    #:rectangle-width #:rectangle-height
    #:render-texture #:make-render-texture
    
+   ;; Image loading functions
+   #:load-image
+   
    ;; Image generation functions
    #:gen-image-color #:gen-image-gradient-linear #:gen-image-gradient-radial
-   #:gen-image-checked
+   #:gen-image-checked #:gen-image-white-noise #:gen-image-perlin-noise
+   #:gen-image-cellular #:gen-image-gradient-square
    
    ;; Image manipulation functions
    #:image-copy #:image-from-image
-   #:image-color-tint #:image-color-grayscale
+   #:image-color-tint #:image-color-grayscale #:image-color-invert
    #:image-flip-vertical #:image-flip-horizontal
    #:unload-image #:get-pixel #:set-pixel
    
@@ -231,6 +235,7 @@
    #:set-texture-filter #:set-texture-wrap #:bind-texture #:setup-texture-drawing
    #:draw-texture #:draw-texture-v #:draw-texture-ex #:draw-texture-rec #:draw-texture-pro
    #:draw-texture-npatch #:get-texture-data #:get-texture-format #:cleanup-texture-system
+   #:load-image-from-texture
    
    ;; Render Texture functions  
    #:load-render-texture #:is-render-texture-valid #:unload-render-texture
@@ -310,6 +315,45 @@
    ;; Math constants and utilities
    #:+pi+ #:+deg2rad+ #:+rad2deg+ #:+epsilon+ #:clamp
    #:degrees-to-radians #:radians-to-degrees #:lerp #:clamp-angle
+   
+   ;; Core math utility functions
+   #:float-equals #:lerp #:normalize #:remap #:wrap
+   
+   ;; Vector2 math functions
+   #:vector2-zero #:vector2-one #:vector2-add #:vector2-subtract #:vector2-scale
+   #:vector2-multiply #:vector2-negate #:vector2-divide #:vector2-normalize
+   #:vector2-length #:vector2-length-sqr #:vector2-dot-product #:vector2-distance
+   #:vector2-distance-sqr #:vector2-lerp #:vector2-min #:vector2-max #:vector2-clamp
+   #:vector2-add-value #:vector2-subtract-value #:vector2-cross-product #:vector2-angle
+   #:vector2-line-angle #:vector2-reflect #:vector2-rotate #:vector2-move-towards
+   #:vector2-invert #:vector2-clamp-value #:vector2-equals #:vector2-transform
+   
+   ;; Vector3 math functions
+   #:vector3-zero #:vector3-one #:vector3-add #:vector3-subtract #:vector3-scale
+   #:vector3-cross-product #:vector3-length #:vector3-length-sqr #:vector3-dot-product
+   #:vector3-distance #:vector3-distance-sqr #:vector3-angle #:vector3-negate
+   #:vector3-normalize #:vector3-lerp #:vector3-min #:vector3-max #:vector3-clamp
+   #:vector3-add-value #:vector3-subtract-value #:vector3-multiply #:vector3-divide
+   #:vector3-perpendicular #:vector3-project #:vector3-reject #:vector3-ortho-normalize
+   #:vector3-transform #:vector3-rotate-by-quaternion #:vector3-rotate-by-axis-angle
+   #:vector3-reflect #:vector3-barycenter #:vector3-unproject #:vector3-invert
+   #:vector3-clamp-value #:vector3-equals
+   
+   ;; Matrix math functions
+   #:matrix-determinant #:matrix-trace #:matrix-transpose #:matrix-invert
+   #:matrix-identity #:matrix-add #:matrix-subtract #:matrix-multiply
+   #:matrix-translate #:matrix-rotate #:matrix-rotate-x #:matrix-rotate-y
+   #:matrix-rotate-z #:matrix-rotate-xyz #:matrix-rotate-zyx #:matrix-scale
+   #:matrix-frustum #:matrix-perspective #:matrix-ortho #:matrix-look-at
+   #:matrix-to-float-v
+   
+   ;; Quaternion math functions
+   #:quaternion-identity #:quaternion-length #:quaternion-normalize #:quaternion-invert
+   #:quaternion-multiply #:quaternion-divide #:quaternion-lerp #:quaternion-nlerp
+   #:quaternion-slerp #:quaternion-from-matrix #:quaternion-to-matrix
+   #:quaternion-from-axis-angle #:quaternion-to-axis-angle #:quaternion-equals
+   #:quaternion-scale #:quaternion-from-vector3-to-vector3 #:quaternion-from-euler
+   #:quaternion-to-euler #:quaternion-transform
    
    ;; Re-export 3d-math symbols
    #:vec #:vx #:vy #:vz #:v+ #:v- #:v* #:vunit #:vc #:vscale
@@ -599,4 +643,10 @@
    #:render-texture #:make-render-texture #:render-texture-id #:render-texture-texture #:render-texture-depth
    #:load-render-texture #:is-render-texture-valid #:unload-render-texture
    #:begin-texture-mode #:end-texture-mode #:with-texture-mode
-   #:get-render-texture-texture #:get-render-texture-depth))
+   #:get-render-texture-texture #:get-render-texture-depth
+   
+   ;; GUI Functions (raygui)
+   #:gui-enable #:gui-disable #:gui-lock #:gui-unlock #:gui-is-locked
+   #:gui-set-alpha #:gui-set-state #:gui-get-state
+   #:gui-button #:gui-label #:gui-checkbox #:gui-slider #:gui-progress-bar
+   #:+gui-state-normal+ #:+gui-state-focused+ #:+gui-state-pressed+ #:+gui-state-disabled+))

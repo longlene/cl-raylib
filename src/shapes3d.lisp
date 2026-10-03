@@ -306,11 +306,11 @@
 (defun draw-plane (center-pos size color)
   "Draw a plane (horizontal by default)"
   (set-gl-color color)
-  (let* ((cx (if (vec3-p center-pos) (vx3 center-pos) (first center-pos)))
-         (cy (if (vec3-p center-pos) (vy3 center-pos) (second center-pos)))
-         (cz (if (vec3-p center-pos) (vz3 center-pos) (third center-pos)))
-         (sx (if (vec2-p size) (vx2 size) (first size)))
-         (sz (if (vec2-p size) (vy2 size) (second size)))
+  (let* ((cx (vx center-pos))
+         (cy (vy center-pos))
+         (cz (vz center-pos))
+         (sx (vx size))
+         (sz (vy size))
          (half-x (/ sx 2.0))
          (half-z (/ sz 2.0)))
     (gl:with-primitive :triangles
