@@ -4,69 +4,9 @@
 ;;; Based on raylib collision detection functionality
 ;;; Note: Organized here for convenience, but following raylib's stateless design
 
-;;; 2D Collision Detection (matches raylib rshapes.c functionality)
-
-(defun check-collision-point-rec (point rec)
-  "Check if point is inside rectangle (matches raylib CheckCollisionPointRec)"
-  (and (>= (vx point) (rectangle-x rec))
-       (<= (vx point) (+ (rectangle-x rec) (rectangle-width rec)))
-       (>= (vy point) (rectangle-y rec))
-       (<= (vy point) (+ (rectangle-y rec) (rectangle-height rec)))))
-
-(defun check-collision-recs (rec1 rec2)
-  "Check collision between two rectangles (matches raylib CheckCollisionRecs)"
-  (and (< (rectangle-x rec1) (+ (rectangle-x rec2) (rectangle-width rec2)))
-       (> (+ (rectangle-x rec1) (rectangle-width rec1)) (rectangle-x rec2))
-       (< (rectangle-y rec1) (+ (rectangle-y rec2) (rectangle-height rec2)))
-       (> (+ (rectangle-y rec1) (rectangle-height rec1)) (rectangle-y rec2))))
-
-(defun check-collision-point-circle (point center radius)
-  "Check if point is inside circle (matches raylib CheckCollisionPointCircle)"
-  (<= (vlength (v- point center)) radius))
-
-(defun check-collision-circles (center1-or-circle1 radius1-or-circle2 &optional center2 radius2)
-  "Check collision between two circles (matches raylib CheckCollisionCircles)
-   Can be called with either:
-   - (check-collision-circles circle1 circle2) - circle structures
-   - (check-collision-circles center1 radius1 center2 radius2) - positions and radii"
-  (if (and center2 radius2)
-      ;; Four arguments: center1 radius1 center2 radius2
-      (<= (vlength (v- center1-or-circle1 radius1-or-circle2)) (+ center2 radius2))
-      ;; Two arguments: circle1 circle2 (structures)
-      (let ((center1 (circle-center center1-or-circle1))
-            (radius1 (circle-radius center1-or-circle1))
-            (center2 (circle-center radius1-or-circle2))
-            (radius2 (circle-radius radius1-or-circle2)))
-        (<= (vlength (v- center1 center2)) (+ radius1 radius2)))))
-
-(defun get-collision-rec (rec1 rec2)
-  "Get collision rectangle for two colliding rectangles (matches raylib GetCollisionRec)"
-  (if (check-collision-recs rec1 rec2)
-      (let ((x1 (max (rectangle-x rec1) (rectangle-x rec2)))
-            (y1 (max (rectangle-y rec1) (rectangle-y rec2)))
-            (x2 (min (+ (rectangle-x rec1) (rectangle-width rec1))
-                     (+ (rectangle-x rec2) (rectangle-width rec2))))
-            (y2 (min (+ (rectangle-y rec1) (rectangle-height rec1))
-                     (+ (rectangle-y rec2) (rectangle-height rec2)))))
-        (make-rectangle :x x1 :y y1 :width (- x2 x1) :height (- y2 y1)))
-      (make-rectangle :x 0.0 :y 0.0 :width 0.0 :height 0.0)))
+;;; NOTE: 2D collision functions live in shapes.lisp (raylib rshapes.c)
 
 ;;; 3D Collision Detection (matches raylib rmodels.c functionality)
-
-(defun check-collision-point-triangle (point a b c)
-  "Check if point is inside a triangle in 3D space"
-  (let* ((v0 (v- c a))
-         (v1 (v- b a))
-         (v2 (v- point a))
-         (dot00 (v. v0 v0))
-         (dot01 (v. v0 v1))
-         (dot02 (v. v0 v2))
-         (dot11 (v. v1 v1))
-         (dot12 (v. v1 v2))
-         (inv-denom (/ 1.0 (- (* dot00 dot11) (* dot01 dot01))))
-         (u (* (- (* dot11 dot02) (* dot01 dot12)) inv-denom))
-         (v (* (- (* dot00 dot12) (* dot01 dot02)) inv-denom)))
-    (and (>= u 0) (>= v 0) (<= (+ u v) 1))))
 
 (defun check-collision-point-box (point box-min box-max)
   "Check if point is inside a 3D box (matches raylib CheckCollisionPointBoundingBox)"

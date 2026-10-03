@@ -53,7 +53,7 @@
 
             ;; Circle shapes and lines
             (draw-circle (/ screen-width 5) 120 35 +darkblue+)
-            (draw-circle-gradient (/ screen-width 5) 220 60 +green+ +skyblue+)
+            (draw-circle-gradient (vec2 (/ screen-width 5.0) 220.0) 60.0 +green+ +skyblue+)
             (draw-circle-lines (/ screen-width 5) 340 80 +darkblue+)
             (draw-ellipse (/ screen-width 5) 120 25 20 +yellow+)
             (draw-ellipse-lines (/ screen-width 5) 120 30 25 +yellow+)

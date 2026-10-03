@@ -123,7 +123,20 @@
    #:draw-rectangle-gradient-v #:draw-rectangle-gradient-h #:draw-rectangle-gradient-ex
    #:draw-triangle #:draw-triangle-lines #:draw-triangle-fan #:draw-triangle-strip
    #:draw-poly #:draw-poly-lines #:draw-poly-lines-ex
-   
+   #:set-shapes-texture #:get-shapes-texture #:get-shapes-texture-rectangle
+   #:draw-line-dashed #:draw-triangle-gradient #:draw-triangle-lines-ex
+   #:draw-circle-sector-lines-ex #:draw-circle-lines-ex #:draw-ellipse-lines-ex #:draw-ring-lines-ex
+   ;; Splines drawing functions
+   #:draw-spline-linear #:draw-spline-basis #:draw-spline-catmull-rom
+   #:draw-spline-bezier-quadratic #:draw-spline-bezier-cubic
+   #:draw-spline-segment-linear #:draw-spline-segment-basis #:draw-spline-segment-catmull-rom
+   #:draw-spline-segment-bezier-quadratic #:draw-spline-segment-bezier-cubic
+   #:get-spline-point-linear #:get-spline-point-basis #:get-spline-point-catmull-rom
+   #:get-spline-point-bezier-quadratic #:get-spline-point-bezier-cubic
+   ;; Basic shapes collision detection functions
+   #:check-collision-point-poly #:check-collision-circle-rec #:check-collision-lines
+   #:check-collision-point-line #:check-collision-circle-line
+
    ;; 3D drawing functions
    #:draw-cube #:draw-cube-v #:draw-cube-wires #:draw-cube-wires-v
    #:draw-sphere #:draw-sphere-ex #:draw-sphere-wires #:draw-cylinder #:draw-cylinder-wires
@@ -274,6 +287,12 @@
    #:get-screen-width #:get-screen-height #:get-render-width #:get-render-height
    #:get-monitor-count #:get-current-monitor #:get-monitor-info
    #:set-clipboard-text #:get-clipboard-text
+   #:get-monitor-width #:get-monitor-height #:swap-screen-buffer #:poll-input-events #:open-url
+   #:unload-file-text #:set-gamepad-mappings #:set-gamepad-vibration
+   #:get-touch-position #:get-touch-point-id #:get-touch-point-count
+   #:set-gestures-enabled #:is-gesture-detected #:get-gesture-detected #:get-gesture-hold-duration
+   #:get-gesture-drag-vector #:get-gesture-drag-angle #:get-gesture-pinch-vector #:get-gesture-pinch-angle
+   #:unload-codepoints #:text-is-equal #:text-to-float
    
    ;; Window flags
    #:+flag-window-resizable+ #:+flag-window-undecorated+ #:+flag-window-hidden+

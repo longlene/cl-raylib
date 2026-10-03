@@ -260,7 +260,8 @@
 (defvar *rl-current-batch* nil "Current render batch")
 (defvar *rl-vertex-counter* 0 "Current vertex counter in batch")
 (defvar *rl-current-texture-id* 0 "Current texture ID")
-(defvar *rl-current-color* (color 255 255 255 255) "Current vertex color")
+(defvar *rl-current-color* (list 255 255 255 255) "Current vertex color")
+(defvar *rl-default-texture-id* 0 "Default texture used on shapes/poly drawing (required by shader)")
 (defvar *rl-current-texcoord* (vec2 0.0 0.0) "Current texture coordinates")
 (defvar *rl-current-normal* (vec3 0.0 0.0 1.0) "Current normal vector")
 
@@ -312,7 +313,7 @@
 (defun rl-color4ub (r g b a)
   "Define one vertex (color) - 4 byte"
   (declare (type (unsigned-byte 8) r g b a))
-  (setf *rl-current-color* (color r g b a))
+  (setf *rl-current-color* (list r g b a))
   ;; Immediate mode fallback
   (gl:color (/ r 255.0) (/ g 255.0) (/ b 255.0) (/ a 255.0)))
 
@@ -324,8 +325,8 @@
 (defun rl-color4f (x y z w)
   "Define one vertex (color) - 4 float"
   (declare (type single-float x y z w))
-  (setf *rl-current-color* (color (round (* x 255)) (round (* y 255)) 
-                                  (round (* z 255)) (round (* w 255))))
+  (setf *rl-current-color* (list (round (* x 255)) (round (* y 255))
+                                 (round (* z 255)) (round (* w 255))))
   ;; Immediate mode fallback
   (gl:color x y z w))
 
@@ -669,6 +670,7 @@
   
   ;; Init default white texture (matching raylib lines 2252-2257)
   (let ((default-texture-id (rl-load-default-texture)))
+    (setf *rl-default-texture-id* default-texture-id)
     (if (> default-texture-id 0)
         (trace-log-info "TEXTURE: [ID ~d] Default texture loaded successfully" default-texture-id)
         (trace-log-warning "TEXTURE: Failed to load default texture")))
@@ -689,6 +691,10 @@
   (trace-log-info "RLGL: Default OpenGL state initialized successfully")
   
   t)
+
+(defun rl-get-texture-id-default ()
+  "Get default texture id"
+  *rl-default-texture-id*)
 
 (defun rl-load-default-texture ()
   "Load default white texture (1x1 RGBA) - matches raylib default texture creation"

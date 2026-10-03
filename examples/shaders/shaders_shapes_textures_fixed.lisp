@@ -67,7 +67,7 @@
               (draw-text "Press ESC to exit" 20 60 10 +black+)
               
               (draw-circle 80 120 35 +darkblue+)
-              (draw-circle-gradient 80 220 60 +green+ +skyblue+)
+              (draw-circle-gradient (vec2 80.0 220.0) 60.0 +green+ +skyblue+)
               (draw-circle-lines 80 340 80 +darkblue+)
               
               ;; Activate our custom shader to be applied on next shapes/textures drawings
