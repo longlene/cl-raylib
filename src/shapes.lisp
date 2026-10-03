@@ -1845,12 +1845,8 @@
       (and (< x1 (+ x2 w2)) (> (+ x1 w1) x2)
            (< y1 (+ y2 h2)) (> (+ y1 h1) y2)))))
 
-(defun check-collision-circles (center1 radius1 &optional center2 radius2)
-  "Check collision between two circles
-   Also accepts two circle structs: (check-collision-circles circle1 circle2)"
-  (unless center2
-    (psetf center1 (circle-center center1) radius1 (circle-radius center1)
-           center2 (circle-center radius1) radius2 (circle-radius radius1)))
+(defun check-collision-circles (center1 radius1 center2 radius2)
+  "Check collision between two circles"
   (let* ((dx (- (%x center2) (%x center1)))     ; X distance between centers
          (dy (- (%y center2) (%y center1)))     ; Y distance between centers
          (distance-squared (+ (* dx dx) (* dy dy)))

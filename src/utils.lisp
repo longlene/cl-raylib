@@ -545,16 +545,6 @@
 ;;; Logging System (moved from logging.lisp)
 ;;; This provides comprehensive logging functionality compatible with raylib
 
-;;; Log level constants
-(defconstant +log-all+ 0 "Log all messages")
-(defconstant +log-trace+ 1 "Trace logging level")
-(defconstant +log-debug+ 2 "Debug logging level")
-(defconstant +log-info+ 3 "Info logging level")
-(defconstant +log-warning+ 4 "Warning logging level")
-(defconstant +log-error+ 5 "Error logging level")
-(defconstant +log-fatal+ 6 "Fatal logging level")
-(defconstant +log-none+ 7 "No logging")
-
 ;;; Global logging state
 (defvar *trace-log-level* +log-info+ "Current trace log level")
 (defvar *trace-log-callback* nil "Custom trace log callback function")

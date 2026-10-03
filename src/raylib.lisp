@@ -66,6 +66,17 @@
   (count 0 :type (unsigned-byte 32))            ; Events entries count
   (events #() :type simple-vector))             ; Events entries
 
+;;; Trace log level (raylib TraceLogLevel enum)
+;;; NOTE: Organized by priority level
+(defconstant +log-all+ 0 "Log all messages")
+(defconstant +log-trace+ 1 "Trace logging level")
+(defconstant +log-debug+ 2 "Debug logging level")
+(defconstant +log-info+ 3 "Info logging level")
+(defconstant +log-warning+ 4 "Warning logging level")
+(defconstant +log-error+ 5 "Error logging level")
+(defconstant +log-fatal+ 6 "Fatal logging level")
+(defconstant +log-none+ 7 "No logging")
+
 ;;; Camera system modes (raylib CameraMode enum)
 (defconstant +camera-custom+ 0 "Camera custom, controlled by user (UpdateCamera() does nothing)")
 (defconstant +camera-free+ 1 "Camera free mode")
