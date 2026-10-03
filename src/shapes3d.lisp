@@ -192,7 +192,7 @@
                 (gl:normal (/ x3 radius) (/ y3 radius) (/ z3 radius))
                 (gl:vertex (+ (vx center) x3) (+ (vy center) y3) (+ (vz center) z3))
                 (gl:normal (/ x2 radius) (/ y2 radius) (/ z2 radius))
-                (gl:vertex (+ (vx center) x2) (+ (vy center) y2) (+ (vz center) z2)))))))))
+                (gl:vertex (+ (vx center) x2) (+ (vy center) y2) (+ (vz center) z2))))))))))
 
 (defun draw-sphere-wires (center-pos radius rings slices color)
   "Draw sphere wireframe"
@@ -330,47 +330,17 @@
 
 ;;; 3D Ray drawing functions
 
-(defun draw-ray (ray length color)
-  "Draw a 3D ray"
+(defun draw-ray (ray color)
+  "Draw a ray line (matches raylib DrawRay)"
   (set-gl-color color)
-  (let* ((start (ray-position ray))
-         (direction (ray-direction ray))
-         (end-point (v+ start (v* direction length))))
+  (let* ((scale 10000.0)
+         (start (ray-position ray))
+         (end-point (v+ start (v* (ray-direction ray) scale))))
     (gl:with-primitive :lines
       (gl:vertex (vx start) (vy start) (vz start))
       (gl:vertex (vx end-point) (vy end-point) (vz end-point)))))
 
-;;; 3D Line drawing functions
-
-(defun draw-line-3d (start-pos end-pos color)
-  "Draw a 3D line between two points"
-  (set-gl-color color)
-  (gl:with-primitive :lines
-    (gl:vertex (vx start-pos) (vy start-pos) (vz start-pos))
-    (gl:vertex (vx end-pos) (vy end-pos) (vz end-pos))))
-
-(defun draw-point-3d (position color)
-  "Draw a 3D point"
-  (set-gl-color color)
-  (gl:point-size 4.0)
-  (gl:with-primitive :points
-    (gl:vertex (vx position) (vy position) (vz position)))
-  (gl:point-size 1.0))
-
-;;; 3D Triangle drawing functions
-
-(defun draw-triangle-3d (v1 v2 v3 color)
-  "Draw a 3D triangle"
-  (set-gl-color color)
-  (gl:with-primitive :triangles
-    ;; Calculate normal
-    (let* ((edge1 (v- v2 v1))
-           (edge2 (v- v3 v1))
-           (normal (vunit (vc edge1 edge2))))
-      (gl:normal (vx normal) (vy normal) (vz normal))
-      (gl:vertex (vx v1) (vy v1) (vz v1))
-      (gl:vertex (vx v2) (vy v2) (vz v2))
-      (gl:vertex (vx v3) (vy v3) (vz v3)))))
+;;; Note: draw-line-3d, draw-point-3d and draw-triangle-3d live in models.lisp (raylib rmodels.c)
 
 ;;; Utility functions for 3D transformations
 
@@ -400,4 +370,4 @@
        (progn
          (push-matrix)
          ,@body)
-     (pop-matrix))))
+     (pop-matrix)))

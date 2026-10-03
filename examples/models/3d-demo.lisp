@@ -129,7 +129,7 @@
                 (let* ((mouse-pos (get-mouse-position))
                        (ray (get-mouse-ray mouse-pos camera 
                                           (/ (float screen-width) (float screen-height)))))
-                  (draw-ray ray 20.0 +cyan+))))
+                  (draw-ray ray +cyan+))))
             
             ;; 2D UI overlay
             (draw-text "3D Graphics Demo" 10 10 20 +darkgray+)

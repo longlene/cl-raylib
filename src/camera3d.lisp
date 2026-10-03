@@ -93,14 +93,14 @@
 
 (defun get-camera-projection-matrix (camera aspect)
   "Get camera projection matrix"
-  (case (camera3d-projection camera)
+  (alexandria:switch ((camera3d-projection camera))
     (+camera-perspective+
      (mperspective (degrees-to-radians (camera3d-fovy camera))
                    aspect
                    0.1    ; Near plane
                    1000.0)) ; Far plane
     (+camera-orthographic+
-     (let ((top (* (camera3d-fovy camera) 0.5))
+     (let* ((top (* (camera3d-fovy camera) 0.5))
            (right (* top aspect)))
        (mortho (- right) right (- top) top 0.1 1000.0)))
     (t (meye 4))))

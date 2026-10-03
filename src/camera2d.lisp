@@ -310,9 +310,3 @@
   (let ((info-text (camera2d-get-info camera)))
     (draw-text info-text x y font-size color)))
 
-(defun check-collision-recs (rec1 rec2)
-  "Check collision between two rectangles"
-  (and (<= (rectangle-x rec1) (+ (rectangle-x rec2) (rectangle-width rec2)))
-       (>= (+ (rectangle-x rec1) (rectangle-width rec1)) (rectangle-x rec2))
-       (<= (rectangle-y rec1) (+ (rectangle-y rec2) (rectangle-height rec2)))
-       (>= (+ (rectangle-y rec1) (rectangle-height rec1)) (rectangle-y rec2))))

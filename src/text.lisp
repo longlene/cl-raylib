@@ -567,7 +567,7 @@
 
 (defun text-insert (text insert-text position)
   "Insert text at specified position"
-  (let ((text-len (length text))
+  (let* ((text-len (length text))
         (actual-pos (max 0 (min position text-len))))
     (concatenate 'string
                  (subseq text 0 actual-pos)
@@ -859,49 +859,11 @@
   "Check if two text strings are equal - matches raylib TextIsEqual"
   (string= text1 text2))
 
-(defun load-file-text (filename)
-  "Load text data from file - matches raylib LoadFileText"
-  (handler-case
-    (with-open-file (stream filename :direction :input)
-      (let ((contents (make-string (file-length stream))))
-        (read-sequence contents stream)
-        contents))
-    (error () nil)))
-
-(defun unload-file-text (text)
-  "Unload file text data - matches raylib UnloadFileText"
-  ;; In Lisp, memory is automatically managed
-  (declare (ignore text))
-  nil)
-
-(defun save-file-text (filename text)
-  "Save text data to file - matches raylib SaveFileText"
-  (handler-case
-    (with-open-file (stream filename :direction :output :if-exists :supersede)
-      (write-string text stream)
-      t)
-    (error () nil)))
-
-(defun set-clipboard-text (text)
-  "Set clipboard text content - matches raylib SetClipboardText"
-  ;; Platform-specific implementation would go here
-  ;; For now, store in a global variable
-  (setf *clipboard-text* text))
-
-(defun get-clipboard-text ()
-  "Get clipboard text content - matches raylib GetClipboardText"
-  ;; Platform-specific implementation would go here
-  ;; For now, return from global variable
-  (or *clipboard-text* ""))
-
 (defun unload-codepoints (codepoints)
   "Unload codepoints data from memory - matches raylib UnloadCodepoints"
   ;; In Lisp, memory is automatically managed
   (declare (ignore codepoints))
   nil)
-
-;;; Global clipboard variable (placeholder for platform-specific implementation)
-(defvar *clipboard-text* "" "Clipboard text storage")
 
 ;;; Helper function for text-to-float
 (defun parse-float (string)

@@ -125,7 +125,7 @@
     ;; Generate indices
     (loop for i from 0 below rings do
       (loop for j from 0 below slices do
-        (let ((first-vertex (+ (* i (1+ slices)) j))
+        (let* ((first-vertex (+ (* i (1+ slices)) j))
               (second-vertex (+ first-vertex slices 1)))
           ;; First triangle
           (push first-vertex indices)
@@ -325,8 +325,8 @@
   "Upload mesh data to GPU (VBO/VAO)"
   (unless (mesh-uploaded mesh)
     ;; Generate VAO
-    (setf (mesh-vao mesh) (gen-vertex-array))
-    (bind-vertex-array (mesh-vao mesh))
+    (setf (mesh-vao mesh) (gl:gen-vertex-array))
+    (gl:bind-vertex-array (mesh-vao mesh))
     
     ;; Generate and upload vertex data
     (setf (mesh-vbo-vertices mesh) (gl:gen-buffer))
@@ -400,7 +400,7 @@
                            index-ptr :static-draw))))
     
     ;; Unbind
-    (bind-vertex-array 0)
+    (gl:bind-vertex-array 0)
     (%gl:bind-buffer :array-buffer 0)
     (%gl:bind-buffer :element-array-buffer 0)
     
@@ -421,7 +421,7 @@
     
     ;; Delete VAO
     (when (/= (mesh-vao mesh) 0)
-      (delete-vertex-arrays (list (mesh-vao mesh)))
+      (gl:delete-vertex-arrays (list (mesh-vao mesh)))
       (setf (mesh-vao mesh) 0))
     
     (setf (mesh-uploaded mesh) nil))
@@ -482,14 +482,14 @@
                   (/ (fourth diffuse-color) 255.0))
         
         ;; Bind VAO and draw
-        (bind-vertex-array (mesh-vao mesh))
+        (gl:bind-vertex-array (mesh-vao mesh))
         
         ;; Draw elements if indices exist, otherwise draw arrays
         (if (mesh-indices mesh)
             (%gl:draw-elements :triangles (length (mesh-indices mesh)) :unsigned-int 0)
             (gl:draw-arrays :triangles 0 (mesh-vertex-count mesh)))
         
-        (bind-vertex-array 0)
+        (gl:bind-vertex-array 0)
         
         ;; Unbind texture
         (when diffuse-texture
@@ -606,7 +606,7 @@
     
     ;; Side vertices (bottom and top rings)
     (loop for i from 0 below slices do
-      (let ((angle (* i angle-step))
+      (let* ((angle (* i angle-step))
             (x (* radius (cos angle)))
             (z (* radius (sin angle))))
         ;; Bottom ring
@@ -1202,77 +1202,3 @@
               (setf (vz3 max-point) (max (vz3 max-point) (vz3 mesh-max)))))))
       
       (make-bounding-box :min min-point :max max-point))))
-
-;;; Collision detection functions (matches raylib rmodels.c)
-
-(defun check-collision-point-triangle (point a b c)
-  "Check if point is inside a triangle in 3D space"
-  (let* ((v0 (v- c a))
-         (v1 (v- b a))
-         (v2 (v- point a))
-         (dot00 (v. v0 v0))
-         (dot01 (v. v0 v1))
-         (dot02 (v. v0 v2))
-         (dot11 (v. v1 v1))
-         (dot12 (v. v1 v2))
-         (inv-denom (/ 1.0 (- (* dot00 dot11) (* dot01 dot01))))
-         (u (* (- (* dot11 dot02) (* dot01 dot12)) inv-denom))
-         (v (* (- (* dot00 dot12) (* dot01 dot02)) inv-denom)))
-    (and (>= u 0) (>= v 0) (<= (+ u v) 1))))
-
-(defun check-collision-point-box (point box-min box-max)
-  "Check if point is inside a 3D box (matches raylib CheckCollisionPointBoundingBox)"
-  (and (>= (vx point) (vx box-min)) (<= (vx point) (vx box-max))
-       (>= (vy point) (vy box-min)) (<= (vy point) (vy box-max))
-       (>= (vz point) (vz box-min)) (<= (vz point) (vz box-max))))
-
-;;; Ray collision detection functions
-
-(defun get-ray-collision-sphere (ray center radius)
-  "Get ray collision info with sphere (matches raylib GetRayCollisionSphere)"
-  (let* ((ray-to-center (v- center (ray-position ray)))
-         (ray-dir (ray-direction ray))
-         (closest-point (v. ray-to-center ray-dir))
-         (closest-on-ray (if (< closest-point 0.0)
-                             (ray-position ray)
-                             (v+ (ray-position ray) (v* ray-dir closest-point))))
-         (distance-to-center (vlength (v- center closest-on-ray))))
-    (if (<= distance-to-center radius)
-        (let* ((distance-to-sphere (- closest-point (sqrt (- (* radius radius) 
-                                                            (* distance-to-center distance-to-center)))))
-               (hit-point (v+ (ray-position ray) (v* ray-dir distance-to-sphere))))
-          (make-ray-collision :hit t :distance distance-to-sphere :point hit-point :normal (vunit (v- hit-point center))))
-        (make-ray-collision :hit nil :distance 0.0 :point (vec3 0 0 0) :normal (vec3 0 0 0)))))
-
-(defun get-ray-collision-box (ray box-or-min &optional box-max)
-  "Get ray collision info with box (matches raylib GetRayCollisionBox)"
-  (let* ((box-min (if box-max box-or-min (bounding-box-min box-or-min)))
-         (box-max (or box-max (bounding-box-max box-or-min)))
-         (ray-pos (ray-position ray))
-         (ray-dir (ray-direction ray))
-         (t-min-x (/ (- (vx box-min) (vx ray-pos)) (vx ray-dir)))
-         (t-max-x (/ (- (vx box-max) (vx ray-pos)) (vx ray-dir)))
-         (t-min-y (/ (- (vy box-min) (vy ray-pos)) (vy ray-dir)))
-         (t-max-y (/ (- (vy box-max) (vy ray-pos)) (vy ray-dir)))
-         (t-min-z (/ (- (vz box-min) (vz ray-pos)) (vz ray-dir)))
-         (t-max-z (/ (- (vz box-max) (vz ray-pos)) (vz ray-dir))))
-    
-    (when (> t-min-x t-max-x) (rotatef t-min-x t-max-x))
-    (when (> t-min-y t-max-y) (rotatef t-min-y t-max-y))
-    (when (> t-min-z t-max-z) (rotatef t-min-z t-max-z))
-    
-    (let ((t-min (max t-min-x t-min-y t-min-z))
-          (t-max (min t-max-x t-max-y t-max-z)))
-      
-      (if (and (>= t-max 0) (<= t-min t-max))
-          (let* ((t-hit (if (>= t-min 0) t-min t-max))
-                 (hit-point (v+ ray-pos (v* ray-dir t-hit)))
-                 (normal (cond
-                          ((= t-hit t-min-x) (vec3 (if (< (vx ray-dir) 0) 1 -1) 0 0))
-                          ((= t-hit t-max-x) (vec3 (if (> (vx ray-dir) 0) 1 -1) 0 0))
-                          ((= t-hit t-min-y) (vec3 0 (if (< (vy ray-dir) 0) 1 -1) 0))
-                          ((= t-hit t-max-y) (vec3 0 (if (> (vy ray-dir) 0) 1 -1) 0))
-                          ((= t-hit t-min-z) (vec3 0 0 (if (< (vz ray-dir) 0) 1 -1)))
-                          (t (vec3 0 0 (if (> (vz ray-dir) 0) 1 -1))))))
-            (make-ray-collision :hit t :distance t-hit :point hit-point :normal normal))
-          (make-ray-collision :hit nil :distance 0.0 :point (vec3 0 0 0) :normal (vec3 0 0 0))))))

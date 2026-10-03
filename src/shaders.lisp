@@ -288,7 +288,7 @@ void main()
                       loc-index)))
       (when (>= location 0)
         (gl:use-program (shader-id shader))
-        (case uniform-type
+        (alexandria:switch (uniform-type)
           (+shader-uniform-float+
            (gl:uniformf location (if (numberp value) value (first value))))
           (+shader-uniform-vec2+
@@ -317,7 +317,7 @@ void main()
         (gl:use-program (shader-id shader))
         ;; Implementation would depend on specific uniform array type
         ;; This is a simplified version
-        (case uniform-type
+        (alexandria:switch (uniform-type)
           (+shader-uniform-float+
            (dotimes (i count)
              (gl:uniformf (+ location i) (nth i values))))
@@ -361,14 +361,6 @@ void main()
   "End drawing with custom shader, return to default (raylib EndShaderMode)"
   (setf *current-shader* *default-shader*)
   (gl:use-program (if *default-shader* (shader-id *default-shader*) 0)))
-
-(defmacro with-shader-mode (shader &body body)
-  "Macro to use shader for a block of drawing operations"
-  `(progn
-     (begin-shader-mode ,shader)
-     (unwind-protect
-         (progn ,@body)
-       (end-shader-mode))))
 
 ;;; Utility functions
 (defun is-shader-valid (shader)

@@ -205,7 +205,7 @@
   (when (is-texture-valid texture)
     (gl:bind-texture :texture-2d (texture-id texture))
     
-    (case filter
+    (alexandria:switch (filter)
       (+texture-filter-point+
        (gl:tex-parameter :texture-2d :texture-min-filter :nearest)
        (gl:tex-parameter :texture-2d :texture-mag-filter :nearest))
@@ -226,7 +226,7 @@
   (when (is-texture-valid texture)
     (gl:bind-texture :texture-2d (texture-id texture))
     
-    (let ((wrap-mode (case wrap
+    (let ((wrap-mode (alexandria:switch (wrap)
                        (+texture-wrap-repeat+ :repeat)
                        (+texture-wrap-clamp+ :clamp-to-edge)
                        (+texture-wrap-mirror-repeat+ :mirrored-repeat)
@@ -371,7 +371,7 @@
 (defun get-texture-data (texture)
   "Get pixel data from texture (download from GPU)"
   (when (is-texture-valid texture)
-    (let ((width (texture-width texture))
+    (let* ((width (texture-width texture))
           (height (texture-height texture))
           (texture-id (texture-id texture))
           (data (make-array (* width height 4) :element-type '(unsigned-byte 8))))

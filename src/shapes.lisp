@@ -387,16 +387,6 @@
   "Create a rectangle structure (x y width height)"
   (list x y width height))
 
-(defun check-collision-point-rec (point rec)
-  "Check if point is inside rectangle"
-  (let ((x (if (listp rec) (first rec) (rectangle-x rec)))
-        (y (if (listp rec) (second rec) (rectangle-y rec)))
-        (width (if (listp rec) (third rec) (rectangle-width rec)))
-        (height (if (listp rec) (fourth rec) (rectangle-height rec))))
-    (and (>= (first point) x)
-         (<= (first point) (+ x width))
-         (>= (second point) y)
-         (<= (second point) (+ y height)))))
 
 (defun draw-poly-lines-ex (center sides radius rotation line-thick color)
   "Draw a polygon outline of n sides with extended parameters"

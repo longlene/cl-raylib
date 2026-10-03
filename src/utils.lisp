@@ -63,10 +63,11 @@
   "Load file as text string - matches raylib LoadFileText"
   (handler-case
     (with-open-file (stream filename :direction :input)
-      (let ((contents (make-string (file-length stream))))
-        (read-sequence contents stream)
+      (let* ((contents (make-string (file-length stream)))
+             ;; file-length counts bytes; multi-byte UTF-8 yields fewer characters
+             (end (read-sequence contents stream)))
         (trace-log-info "FILEIO: [~a] Text file loaded successfully" filename)
-        contents))
+        (subseq contents 0 end)))
     (error (e)
       (trace-log-warning "FILEIO: [~a] Failed to load text file: ~a" filename e)
       nil)))

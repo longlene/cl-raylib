@@ -253,7 +253,7 @@
   (position (vec3 0.0 0.0 0.0) :type vec3)
   (texcoord (vec2 0.0 0.0) :type vec2)
   (normal (vec3 0.0 0.0 1.0) :type vec3)
-  (color (color 255 255 255 255) :type color))
+  (color (list 255 255 255 255) :type list))
 
 ;; Global state variables
 (defvar *rl-current-draw-mode* +rl-triangles+ "Current drawing mode")
@@ -846,7 +846,7 @@ void main() {
 (defun mat4-to-array (mat)
   "Convert 3d-matrices mat4 to simple-array for OpenGL"
   (make-array 16 :element-type 'single-float
-              :initial-contents (list (mref mat 0 0) (mref mat 1 0) (mref mat 2 0) (mref mat 3 0)
-                                      (mref mat 0 1) (mref mat 1 1) (mref mat 2 1) (mref mat 3 1)
-                                      (mref mat 0 2) (mref mat 1 2) (mref mat 2 2) (mref mat 3 2)
-                                      (mref mat 0 3) (mref mat 1 3) (mref mat 2 3) (mref mat 3 3))))
+              :initial-contents (list (mcref4 mat 0 0) (mcref4 mat 1 0) (mcref4 mat 2 0) (mcref4 mat 3 0)
+                                      (mcref4 mat 0 1) (mcref4 mat 1 1) (mcref4 mat 2 1) (mcref4 mat 3 1)
+                                      (mcref4 mat 0 2) (mcref4 mat 1 2) (mcref4 mat 2 2) (mcref4 mat 3 2)
+                                      (mcref4 mat 0 3) (mcref4 mat 1 3) (mcref4 mat 2 3) (mcref4 mat 3 3))))
