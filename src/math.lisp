@@ -47,6 +47,22 @@
         (sb-kernel:make-single-float -4194304) ; -NaN, as x86-64 sqrtss
         (sqrt x))))
 
+;; C libm float functions: sinf(), cosf(), acosf(), asinf(), atan2f()
+;; NOTE: CL SIN/COS/ACOS/ASIN/ATAN compute single-float results through double precision,
+;; which may differ in the last bit from libm float versions used by raymath
+(defmacro %define-libm-float (name c-name &rest args)
+  `(progn
+     (declaim (inline ,name))
+     (defun ,name ,args
+       (float-features:with-float-traps-masked t
+         (cffi:foreign-funcall ,c-name ,@(loop for a in args append `(:float (float ,a 1.0))) :float)))))
+
+(%define-libm-float %sinf "sinf" x)
+(%define-libm-float %cosf "cosf" x)
+(%define-libm-float %acosf "acosf" x)
+(%define-libm-float %asinf "asinf" x)
+(%define-libm-float %atan2f "atan2f" y x)
+
 ;; Matrix field access by raylib index: (%m mat 12) <=> mat.m12
 (defmacro %m (mat index)
   `(mcref4 ,mat ,(mod index 4) ,(floor index 4)))
@@ -159,14 +175,14 @@ NOTE: Coordinate system convention: positive X right, positive Y down
 positive angles appear clockwise, and negative angles appear counterclockwise"
   (let ((dot (+ (* (vx v1) (vx v2)) (* (vy v1) (vy v2))))
         (det (- (* (vx v1) (vy v2)) (* (vy v1) (vx v2)))))
-    (atan det dot)))
+    (%atan2f det dot)))
 
 (defun vector2-line-angle (start end)
   "Calculate angle defined by a two vectors line
 NOTE: Parameters need to be normalized
 Current implementation should be aligned with glm::angle"
   ;; TODO(10/9/2023): Currently angles move clockwise, determine if this is wanted behavior
-  (- (atan (- (vy end) (vy start)) (- (vx end) (vx start)))))
+  (- (%atan2f (- (vy end) (vy start)) (- (vx end) (vx start)))))
 
 (defun vector2-scale (v scale)
   "Scale vector (multiply by value)"
@@ -221,8 +237,8 @@ Current implementation should be aligned with glm::angle"
 
 (defun vector2-rotate (v angle)
   "Rotate vector by angle"
-  (let ((cosres (cos angle))
-        (sinres (sin angle)))
+  (let ((cosres (%cosf angle))
+        (sinres (%sinf angle)))
     (vec2 (- (* (vx v) cosres) (* (vy v) sinres))
           (+ (* (vx v) sinres) (* (vy v) cosres)))))
 
@@ -359,7 +375,7 @@ r: ratio of the refractive index of the medium from where the ray comes
   (let* ((cross (vector3-cross-product v1 v2))
          (len (vector3-length cross))
          (dot (vector3-dot-product v1 v2)))
-    (atan len dot)))
+    (%atan2f len dot)))
 
 (defun vector3-negate (v)
   "Negate provided vector (invert direction)"
@@ -443,11 +459,11 @@ Ref.: https://en.wikipedia.org/w/index.php?title=Euler%E2%80%93Rodrigues_formula
     (when (= length 0.0) (setf length 1.0))
     (let* ((axis (vector3-scale axis (/ 1.0 length)))
            (angle (/ angle 2.0))
-           (a (sin angle))
+           (a (%sinf angle))
            (b (* (vx axis) a))
            (c (* (vy axis) a))
            (d (* (vz axis) a))
-           (a (cos angle))
+           (a (%cosf angle))
            (w (vec3 b c d))
            ;; Vector3CrossProduct(w, v)
            (wv (vector3-cross-product w v))
@@ -824,8 +840,8 @@ NOTE: Angle should be provided in radians"
         (setf x (* x ilength)
               y (* y ilength)
               z (* z ilength))))
-    (let* ((sinres (sin angle))
-           (cosres (cos angle))
+    (let* ((sinres (%sinf angle))
+           (cosres (%cosf angle))
            (tt (- 1.0 cosres)))
       (%matrix (+ (* x x tt) cosres)
                (+ (* y x tt) (* z sinres))
@@ -844,8 +860,8 @@ NOTE: Angle should be provided in radians"
 (defun matrix-rotate-x (angle)
   "Get x-rotation matrix
 NOTE: Angle must be provided in radians"
-  (let ((cosres (cos angle))
-        (sinres (sin angle)))
+  (let ((cosres (%cosf angle))
+        (sinres (%sinf angle)))
     (%matrix 1.0 0.0 0.0 0.0
              0.0 cosres sinres 0.0
              0.0 (- sinres) cosres 0.0
@@ -854,8 +870,8 @@ NOTE: Angle must be provided in radians"
 (defun matrix-rotate-y (angle)
   "Get y-rotation matrix
 NOTE: Angle must be provided in radians"
-  (let ((cosres (cos angle))
-        (sinres (sin angle)))
+  (let ((cosres (%cosf angle))
+        (sinres (%sinf angle)))
     (%matrix cosres 0.0 (- sinres) 0.0
              0.0 1.0 0.0 0.0
              sinres 0.0 cosres 0.0
@@ -864,8 +880,8 @@ NOTE: Angle must be provided in radians"
 (defun matrix-rotate-z (angle)
   "Get z-rotation matrix
 NOTE: Angle must be provided in radians"
-  (let ((cosres (cos angle))
-        (sinres (sin angle)))
+  (let ((cosres (%cosf angle))
+        (sinres (%sinf angle)))
     (%matrix cosres sinres 0.0 0.0
              (- sinres) cosres 0.0 0.0
              0.0 0.0 1.0 0.0
@@ -874,12 +890,12 @@ NOTE: Angle must be provided in radians"
 (defun matrix-rotate-xyz (angle)
   "Get xyz-rotation matrix
 NOTE: Angle must be provided in radians"
-  (let ((cosz (cos (- (vz angle))))
-        (sinz (sin (- (vz angle))))
-        (cosy (cos (- (vy angle))))
-        (siny (sin (- (vy angle))))
-        (cosx (cos (- (vx angle))))
-        (sinx (sin (- (vx angle)))))
+  (let ((cosz (%cosf (- (vz angle))))
+        (sinz (%sinf (- (vz angle))))
+        (cosy (%cosf (- (vy angle))))
+        (siny (%sinf (- (vy angle))))
+        (cosx (%cosf (- (vx angle))))
+        (sinx (%sinf (- (vx angle)))))
     (%matrix (* cosz cosy)
              (- (* cosz siny sinx) (* sinz cosx))
              (+ (* cosz siny cosx) (* sinz sinx))
@@ -897,12 +913,12 @@ NOTE: Angle must be provided in radians"
 (defun matrix-rotate-zyx (angle)
   "Get zyx-rotation matrix
 NOTE: Angle must be provided in radians"
-  (let ((cz (cos (vz angle)))
-        (sz (sin (vz angle)))
-        (cy (cos (vy angle)))
-        (sy (sin (vy angle)))
-        (cx (cos (vx angle)))
-        (sx (sin (vx angle))))
+  (let ((cz (%cosf (vz angle)))
+        (sz (%sinf (vz angle)))
+        (cy (%cosf (vy angle)))
+        (sy (%sinf (vy angle)))
+        (cx (%cosf (vx angle)))
+        (sx (%sinf (vx angle))))
     (mat (* cz cy) (- (* cz sy sx) (* cx sz)) (+ (* sz sx) (* cz cx sy)) 0.0
          (* cy sz) (+ (* cz cx) (* sz sy sx)) (- (* cx sz sy) (* cz sx)) 0.0
          (- sy) (* cy sx) (* cy cx) 0.0
@@ -1059,15 +1075,15 @@ NOTE: Fovy angle must be provided in radians"
       ((>= (abs cos-half-theta) 1.0) q1)
       ((> cos-half-theta 0.95) (quaternion-nlerp q1 q2 amount))
       (t
-       (let ((half-theta (acos cos-half-theta))
+       (let ((half-theta (%acosf cos-half-theta))
              (sin-half-theta (%sqrtf (- 1.0 (* cos-half-theta cos-half-theta)))))
          (if (< (abs sin-half-theta) +epsilon+)
              (vec4 (+ (* (vx q1) 0.5) (* (vx q2) 0.5))
                    (+ (* (vy q1) 0.5) (* (vy q2) 0.5))
                    (+ (* (vz q1) 0.5) (* (vz q2) 0.5))
                    (+ (* (vw q1) 0.5) (* (vw q2) 0.5)))
-             (let ((ratio-a (/ (sin (* (- 1 amount) half-theta)) sin-half-theta))
-                   (ratio-b (/ (sin (* amount half-theta)) sin-half-theta)))
+             (let ((ratio-a (/ (%sinf (* (- 1 amount) half-theta)) sin-half-theta))
+                   (ratio-b (/ (%sinf (* amount half-theta)) sin-half-theta)))
                (vec4 (+ (* (vx q1) ratio-a) (* (vx q2) ratio-b))
                      (+ (* (vy q1) ratio-a) (* (vy q2) ratio-b))
                      (+ (* (vz q1) ratio-a) (* (vz q2) ratio-b))
@@ -1153,8 +1169,8 @@ NOTE: Angle must be provided in radians"
         (let* ((angle (* angle 0.5))
                ;; Vector3Normalize(axis)
                (axis (vector3-scale axis (/ 1.0 length)))
-               (sinres (sin angle))
-               (cosres (cos angle)))
+               (sinres (%sinf angle))
+               (cosres (%cosf angle)))
           ;; QuaternionNormalize(q);
           (quaternion-normalize
            (vec4 (* (vx axis) sinres) (* (vy axis) sinres) (* (vz axis) sinres) cosres)))
@@ -1167,7 +1183,7 @@ Returns (values axis angle)"
     ;; QuaternionNormalize(q);
     (setf q (quaternion-normalize q)))
   (let ((res-axis (vec3 0.0 0.0 0.0))
-        (res-angle (* 2.0 (acos (vw q))))
+        (res-angle (* 2.0 (%acosf (vw q))))
         (den (%sqrtf (- 1.0 (* (vw q) (vw q))))))
     (if (> den +epsilon+)
         (setf res-axis (vec3 (/ (vx q) den) (/ (vy q) den) (/ (vz q) den)))
@@ -1179,12 +1195,12 @@ Returns (values axis angle)"
 (defun quaternion-from-euler (pitch yaw roll)
   "Get the quaternion equivalent to Euler angles
 NOTE: Rotation order is ZYX"
-  (let ((x0 (cos (* pitch 0.5)))
-        (x1 (sin (* pitch 0.5)))
-        (y0 (cos (* yaw 0.5)))
-        (y1 (sin (* yaw 0.5)))
-        (z0 (cos (* roll 0.5)))
-        (z1 (sin (* roll 0.5))))
+  (let ((x0 (%cosf (* pitch 0.5)))
+        (x1 (%sinf (* pitch 0.5)))
+        (y0 (%cosf (* yaw 0.5)))
+        (y1 (%sinf (* yaw 0.5)))
+        (z0 (%cosf (* roll 0.5)))
+        (z1 (%sinf (* roll 0.5))))
     (vec4 (- (* x1 y0 z0) (* x0 y1 z1))
           (+ (* x0 y1 z0) (* x1 y0 z1))
           (- (* x0 y0 z1) (* x1 y1 z0))
@@ -1204,7 +1220,7 @@ NOTE: Angles are returned in a Vector3 struct in radians"
          (z1 (- 1.0 (* 2.0 (+ (* y y) (* z z))))))
     (setf y0 (if (> y0 1.0) 1.0 y0))
     (setf y0 (if (< y0 -1.0) -1.0 y0))
-    (vec3 (atan x0 x1) (asin y0) (atan z0 z1))))
+    (vec3 (%atan2f x0 x1) (%asinf y0) (%atan2f z0 z1))))
 
 (defun quaternion-transform (q mat)
   "Transform a quaternion given a transformation matrix"

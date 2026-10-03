@@ -245,7 +245,7 @@
 
 (defun %rg-vector2-angle (v1 v2)
   "Get angle from two-points vector with X-axis"
-  (let ((angle (* (atan (- (vy v2) (vy v1)) (- (vx v2) (vx v1))) (/ 180.0 +pi+))))
+  (let ((angle (* (%atan2f (- (vy v2) (vy v1)) (- (vx v2) (vx v1))) (/ 180.0 +pi+))))
     (when (< angle 0) (incf angle 360.0))
     angle))
 

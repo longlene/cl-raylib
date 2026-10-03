@@ -867,8 +867,8 @@ other data converted to a vector of C TYPE elements"
                 y (* y inverse-length)
                 z (* z inverse-length)))))
     ;; Rotation matrix generation
-    (let* ((sinres (sin (* (/ +pi+ 180.0) angle)))
-           (cosres (cos (* (/ +pi+ 180.0) angle)))
+    (let* ((sinres (%sinf (* (/ +pi+ 180.0) angle)))
+           (cosres (%cosf (* (/ +pi+ 180.0) angle)))
            (tt (- 1.0 cosres))
            (mat-rotation (%matrix (+ (* x x tt) cosres)
                                   (+ (* y x tt) (* z sinres))

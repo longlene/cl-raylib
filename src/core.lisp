@@ -579,7 +579,7 @@
                   (aref (vr-stereo-config-scale config) 1) (/ (* norm-screen-height 0.5 aspect) distortion-scale))
             ;; Fovy is normally computed with: 2*atan2f(device.vScreenSize, 2*device.eyeToScreenDistance)
             ;; ...but with lens distortion it is increased (see Oculus SDK Documentation)
-            (let* ((fovy (* 2.0 (atan (* (vr-device-info-v-screen-size device) 0.5 distortion-scale)
+            (let* ((fovy (* 2.0 (%atan2f (* (vr-device-info-v-screen-size device) 0.5 distortion-scale)
                                       (vr-device-info-eye-to-screen-distance device)))) ; Really need distortionScale?
                    ;; Compute camera projection matrices
                    (proj-offset (* 4.0 lens-shift)) ; Scaled to projection space coordinates [-1..1]

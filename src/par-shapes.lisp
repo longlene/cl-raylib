@@ -22,9 +22,7 @@
 (defvar *par-shapes-epsilon-welded-normals* 0.001)
 (defvar *par-shapes-epsilon-degenerate-sphere* 0.0001)
 
-(declaim (inline %sinf %cosf %f32 %d))
-(defun %sinf (x) (cffi:foreign-funcall "sinf" :float (float x 1.0) :float))
-(defun %cosf (x) (cffi:foreign-funcall "cosf" :float (float x 1.0) :float))
+(declaim (inline %f32 %d))
 (defun %f32 (x) (float x 1.0))
 (defun %d (x) (float x 1d0))
 
