@@ -25,11 +25,19 @@
 
 ;;; File I/O Functions
 
+;; File access custom callbacks
+(defvar *load-file-data-callback* nil "Custom LoadFileData callback")
+(defvar *save-file-data-callback* nil "Custom SaveFileData callback")
+(defvar *load-file-text-callback* nil "Custom LoadFileText callback")
+(defvar *save-file-text-callback* nil "Custom SaveFileText callback")
+
+
 (defun load-file-data (filename)
   "Load file data as byte array (read), returns (values data data-size), NIL on failure"
   (unless filename
     (trace-log +log-warning+ "FILEIO: File name provided is not valid")
     (return-from load-file-data (values nil 0)))
+  (when *load-file-data-callback* (return-from load-file-data (funcall *load-file-data-callback* filename)))
   (let ((stream (ignore-errors (open filename :direction :input :element-type '(unsigned-byte 8)))))
     (unless stream
       (trace-log +log-warning+ "FILEIO: [~a] Failed to open file" filename)
@@ -54,33 +62,47 @@
   nil)
 
 (defun save-file-data (filename data data-size)
-  "Save data to file - matches raylib SaveFileData"
-  (handler-case
-    (with-open-file (stream filename :direction :output 
-                           :if-exists :supersede
-                           :element-type '(unsigned-byte 8))
-      (if (arrayp data)
-          (write-sequence data stream :end (min (length data) data-size))
-          (loop for i from 0 below data-size do
-            (write-byte (if (< i (length data)) (elt data i) 0) stream)))
-      (trace-log-info "FILEIO: [~a] File data saved successfully (~d bytes)" filename data-size)
-      t)
-    (error (e)
-      (trace-log-error "FILEIO: [~a] Failed to save file data: ~a" filename e)
-      nil)))
+  "Save data to file from byte array (write), returns true on success"
+  (unless filename
+    (trace-log +log-warning+ "FILEIO: File name provided is not valid")
+    (return-from save-file-data nil))
+  (when *save-file-data-callback* (return-from save-file-data (funcall *save-file-data-callback* filename data data-size)))
+  (let ((stream (ignore-errors (open filename :direction :output :if-exists :supersede :if-does-not-exist :create
+                                              :element-type '(unsigned-byte 8)))))
+    (unless stream
+      (trace-log +log-warning+ "FILEIO: [~a] Failed to open file" filename)
+      (return-from save-file-data nil))
+    (let ((count (handler-case (progn (write-sequence data stream :end (min (length data) data-size))
+                                      (min (length data) data-size))
+                   (error () 0))))
+      (cond ((zerop count) (trace-log +log-warning+ "FILEIO: [~a] Failed to write file" filename))
+            ((/= count data-size) (trace-log +log-warning+ "FILEIO: [~a] File partially written" filename))
+            (t (trace-log +log-info+ "FILEIO: [~a] File saved successfully" filename)))
+      (handler-case (progn (close stream) t)
+        (error () nil)))))
 
 (defun load-file-text (filename)
-  "Load file as text string - matches raylib LoadFileText"
-  (handler-case
-    (with-open-file (stream filename :direction :input)
-      (let* ((contents (make-string (file-length stream)))
-             ;; file-length counts bytes; multi-byte UTF-8 yields fewer characters
-             (end (read-sequence contents stream)))
-        (trace-log-info "FILEIO: [~a] Text file loaded successfully" filename)
-        (subseq contents 0 end)))
-    (error (e)
-      (trace-log-warning "FILEIO: [~a] Failed to load text file: ~a" filename e)
-      nil)))
+  "Load text data from file (read), returns the text as a string (bytes decoded as UTF-8), NIL on failure"
+  (unless filename
+    (trace-log +log-warning+ "FILEIO: File name provided is not valid")
+    (return-from load-file-text nil))
+  (when *load-file-text-callback* (return-from load-file-text (funcall *load-file-text-callback* filename)))
+  (let ((stream (ignore-errors (open filename :direction :input :element-type '(unsigned-byte 8)))))
+    (unless stream
+      (trace-log +log-warning+ "FILEIO: [~a] Failed to open text file" filename)
+      (return-from load-file-text nil))
+    (with-open-stream (stream stream)
+      (let ((size (file-length stream)))
+        (if (> size 0)
+            (let* ((bytes (make-array size :element-type '(unsigned-byte 8)))
+                   (count (read-sequence bytes stream))
+                   ;; The text ends at the first NUL character, like the C string
+                   (end (or (position 0 bytes :end count) count)))
+              (trace-log +log-info+ "FILEIO: [~a] Text file loaded successfully" filename)
+              (babel:octets-to-string bytes :end end :encoding :utf-8 :errorp nil))
+            (progn
+              (trace-log +log-warning+ "FILEIO: [~a] Failed to read text file" filename)
+              nil))))))
 
 (defun unload-file-text (text)
   "Unload file text - matches raylib UnloadFileText (no-op in Lisp)"
@@ -89,15 +111,22 @@
   nil)
 
 (defun save-file-text (filename text)
-  "Save text to file - matches raylib SaveFileText"
-  (handler-case
-    (with-open-file (stream filename :direction :output :if-exists :supersede)
-      (write-string text stream)
-      (trace-log-info "FILEIO: [~a] Text file saved successfully" filename)
-      t)
-    (error (e)
-      (trace-log-error "FILEIO: [~a] Failed to save text file: ~a" filename e)
-      nil)))
+  "Save text data to file (write), string encoded as UTF-8, returns true on success"
+  (unless filename
+    (trace-log +log-warning+ "FILEIO: File name provided is not valid")
+    (return-from save-file-text nil))
+  (when *save-file-text-callback* (return-from save-file-text (funcall *save-file-text-callback* filename text)))
+  (let ((stream (ignore-errors (open filename :direction :output :if-exists :supersede :if-does-not-exist :create
+                                              :element-type '(unsigned-byte 8)))))
+    (unless stream
+      (trace-log +log-warning+ "FILEIO: [~a] Failed to open text file" filename)
+      (return-from save-file-text nil))
+    (if (handler-case (progn (write-sequence (babel:string-to-octets text :encoding :utf-8) stream) t)
+          (error () nil))
+        (trace-log +log-info+ "FILEIO: [~a] Text file saved successfully" filename)
+        (trace-log +log-warning+ "FILEIO: [~a] Failed to write text file" filename))
+    (handler-case (progn (close stream) t)
+      (error () nil))))
 
 ;;; File System Utilities
 
@@ -121,29 +150,42 @@
         nil
         (subseq file-name dot))))
 
+(defun %strprbrk (text charset)
+  "String pointer reverse break: position of the right-most occurrence of CHARSET in TEXT"
+  (position-if (lambda (c) (find c charset)) text :from-end t))
+
 (defun get-file-name (file-path)
-  "Get filename from path - matches raylib GetFileName"
-  (let ((slash-pos (position #\/ file-path :from-end t)))
-    (if slash-pos
-        (subseq file-path (1+ slash-pos))
-        file-path)))
+  "Get pointer to filename for a path string"
+  (let ((slash (and file-path (%strprbrk file-path "\\/"))))
+    (if slash (subseq file-path (1+ slash)) file-path)))
 
 (defun is-file-extension (file-name ext)
-  "Check file extension (recommended include point: .png, .wav)
-   NOTE: EXT can be a list of extensions separated by ';', comparison is case-insensitive"
+  "Check file extension (recommended include point: .png, .wav), EXT can be a list separated by ';'"
   (let ((file-ext (get-file-extension file-name)))
-    (and file-ext
-         (some (lambda (e) (string-equal file-ext e))
-               (uiop:split-string ext :separator ";"))
-         t)))
+    (when file-ext
+      (flet ((lower (string) (map 'string (lambda (c) (if (char<= #\A c #\Z) (char-downcase c) c)) string)))
+        ;; NOTE: char fileExtLower[16]: up to 15 characters are compared
+        (let ((file-ext-lower (lower (subseq file-ext 0 (min 15 (length file-ext)))))
+              ;; MAX_FILE_EXTENSIONS 32: the last one keeps the remaining text
+              (ext-list (let ((parts (or (uiop:split-string (lower ext) :separator ";") (list ""))))
+                          (if (> (length parts) 32)
+                              (append (subseq parts 0 31) (list (format nil "~{~a~^;~}" (nthcdr 31 parts))))
+                              parts))))
+          (loop for e in ext-list
+                ;; Consider the case where extension provided does not start with the '.'
+                thereis (string= (if (and (plusp (length e)) (char= (char e 0) #\.))
+                                     file-ext-lower
+                                     (subseq file-ext-lower 1))
+                                 e)))))))
 
 (defun get-file-name-without-ext (file-path)
-  "Get filename without extension - matches raylib GetFileNameWithoutExt"
-  (let* ((filename (get-file-name file-path))
-         (dot-pos (position #\. filename :from-end t)))
-    (if dot-pos
-        (subseq filename 0 dot-pos)
-        filename)))
+  "Get filename string without extension"
+  (if file-path
+      (let* ((file-name (get-file-name file-path))
+             ;; Reverse search '.', a leading '.' is kept
+             (dot (position #\. file-name :from-end t :start (min 1 (length file-name)))))
+        (if dot (subseq file-name 0 dot) file-name))
+      ""))
 
 (defun get-directory-path (file-path)
   "Get full path for a given fileName with path (uses static string)"
@@ -158,48 +200,59 @@
           (t (concatenate 'string (if relative "./" "") (subseq file-path 0 last-slash))))))
 
 (defun get-prev-directory-path (dir-path)
-  "Get previous directory path - matches raylib GetPrevDirectoryPath"
-  (let ((clean-path (string-right-trim "/" dir-path)))
-    (let ((slash-pos (position #\/ clean-path :from-end t)))
-      (if slash-pos
-          (subseq clean-path 0 (1+ slash-pos))
-          "../"))))
+  "Get previous directory path for a given path"
+  (let ((last-index (1- (length dir-path)))
+        (is-file (is-path-file dir-path)))
+    (loop with i = last-index
+          while (>= i 0)
+          do (when (find (char dir-path i) "\\/")
+               (block separator
+                 ;; If this character is a leading '/' (e.g. the '/' in "/usr") or
+                 ;; part of a drive root (e.g. "C:\"), include it with the result
+                 (cond ((or (= i 0) (and (= i 2) (char= (char dir-path 1) #\:))) (incf i))
+                       ;; If this character is a trailing path separator, continue
+                       ((= i last-index) (return-from separator)))
+                 (if (not is-file)
+                     (return-from get-prev-directory-path (subseq dir-path 0 i))
+                     (setf is-file nil))))
+             (decf i))
+    ""))
 
 ;;; Data Export Functions
 
-(defun export-data-as-code (data data-size filename)
-  "Export data as C code array - matches raylib ExportDataAsCode"
-  (handler-case
-    (with-open-file (stream filename :direction :output :if-exists :supersede)
-      (format stream "// Data exported by cl-raylib~%")
-      (format stream "// Data size: ~d bytes~%~%" data-size)
-      (format stream "static unsigned char data[~d] = {~%" data-size)
-      
-      (loop for i from 0 below data-size do
-        (when (zerop (mod i 16))
-          (format stream "    "))
-        (format stream "0x~2,'0X" (if (< i (length data)) (elt data i) 0))
-        (when (< i (1- data-size))
-          (format stream ", "))
-        (when (= (mod i 16) 15)
-          (format stream "~%")))
-      
-      (unless (zerop (mod data-size 16))
-        (format stream "~%"))
-      (format stream "};~%")
-      
-      (trace-log-info "UTILS: [~a] Data exported as code successfully" filename)
-      t)
-    (error (e)
-      (trace-log-error "UTILS: [~a] Failed to export data as code: ~a" filename e)
-      nil)))
+(defun export-data-as-code (data data-size file-name)
+  "Export data to code (.h), returns true on success"
+  (let* ((var-file-name (map 'string (lambda (c)
+                                       (cond ((char<= #\a c #\z) (char-upcase c)) ; Convert variable name to uppercase
+                                             ;; Replace non valid character for C identifier with '_'
+                                             ((find c ".-?!+") #\_)
+                                             (t c)))
+                             (get-file-name-without-ext file-name)))
+         (txt-data
+           (with-output-to-string (s)
+             (format s "////////////////////////////////////////////////////////////////////////////////////////~%")
+             (format s "//                                                                                    //~%")
+             (format s "// DataAsCode exporter v1.0 - Raw data exported as an array of bytes                  //~%")
+             (format s "//                                                                                    //~%")
+             (format s "// more info and bugs-report:  github.com/raysan5/raylib                              //~%")
+             (format s "// feedback and support:       ray[at]raylib.com                                      //~%")
+             (format s "//                                                                                    //~%")
+             (format s "// Copyright (c) 2022-2026 Ramon Santamaria (@raysan5)                                //~%")
+             (format s "//                                                                                    //~%")
+             (format s "////////////////////////////////////////////////////////////////////////////////////////~%~%")
+             (format s "#define ~a_DATA_SIZE     ~d~%~%" var-file-name data-size)
+             (format s "static unsigned char ~a_DATA[~a_DATA_SIZE] = { " var-file-name var-file-name)
+             (dotimes (i (1- data-size))
+               (format s (if (zerop (mod i 20)) "0x~(~x~),~%" "0x~(~x~), ") (aref data i)))
+             (format s "0x~(~x~) };~%" (aref data (1- data-size)))))
+         (result (save-file-text file-name txt-data)))
+    (if result
+        (trace-log +log-info+ "FILEIO: [~a] Data as code exported successfully" file-name)
+        (trace-log +log-warning+ "FILEIO: [~a] Failed to export data as code" file-name))
+    result))
 
 ;;; Callback Management
 
-(defvar *load-file-data-callback* nil "Custom LoadFileData callback")
-(defvar *save-file-data-callback* nil "Custom SaveFileData callback") 
-(defvar *load-file-text-callback* nil "Custom LoadFileText callback")
-(defvar *save-file-text-callback* nil "Custom SaveFileText callback")
 
 (defun set-load-file-data-callback (callback)
   "Set custom file data loader callback - matches raylib SetLoadFileDataCallback"
@@ -360,15 +413,13 @@
 (defun file-rename (file-name file-rename)
   "Rename file (if exists), returns 0 on success"
   (if (file-exists file-name)
-      (handler-case (progn (rename-file (truename file-name) (merge-pathnames file-rename)) 0)
-        (error () -1))
+      (cffi:foreign-funcall "rename" :string file-name :string file-rename :int)
       -1))
 
 (defun file-remove (file-name)
   "Remove file (if exists), returns 0 on success"
   (if (file-exists file-name)
-      (handler-case (progn (delete-file file-name) 0)
-        (error () -1))
+      (cffi:foreign-funcall "remove" :string file-name :int)
       -1))
 
 ;; NOTE: If destination path does not exist, it is created!
@@ -411,10 +462,11 @@
       -1))
 
 (defun file-text-find-index (file-name search)
-  "Find text in existing file, returns -1 if index not found or index otherwise"
+  "Find text in existing file, returns -1 if index not found or the byte index otherwise"
   (if (file-exists file-name)
-      (let ((index (search search (load-file-text file-name))))
-        (or index -1))
+      (let* ((file-text (load-file-text file-name))
+             (index (and file-text (search search file-text))))
+        (if index (length (babel:string-to-octets file-text :end index :encoding :utf-8)) -1))
       -1))
 
 ;;; Compression and Encoding (raylib rcore.c)
