@@ -26,7 +26,7 @@
 
       ;; Load WAV audio file into the first slot as the 'source' sound
       ;; this sound owns the sample data
-      (setf (aref sound-array 0) (load-sound "examples/audio/resources/sound.wav"))
+      (setf (aref sound-array 0) (load-sound "resources/sound.wav"))
 
       ;; Load an alias of the sound into slots 1-9. These do not own the sound data, but can be played
       (loop for i from 1 below +max-sounds+ do

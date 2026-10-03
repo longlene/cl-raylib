@@ -12,9 +12,9 @@
 ;;;   - Format wave data (sample rate, size, channels)
 ;;;   - Play/Stop/Pause/Resume loaded audio
 ;;;
-;;; Supported file formats: WAV (wav.lisp), OGG (vorbis.lisp), QOA (qoa.lisp), FLAC (flac.lisp)
+;;; Supported file formats: WAV (wav.lisp), OGG (vorbis.lisp), MP3 (mp3.lisp), QOA (qoa.lisp), FLAC (flac.lisp)
 ;;; NOTE: SUPPORT_FILEFORMAT_FLAC is enabled (disabled by default in raylib config.h)
-;;; NOTE: MP3, XM and MOD formats are not supported yet
+;;; NOTE: XM and MOD formats are not supported yet
 ;;; NOTE: Playback device uses PulseAudio through libpulse-simple (see miniaudio.lisp)
 ;;;
 ;;; NOTE: Sample data is stored in typed arrays: u8 -> (unsigned-byte 8), s16 -> (signed-byte 16),
@@ -427,6 +427,17 @@
                                                            (* (wave-frame-count wave) channels))
                  (stb-vorbis-close ogg-data))
                (trace-log +log-warning+ "WAVE: Failed to load OGG data"))))
+        ((type-p ".mp3" ".MP3")
+         ;; NOTE: Forcing conversion to 32bit float sample size on reading
+         (multiple-value-bind (data channels sample-rate total-frame-count)
+             (drmp3-open-memory-and-read-pcm-frames-f32 file-data data-size)
+           (setf (wave-data wave) data
+                 (wave-sample-size wave) 32)
+           (if data
+               (setf (wave-channels wave) channels
+                     (wave-sample-rate wave) sample-rate
+                     (wave-frame-count wave) total-frame-count)
+               (trace-log +log-warning+ "WAVE: Failed to load MP3 data"))))
         ((type-p ".qoa" ".QOA")
          (let* ((qoa (make-qoa-desc))
                 (data (qoa-decode file-data data-size qoa)))
@@ -803,6 +814,15 @@
                  (music-frame-count music) (stb-vorbis-stream-length-in-samples ctx-ogg)
                  (music-looping music) t)
            t))))
+    (:mp3
+     (let ((ctx-mp3 (drmp3-init-memory data data-size)))
+       (when ctx-mp3
+         (setf (music-ctx-type music) +music-audio-mp3+
+               (music-ctx-data music) ctx-mp3
+               (music-stream music) (load-audio-stream (drmp3-sample-rate ctx-mp3) 32 (drmp3-channels ctx-mp3))
+               (music-frame-count music) (drmp3-get-pcm-frame-count ctx-mp3)
+               (music-looping music) t)   ; Looping enabled by default
+         t)))
     (:qoa
      (let ((ctx-qoa (when (and data (> data-size 0)) (qoaplay-open-memory data data-size))))
        (when ctx-qoa
@@ -833,6 +853,7 @@
   (let* ((music (make-music))
          (type (cond ((is-file-extension file-name ".wav") :wav)
                      ((is-file-extension file-name ".ogg") :ogg)
+                     ((is-file-extension file-name ".mp3") :mp3)
                      ((is-file-extension file-name ".qoa") :qoa)
                      ((is-file-extension file-name ".flac") :flac)))
          (music-loaded (when type
@@ -856,6 +877,7 @@
          (type (flet ((type-p (&rest types) (member file-type types :test #'string=)))
                  (cond ((type-p ".wav" ".WAV") :wav)
                        ((type-p ".ogg" ".OGG") :ogg)
+                       ((type-p ".mp3" ".MP3") :mp3)
                        ((type-p ".qoa" ".QOA") :qoa)
                        ((type-p ".flac" ".FLAC") :flac))))
          (music-loaded (when type (%load-music-context music type data data-size))))
@@ -887,6 +909,7 @@
   (when (music-ctx-data music)
     (cond ((= (music-ctx-type music) +music-audio-wav+) (drwav-uninit (music-ctx-data music)))
           ((= (music-ctx-type music) +music-audio-ogg+) (stb-vorbis-close (music-ctx-data music)))
+          ((= (music-ctx-type music) +music-audio-mp3+) (drmp3-uninit (music-ctx-data music)))
           ((= (music-ctx-type music) +music-audio-qoa+) (qoaplay-close (music-ctx-data music)))
           ((= (music-ctx-type music) +music-audio-flac+) (drflac-close (music-ctx-data music))))))
 
@@ -913,6 +936,7 @@
     (case (music-ctx-type music)
       (#.+music-audio-wav+ (drwav-seek-to-first-pcm-frame ctx))
       (#.+music-audio-ogg+ (stb-vorbis-seek-start ctx))
+      (#.+music-audio-mp3+ (drmp3-seek-to-start-of-stream ctx))
       (#.+music-audio-qoa+ (qoaplay-rewind ctx))
       (#.+music-audio-flac+ (drflac-seek-to-first-frame ctx)))))
 
@@ -928,6 +952,7 @@
     (case (music-ctx-type music)
       (#.+music-audio-wav+ (drwav-seek-to-pcm-frame ctx position-in-frames))
       (#.+music-audio-ogg+ (stb-vorbis-seek-frame ctx position-in-frames))
+      (#.+music-audio-mp3+ (drmp3-seek-to-pcm-frame ctx position-in-frames))
       (#.+music-audio-qoa+
        (let ((qoa-frame (floor position-in-frames +qoa-frame-len+)))
          (qoaplay-seek-frame ctx qoa-frame) ; Seeks to QOA frame, not PCM frame
@@ -953,6 +978,7 @@
            ;; On first call of this function, lazily pre-allocated a temp buffer to read audio files/memory data in
            ;; NOTE: The temp buffer format is the format provided by the decoder
            (pcm-format (cond ((= (music-ctx-type music) +music-audio-qoa+) +ma-format-f32+)
+                             ((= (music-ctx-type music) +music-audio-mp3+) +ma-format-f32+)
                              ((and (= (music-ctx-type music) +music-audio-wav+) (= (audio-stream-sample-size stream) 32))
                               +ma-format-f32+)
                              (t +ma-format-s16+)))
@@ -1003,6 +1029,15 @@
                        (if (= frame-count-still-needed 0)
                            (return)
                            (stb-vorbis-seek-start ctx)))))
+                  (#.+music-audio-mp3+
+                   (loop
+                     (let ((frame-count-read (drmp3-read-pcm-frames-f32 ctx frame-count-still-needed pcm-buffer
+                                                                        (* frame-count-read-total channels))))
+                       (incf frame-count-read-total frame-count-read)
+                       (decf frame-count-still-needed frame-count-read)
+                       (if (= frame-count-still-needed 0)
+                           (return)
+                           (drmp3-seek-to-start-of-stream ctx)))))
                   (#.+music-audio-qoa+
                    (incf frame-count-read-total (qoaplay-decode ctx pcm-buffer frames-to-stream)))
                   (#.+music-audio-flac+

@@ -19,8 +19,8 @@
 
 (defun audio-process-effect-lpf (buffer frames)
   "Audio effect: lowpass filter"
-  (let ((cutoff (/ 70.0 44100.0))  ; 70 Hz lowpass filter
-        (k (/ cutoff (+ cutoff 0.1591549431))))  ; RC filter formula
+  (let* ((cutoff (/ 70.0 44100.0))  ; 70 Hz lowpass filter
+         (k (/ cutoff (+ cutoff 0.1591549431))))  ; RC filter formula
     
     ;; Process stereo audio data
     (loop for i from 0 below (* frames 2) by 2 do
