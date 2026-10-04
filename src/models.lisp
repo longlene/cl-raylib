@@ -70,8 +70,8 @@
     (rl-begin +rl-lines+)
     (loop for i from 0 below 360 by 10
           do (%color color)
-             (rl-vertex3f (* (sin (* +deg2rad+ i)) radius) (* (cos (* +deg2rad+ i)) radius) 0.0)
-             (rl-vertex3f (* (sin (* +deg2rad+ (+ i 10))) radius) (* (cos (* +deg2rad+ (+ i 10))) radius) 0.0))
+             (rl-vertex3f (* (%sinf (* +deg2rad+ i)) radius) (* (%cosf (* +deg2rad+ i)) radius) 0.0)
+             (rl-vertex3f (* (%sinf (* +deg2rad+ (+ i 10))) radius) (* (%cosf (* +deg2rad+ (+ i 10))) radius) 0.0))
     (rl-end)
     (rl-pop-matrix)))
 
@@ -260,10 +260,10 @@
         (cosslice (gensym)) (sinslice (gensym)) (i (gensym)) (j (gensym)))
     `(let* ((,ringangle (* +deg2rad+ (/ 180.0 ,rings))) ; Angle between latitudinal parallels
             (,sliceangle (* +deg2rad+ (/ 360.0 ,slices))) ; Angle between longitudinal meridians
-            (,cosring (cos ,ringangle))
-            (,sinring (sin ,ringangle))
-            (,cosslice (cos ,sliceangle))
-            (,sinslice (sin ,sliceangle))
+            (,cosring (%cosf ,ringangle))
+            (,sinring (%sinf ,ringangle))
+            (,cosslice (%cosf ,sliceangle))
+            (,sinslice (%sinf ,sliceangle))
             ;; Required to store face vertices
             (,v0 (list 0.0 0.0 0.0))
             (,v1 (list 0.0 0.0 0.0))
@@ -329,7 +329,7 @@
         (radius-bottom (float radius-bottom 1.0))
         (height (float height 1.0)))
     (flet ((v (i radius y)
-             (rl-vertex3f (* (sin (* +deg2rad+ i angle-step)) radius) y (* (cos (* +deg2rad+ i angle-step)) radius))))
+             (rl-vertex3f (* (%sinf (* +deg2rad+ i angle-step)) radius) y (* (%cosf (* +deg2rad+ i angle-step)) radius))))
       (rl-push-matrix)
       (rl-translatef (%x position) (%y position) (%z position))
       (rl-begin +rl-triangles+)
@@ -376,14 +376,14 @@
                        (+ (%y pos) (* s (vy3 b1)) (* c (vy3 b2)))
                        (+ (%z pos) (* s (vz3 b1)) (* c (vz3 b2))))))
           (loop for i below sides
-                collect (let ((s1 (* (sin (* base-angle (+ i 0))) start-radius))
-                              (c1 (* (cos (* base-angle (+ i 0))) start-radius))
-                              (s2 (* (sin (* base-angle (+ i 1))) start-radius))
-                              (c2 (* (cos (* base-angle (+ i 1))) start-radius))
-                              (s3 (* (sin (* base-angle (+ i 0))) end-radius))
-                              (c3 (* (cos (* base-angle (+ i 0))) end-radius))
-                              (s4 (* (sin (* base-angle (+ i 1))) end-radius))
-                              (c4 (* (cos (* base-angle (+ i 1))) end-radius)))
+                collect (let ((s1 (* (%sinf (* base-angle (+ i 0))) start-radius))
+                              (c1 (* (%cosf (* base-angle (+ i 0))) start-radius))
+                              (s2 (* (%sinf (* base-angle (+ i 1))) start-radius))
+                              (c2 (* (%cosf (* base-angle (+ i 1))) start-radius))
+                              (s3 (* (%sinf (* base-angle (+ i 0))) end-radius))
+                              (c3 (* (%cosf (* base-angle (+ i 0))) end-radius))
+                              (s4 (* (%sinf (* base-angle (+ i 1))) end-radius))
+                              (c4 (* (%cosf (* base-angle (+ i 1))) end-radius)))
                           ;; Compute the four vertices
                           (list (w start-pos s1 c1) (w start-pos s2 c2) (w end-pos s3 c3) (w end-pos s4 c4)))))))))
 
@@ -432,7 +432,7 @@
         (radius-bottom (float radius-bottom 1.0))
         (height (float height 1.0)))
     (flet ((v (i radius y)
-             (rl-vertex3f (* (sin (* +deg2rad+ i angle-step)) radius) y (* (cos (* +deg2rad+ i angle-step)) radius))))
+             (rl-vertex3f (* (%sinf (* +deg2rad+ i angle-step)) radius) y (* (%cosf (* +deg2rad+ i angle-step)) radius))))
       (rl-push-matrix)
       (rl-translatef (%x position) (%y position) (%z position))
       (rl-begin +rl-lines+)
@@ -491,9 +491,9 @@ CAP-FACES is a list of (c w1 w2 w3 w4), MIDDLE-FACES a list of (w1 w2 w3 w4)"
             ;; Building up the rings from capCenter in the direction of the 'direction' vector computed earlier
             ;; Compute the four vertices
             (flet ((w (jj ii)
-                     (let ((ring-sin (* (sin (* base-slice-angle jj)) (cos (* base-ring-angle ii))))
-                           (ring-cos (* (cos (* base-slice-angle jj)) (cos (* base-ring-angle ii))))
-                           (s (sin (* base-ring-angle ii))))
+                     (let ((ring-sin (* (%sinf (* base-slice-angle jj)) (%cosf (* base-ring-angle ii))))
+                           (ring-cos (* (%cosf (* base-slice-angle jj)) (%cosf (* base-ring-angle ii))))
+                           (s (%sinf (* base-ring-angle ii))))
                        (vec3 (+ (vx3 cap-center) (* (+ (* s (vx3 b0)) (* ring-sin (vx3 b1)) (* ring-cos (vx3 b2))) radius))
                              (+ (vy3 cap-center) (* (+ (* s (vy3 b0)) (* ring-sin (vy3 b1)) (* ring-cos (vy3 b2))) radius))
                              (+ (vz3 cap-center) (* (+ (* s (vz3 b0)) (* ring-sin (vz3 b1)) (* ring-cos (vz3 b2))) radius))))))
@@ -505,8 +505,8 @@ CAP-FACES is a list of (c w1 w2 w3 w4), MIDDLE-FACES a list of (w1 w2 w3 w4)"
         (dotimes (j slices)
           ;; compute the four vertices
           (flet ((w (pos jj)
-                   (let ((ring-sin (* (sin (* base-slice-angle jj)) radius))
-                         (ring-cos (* (cos (* base-slice-angle jj)) radius)))
+                   (let ((ring-sin (* (%sinf (* base-slice-angle jj)) radius))
+                         (ring-cos (* (%cosf (* base-slice-angle jj)) radius)))
                      (vec3 (+ (%x pos) (* ring-sin (vx3 b1)) (* ring-cos (vx3 b2)))
                            (+ (%y pos) (* ring-sin (vy3 b1)) (* ring-cos (vy3 b2)))
                            (+ (%z pos) (* ring-sin (vz3 b1)) (* ring-cos (vz3 b2)))))))
@@ -1538,10 +1538,10 @@ CAP-FACES is a list of (c w1 w2 w3 w4), MIDDLE-FACES a list of (w1 w2 w3 w4)"
            (d-step (/ 360.0 sides)))
       ;; Vertices definition
       (loop for v from 0 below (- vertex-count 2) by 3
-            do (setf (aref vertices (* 3 (+ v 1))) (* (sin (* +deg2rad+ d)) radius)
-                     (aref vertices (+ (* 3 (+ v 1)) 2)) (* (cos (* +deg2rad+ d)) radius)
-                     (aref vertices (* 3 (+ v 2))) (* (sin (* +deg2rad+ (+ d d-step))) radius)
-                     (aref vertices (+ (* 3 (+ v 2)) 2)) (* (cos (* +deg2rad+ (+ d d-step))) radius))
+            do (setf (aref vertices (* 3 (+ v 1))) (* (%sinf (* +deg2rad+ d)) radius)
+                     (aref vertices (+ (* 3 (+ v 1)) 2)) (* (%cosf (* +deg2rad+ d)) radius)
+                     (aref vertices (* 3 (+ v 2))) (* (%sinf (* +deg2rad+ (+ d d-step))) radius)
+                     (aref vertices (+ (* 3 (+ v 2)) 2)) (* (%cosf (* +deg2rad+ (+ d d-step))) radius))
                (incf d d-step))
       (setf (mesh-vertex-count mesh) vertex-count
             (mesh-triangle-count mesh) sides

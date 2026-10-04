@@ -1039,8 +1039,8 @@
   (let* ((start (%col start)) (end (%col end))
          (pixels (%make-octets (* width height 4)))
          (radian-direction (* (/ (float (- 90 direction)) 180.0) 3.14159))
-         (cos-dir (cos radian-direction))
-         (sin-dir (sin radian-direction))
+         (cos-dir (%cosf radian-direction))
+         (sin-dir (%sinf radian-direction))
          ;; Calculate how far the top-left pixel is along the gradient direction from the center of said gradient
          (starting-pos (- 0.5 (/ (* cos-dir width) 2) (/ (* sin-dir height) 2)))
          ;; With directions that lie in the first or third quadrant (i.e. from top-left to
@@ -1913,8 +1913,8 @@
   "Rotate image by input angle in degrees (-359 to 359)"
   (when (%image-check-manipulation image)
     (let* ((rad (/ (* degrees +pi+) 180.0))
-           (sin-radius (sin rad))
-           (cos-radius (cos rad))
+           (sin-radius (%sinf rad))
+           (cos-radius (%cosf rad))
            (iw (image-width image))
            (ih (image-height image))
            (width (truncate (+ (abs (* iw cos-radius)) (abs (* ih sin-radius)))))
@@ -2434,8 +2434,8 @@
   (multiple-value-bind (rx ry rw rh) (%rec rec)
     (when (or (null dst) (null (image-data dst)) (<= rw 0) (<= rh 0))
       (return-from image-draw-rectangle-pro nil))
-    (let* ((cos-angle (cos (* rotation +deg2rad+)))
-           (sin-angle (sin (* rotation +deg2rad+)))
+    (let* ((cos-angle (%cosf (* rotation +deg2rad+)))
+           (sin-angle (%sinf (* rotation +deg2rad+)))
            (orx (%x origin)) (ory (%y origin))
            ;; Origin point in image space
            (ox (+ rx orx))
@@ -2592,8 +2592,8 @@
   (when (or (null dst) (null (image-data dst)) (<= (image-width dst) 0) (<= (image-height dst) 0)
             (<= (image-width src) 0) (<= (image-height src) 0))
     (return-from image-draw-image-ex nil))
-  (let* ((cos-a (cos (* rotation +deg2rad+)))
-         (sin-a (sin (* rotation +deg2rad+)))
+  (let* ((cos-a (%cosf (* rotation +deg2rad+)))
+         (sin-a (%sinf (* rotation +deg2rad+)))
          (px0 (%x position)) (py0 (%y position))
          (sw (* (image-width src) scale))
          (sh (* (image-height src) scale))

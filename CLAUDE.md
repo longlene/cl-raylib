@@ -62,7 +62,7 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 - rshapes; rtextures (including PNG/BMP export via stb_image_write and ImageResize via stb_image_resize2); rtext (stb_truetype)
 - rmodels: 3D shapes, GenMesh*, materials, animations, collisions, and the OBJ/MTL, IQM, VOX, glTF/GLB and M3D loaders
 - raudio: WAV/OGG/MP3/QOA/FLAC/XM/MOD decoding and mixing
-- raymath (trig calls libm sinf/cosf etc. so it matches C exactly), rcamera
+- raymath, rmodels and rtextures call libm sinf/cosf etc. so their trig matches C exactly; rcamera
 
 ### Examples (examples/)
 - All 226 official raylib examples (core/shapes/textures/text/models/shaders/audio/others) are ported one by one, with the same file names as the C versions.
@@ -78,6 +78,5 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 - JPG/TGA/PNM and other formats that raylib disables by default are provided through imago.
 
 ### TODO
-- models.lisp and textures.lisp still use CL sin/cos; they could call libm sinf/cosf like raymath.
 - The camera2d-* helpers in camera2d.lisp and the logging/timing extensions in utils.lisp are not raylib API; consider removing them.
 - raygui.lisp is only a partial port (raygui.h is not part of raylib itself).
