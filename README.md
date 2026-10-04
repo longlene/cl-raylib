@@ -18,7 +18,6 @@ cgltf, ...), and only calls into C for the platform: GLFW, OpenGL, libm and the 
 |----------|-------|
 | Linux (X11, Wayland) | Supported, audio through PulseAudio (or PipeWire's PulseAudio server) |
 | macOS (Apple Silicon) | Supported, audio through Core Audio |
-| macOS (Intel) | Should work, not tested yet |
 | Windows | In progress: written but not tested yet |
 
 ## Requirements
@@ -28,7 +27,7 @@ cgltf, ...), and only calls into C for the platform: GLFW, OpenGL, libm and the 
 - An OpenGL 3.3 capable GPU
 
 GLFW does not need to be installed: cl-raylib uses the system GLFW when it is version 3.4 or newer,
-and otherwise the GLFW 3.5.1 libraries shipped in `lib/` (Linux x86-64, macOS universal), built from
+and otherwise the GLFW 3.5.1 libraries shipped in `lib/` (Linux x86-64, macOS arm64), built from
 the GLFW sources bundled with raylib by `lib/build-glfw.sh`.
 
 ## Installation

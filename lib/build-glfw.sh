@@ -5,7 +5,7 @@
 # Usage: lib/build-glfw.sh <path-to-raylib>
 #
 #   Linux x86-64   -> lib/linux-x86-64/libglfw.so.3   (X11 and Wayland backends)
-#   macOS          -> lib/macos/libglfw.3.dylib        (universal: arm64 + x86_64, macOS 11+)
+#   macOS          -> lib/macos/libglfw.3.dylib        (Apple Silicon, macOS 11+)
 #   Windows x86-64 -> lib/windows-x86-64/glfw3.dll     (MSYS2 MinGW-w64 shell, static libgcc)
 #
 # Requirements: CMake and a C compiler; on Linux the X11 and Wayland development packages
@@ -41,7 +41,7 @@ case "$(uname -s)" in
     ;;
   Darwin)
     cmake -S "$GLFW_SRC" -B "$BUILD_DIR" "${COMMON[@]}" \
-          "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+          -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
     cmake --build "$BUILD_DIR" --parallel
     mkdir -p "$LIB_DIR/macos"
     cp "$BUILD_DIR/src/libglfw.3."*.dylib "$LIB_DIR/macos/libglfw.3.dylib"

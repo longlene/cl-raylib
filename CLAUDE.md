@@ -49,7 +49,7 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 - cl-raylib is a Common Lisp game library translated from the C project raylib. It aims to cover all of the original library's capabilities while exposing an API close to cl-raylib.cffi (/home/loong0/.quicklisp/local-projects/cl-raylib.cffi/), a cffi binding to the raylib shared library. Because of consistency problems and the difficulty of passing structs through FFI, the project was rewritten as cl-raylib: the public API should stay as close to cl-raylib.cffi as possible (where they conflict, follow the latest raylib), while the implementation details should follow the C logic.
 - Dependencies: cffi, 3d-vectors, 3d-matrices, float-features and the others listed in cl-raylib.asd. GLFW is bound
   directly in glfw3.lisp (package cl-raylib.glfw3, nickname %glfw): the system GLFW is used when it is 3.4 or newer,
-  otherwise the GLFW 3.5.1 builds in lib/ (Linux x86-64 with X11+Wayland, macOS universal arm64+x86-64, both built
+  otherwise the GLFW 3.5.1 builds in lib/ (Linux x86-64 with X11+Wayland, macOS arm64, both built
   with CMake from raylib/src/external/glfw by lib/build-glfw.sh, which reproduces them byte for byte; rerun it on
   each platform when raylib updates its GLFW).
 - When porting an API, keep the implementation close to the C version, and keep functions in the same order as in the C file where practical, so the two versions are easy to compare later.
@@ -80,8 +80,8 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 ### Platforms
 - Linux (X11 and Wayland): complete and verified against C.
 - macOS (Apple Silicon, tested on macOS 27 with SBCL 2.6.9 over `ssh msu`): all examples run. Audio uses the
-  Core Audio AudioQueue backend in miniaudio.lisp; directory scanning reads the darwin dirent layout ($INODE64
-  symbols on x86-64, untested). Cocoa requires InitWindow() and the main loop on the process main thread.
+  Core Audio AudioQueue backend in miniaudio.lisp; directory scanning reads the darwin dirent layout. Intel Macs
+  are not supported. Cocoa requires InitWindow() and the main loop on the process main thread.
   GetClipboardImage() only warns, like C. GLFW reports the real framebuffer size only after the first event
   poll. Large stack allocated foreign arrays (with-foreign-objects) fault on SBCL arm64 macOS.
 - Windows: written but not run yet. Directory scanning uses FindFirstFileW/FindNextFileW (what raylib's
