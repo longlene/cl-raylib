@@ -597,7 +597,21 @@
     #:+rl-blend-dst-alpha+ #:+rl-blend-dst-rgb+ #:+rl-blend-equation+ #:+rl-blend-equation-alpha+
     #:+rl-blend-equation-rgb+ #:+rl-blend-multiplied+ #:+rl-blend-src-alpha+ #:+rl-blend-src-rgb+
     #:+rl-blend-subtract-colors+ #:+rl-compute-shader+ #:+rl-constant-alpha+ #:+rl-constant-color+
-    #:+rl-cull-distance-far+ #:+rl-cull-distance-near+ #:+rl-cull-face-front+
+    #:+rl-cull-distance-far+ #:+rl-cull-distance-near+ #:+rl-cull-face-front+ #:+rl-cull-face-back+
+    ;; Enum values missing from the lists above
+    #:+rl-blend-custom-separate+ #:+rl-log-none+ #:+rl-opengl-es-30+
+    #:+rl-pixelformat-compressed-astc-4x4-rgba+ #:+rl-pixelformat-compressed-astc-8x8-rgba+
+    #:+rl-shader-attrib-vec4+ #:+rl-shader-loc-map-brdf+ #:+rl-shader-uniform-sampler2d+
+    ;; rlgl.h public types: rlVertexBuffer, rlDrawCall, rlRenderBatch
+    #:rl-vertex-buffer #:make-rl-vertex-buffer #:rl-vertex-buffer-p
+    #:rl-vertex-buffer-element-count #:rl-vertex-buffer-vertices #:rl-vertex-buffer-texcoords
+    #:rl-vertex-buffer-normals #:rl-vertex-buffer-colors #:rl-vertex-buffer-indices
+    #:rl-vertex-buffer-vao-id #:rl-vertex-buffer-vbo-id
+    #:rl-draw-call #:make-rl-draw-call #:rl-draw-call-p #:rl-draw-call-mode #:rl-draw-call-vertex-count
+    #:rl-draw-call-vertex-alignment #:rl-draw-call-texture-id
+    #:rl-render-batch #:make-rl-render-batch #:rl-render-batch-p #:rl-render-batch-buffer-count
+    #:rl-render-batch-current-buffer #:rl-render-batch-vertex-buffer #:rl-render-batch-draws
+    #:rl-render-batch-draw-counter #:rl-render-batch-current-depth
     #:+rl-default-batch-buffer-elements+ #:+rl-default-batch-buffers+ #:+rl-default-batch-drawcalls+
     #:+rl-default-batch-max-texture-units+ #:+rl-default-shader-attrib-location-boneindices+
     #:+rl-default-shader-attrib-location-boneweights+ #:+rl-default-shader-attrib-location-color+
