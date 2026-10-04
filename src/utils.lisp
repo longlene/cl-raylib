@@ -278,13 +278,24 @@
 (defparameter +file-filter-tag-file-only+ "FILES*" "Filter to include all file types on scan (no directories)")
 (defparameter +file-filter-tag-dir-only+ "DIRS*" "Filter to include only directories on scan")
 
+;; NOTE: struct dirent d_name offset on Linux glibc 64-bit (d_ino, d_off, d_reclen, d_type, d_name)
+(defconstant +dirent-name-offset+ 19)
+
 (defun %directory-entries (base-path)
-  "Entries of BASE-PATH (excluding . and ..) as (path-string . directory-p), path is base-path/name"
-  (let ((dir (uiop:ensure-directory-pathname base-path)))
-    (append (mapcar (lambda (f) (cons (format nil "~a/~a" base-path (file-namestring f)) nil))
-                    (uiop:directory-files dir))
-            (mapcar (lambda (d) (cons (format nil "~a/~a" base-path (car (last (pathname-directory d)))) t))
-                    (uiop:subdirectories dir)))))
+  "Entries of BASE-PATH (excluding . and ..) in readdir() order as (path-string . directory-p),
+path is base-path/name and directory-p is (not IsPathFile(path)) like ScanDirectoryFiles()"
+  (let ((dir (cffi:foreign-funcall "opendir" :string base-path :pointer))
+        (entries '()))
+    (unless (cffi:null-pointer-p dir)
+      (unwind-protect
+           (loop for dp = (cffi:foreign-funcall "readdir" :pointer dir :pointer)
+                 until (cffi:null-pointer-p dp)
+                 do (let ((name (cffi:foreign-string-to-lisp (cffi:inc-pointer dp +dirent-name-offset+) :encoding :utf-8)))
+                      (unless (or (string= name ".") (string= name ".."))
+                        (let ((path (format nil "~a/~a" base-path name)))
+                          (push (cons path (not (is-path-file path))) entries)))))
+        (cffi:foreign-funcall "closedir" :pointer dir :int)))
+    (nreverse entries)))
 
 (defun %scan-directory-files (base-path filter scan-subdirs)
   "Paths scanned like raylib ScanDirectoryFiles()/GetDirectoryFileCountEx()"
