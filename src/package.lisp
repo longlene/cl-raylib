@@ -248,7 +248,8 @@
    ;; Window management functions
    #:set-config-flags #:init-window #:close-window #:window-should-close #:set-target-fps
    #:begin-drawing #:end-drawing #:with-drawing #:clear-background
-   #:begin-scissor-mode #:end-scissor-mode #:begin-blend-mode #:end-blend-mode
+   #:begin-scissor-mode #:end-scissor-mode #:with-scissor-mode
+   #:begin-blend-mode #:end-blend-mode #:with-blend-mode
    #:is-window-state #:toggle-borderless-windowed #:set-window-icon #:set-window-icons
    #:set-window-monitor #:set-window-focused #:get-window-handle #:get-monitor-position
    #:get-monitor-physical-width #:get-monitor-physical-height #:get-monitor-refresh-rate
@@ -488,7 +489,8 @@
    #:audio-stream-sample-size #:audio-stream-channels
 
    ;; Audio device management (raudio.c)
-   #:init-audio-device #:close-audio-device #:is-audio-device-ready
+   #:init-audio-device #:close-audio-device #:with-audio-device #:with-audio-stream #:with-sound
+   #:is-audio-device-ready
    #:set-master-volume #:get-master-volume
 
    ;; Wave/Sound loading and management
@@ -538,7 +540,7 @@
    #:vr-stereo-config-left-lens-center #:vr-stereo-config-right-lens-center
    #:vr-stereo-config-left-screen-center #:vr-stereo-config-right-screen-center
    #:vr-stereo-config-scale #:vr-stereo-config-scale-in
-   #:begin-vr-stereo-mode #:end-vr-stereo-mode #:load-vr-stereo-config #:unload-vr-stereo-config
+   #:begin-vr-stereo-mode #:end-vr-stereo-mode #:with-vr-stereo-mode #:load-vr-stereo-config #:unload-vr-stereo-config
 
    ;; Shader location constants
    #:+shader-loc-vertex-position+ #:+shader-loc-vertex-texcoord01+ #:+shader-loc-vertex-texcoord02+
