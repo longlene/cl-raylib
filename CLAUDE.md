@@ -73,10 +73,12 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 
 ### Platforms
 - Linux (X11 and Wayland): complete and verified against C.
-- macOS: audio (Core Audio AudioQueue backend in miniaudio.lisp) and directory scanning (darwin dirent layout,
-  $INODE64 symbols on x86-64) are implemented, and the darwin code paths compile, but they have not been run on a
-  Mac yet. Cocoa requires InitWindow() and the main loop on the process main thread (not a SLIME/Sly worker thread).
-  GetClipboardImage() only warns, like C.
+- macOS (Apple Silicon, tested on macOS 27 with SBCL 2.6.9 over `ssh msu`): all examples run. Audio uses the
+  Core Audio AudioQueue backend in miniaudio.lisp; directory scanning reads the darwin dirent layout ($INODE64
+  symbols on x86-64, untested). Cocoa requires InitWindow() and the main loop on the process main thread.
+  GetClipboardImage() only warns, like C. Quicklisp's macOS GLFW is 3.4.0: it rejects GLFW_SCALE_FRAMEBUFFER,
+  so the old GLFW_COCOA_RETINA_FRAMEBUFFER hint is used, and GLFW reports the real framebuffer size only after
+  the first event poll. Large stack allocated foreign arrays (with-foreign-objects) fault on SBCL arm64 macOS.
 - Windows: not supported yet (needs a FindFirstFileW directory scan, a WinMM/WASAPI audio backend and the
   win32_clipboard.h port).
 
@@ -86,5 +88,7 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 - JPG/TGA/PNM and other formats that raylib disables by default are provided through imago.
 
 ### TODO
+- Bind the GLFW functions directly (glfw3.h subset) instead of depending on quicklisp's glfw system, which pulls in
+  cl-opengl: its first compile exhausts SBCL's default 1 GB heap.
 - The camera2d-* helpers in camera2d.lisp and the logging/timing extensions in utils.lisp are not raylib API; consider removing them.
 - raygui.lisp is only a partial port (raygui.h is not part of raylib itself).
