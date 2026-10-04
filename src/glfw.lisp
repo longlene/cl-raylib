@@ -4,8 +4,8 @@
 ;;; rcore_desktop_glfw - Functions to manage window, graphics device and inputs
 ;;; Port of raylib/src/platforms/rcore_desktop_glfw.c
 ;;;
-;;; NOTE: Uses the GLFW C API directly through the %glfw CFFI bindings
-;;; (org.shirakumo.fraf.glfw.cffi), GLFW enums are passed as raw integers
+;;; NOTE: Uses the GLFW C API directly through the %glfw CFFI bindings of glfw3.lisp
+;;; (cl-raylib.glfw3), GLFW enums are passed as raw integers
 ;;; NOTE: C compile-time checks on _GLFW_X11/_GLFW_WAYLAND are done at runtime
 ;;; with glfwGetPlatform(), the shared GLFW library supports both backends
 ;;;===================================================================================
@@ -37,9 +37,6 @@
 (defconstant +glfw-opengl-profile+ #x00022008)
 (defconstant +glfw-scale-to-monitor+ #x0002200C)
 (defconstant +glfw-scale-framebuffer+ #x0002200D)
-;; NOTE: macOS name of GLFW_SCALE_FRAMEBUFFER before GLFW 3.4 (still accepted as an alias), quicklisp's
-;; macOS GLFW build rejects GLFW_SCALE_FRAMEBUFFER as an invalid hint
-(defconstant +glfw-cocoa-retina-framebuffer+ #x00023001)
 (defconstant +glfw-opengl-core-profile+ #x00032001)
 (defconstant +glfw-cursor+ #x00033001)
 (defconstant +glfw-lock-key-mods+ #x00033004)
@@ -78,20 +75,14 @@
   "GLFW and OpenGL drivers may raise floating point exceptions, mask them as C does"
   `(float-features:with-float-traps-masked t ,@body))
 
-(defun %glfw-enum-int (value enum)
-  "Integer value for a %glfw enum result (keyword when declared, integer otherwise)"
-  (if (keywordp value) (cffi:foreign-enum-value enum value) value))
-
 (defun %glfw-platform ()
-  (%glfw-enum-int (%glfw:get-platform) '%glfw:flag))
+  (%glfw:get-platform))
 
 (defun %glfw-wayland-p ()
   "Runtime equivalent of defined(_GLFW_WAYLAND) for the active GLFW backend"
   (= (%glfw-platform) +glfw-platform-wayland+))
 
-;; Load the GLFW shared library (statically linked into raylib in the C version)
-(unless (cffi:foreign-library-loaded-p '%glfw:libglfw)
-  (cffi:load-foreign-library '%glfw:libglfw))
+;; NOTE: The GLFW shared library is loaded by glfw3.lisp (statically linked into raylib in the C version)
 
 ;;;----------------------------------------------------------------------------------
 ;;; Types and Structures Definition
@@ -1082,16 +1073,16 @@ NOTE: Some safety checks have been added to mitigate security issues"
 
       (if (flag-p +flag-window-highdpi+)
           (progn
-            #+darwin (%glfw:window-hint +glfw-cocoa-retina-framebuffer+ +glfw-false+)
+            #+darwin (%glfw:window-hint +glfw-scale-framebuffer+ +glfw-false+)
             ;; Resize window content area based on the monitor content scale
             ;; NOTE: This hint only has an effect on platforms where screen coordinates and
             ;; pixels always map 1:1 such as Windows and X11
             ;; On platforms like macOS the resolution of the framebuffer is changed independently of the window size
             (%glfw:window-hint +glfw-scale-to-monitor+ +glfw-true+)
-            #+darwin (%glfw:window-hint +glfw-cocoa-retina-framebuffer+ +glfw-true+))
+            #+darwin (%glfw:window-hint +glfw-scale-framebuffer+ +glfw-true+))
           (progn
             (%glfw:window-hint +glfw-scale-to-monitor+ +glfw-false+)
-            #+darwin (%glfw:window-hint +glfw-cocoa-retina-framebuffer+ +glfw-false+)
+            #+darwin (%glfw:window-hint +glfw-scale-framebuffer+ +glfw-false+)
             ;; GLFW 3.4+ defaults GLFW_SCALE_FRAMEBUFFER to TRUE,
             ;; causing framebuffer/window size mismatch on Wayland with display scaling
             (when (%glfw-wayland-p) (%glfw:window-hint +glfw-scale-framebuffer+ +glfw-false+))))
@@ -1225,7 +1216,7 @@ NOTE: Some safety checks have been added to mitigate security issues"
                     (core-data-window-render-height *core*) (core-data-window-screen-height *core*))))))
 
     (%with-glfw-traps-masked (%glfw:make-context-current (%handle)))
-    (let ((result (%glfw-enum-int (%glfw:get-error (cffi:null-pointer)) '%glfw:error)))
+    (let ((result (%glfw:get-error (cffi:null-pointer))))
       ;; Checking context activation
       (when (and (/= result +glfw-no-window-context+) (/= result +glfw-platform-error+))
         (setf (core-data-window-ready *core*) t)))

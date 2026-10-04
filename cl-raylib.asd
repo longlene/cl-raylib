@@ -3,8 +3,7 @@
   :author "loong0"
   :license "MIT"
   :description "Common Lisp implementation of Raylib - modular architecture matching raylib C structure"
-  :depends-on (#:glfw
-               #:float-features
+  :depends-on (#:float-features
                #:cffi
                #:bordeaux-threads
                #:3d-matrices
@@ -20,7 +19,9 @@
   :serial t
   :pathname "src"
   :components
-  (;; Package definition
+  (;; GLFW C API bindings, used by glfw.lisp (raylib compiles GLFW itself: external/glfw)
+   (:file "glfw3")
+   ;; Package definition
    (:file "package")
    (:file "raylib")
    (:file "math")                  ; raymath.h (included by rcore.c)

@@ -6,8 +6,7 @@
   (:import-from #:alexandria
                 #:clamp)
   (:local-nicknames
-   (#:glfw #:org.shirakumo.fraf.glfw)
-   (#:%glfw #:org.shirakumo.fraf.glfw.cffi))
+   (#:%glfw #:cl-raylib.glfw3))
   (:export
    ;; Re-export 3d-math functions for compatibility
    #:vec2 #:vec3 #:vec4 #:vx #:vy #:vz #:vw #:vx2 #:vy2 #:vx3 #:vy3 #:vz3 #:vx4 #:vy4 #:vz4 #:vw4

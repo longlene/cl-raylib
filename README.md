@@ -27,7 +27,9 @@ cgltf, ...), and only calls into C for the platform: GLFW, OpenGL, libm and the 
 - [Quicklisp](https://www.quicklisp.org/)
 - An OpenGL 3.3 capable GPU
 
-GLFW does not need to be installed: the `glfw` system from Quicklisp ships prebuilt libraries.
+GLFW does not need to be installed: cl-raylib uses the system GLFW when it is version 3.4 or newer,
+and otherwise the GLFW 3.5.1 libraries shipped in `lib/` (Linux x86-64, macOS universal), built from
+the GLFW sources bundled with raylib.
 
 ## Installation
 
@@ -40,12 +42,8 @@ git clone https://github.com/longlene/cl-raylib.git ~/quicklisp/local-projects/c
 Then load it once to download and compile the dependencies:
 
 ```bash
-sbcl --dynamic-space-size 2048 --eval '(ql:quickload :cl-raylib)' --quit
+sbcl --eval '(ql:quickload :cl-raylib)' --quit
 ```
-
-The larger heap is only needed for this first build: the Quicklisp `glfw` system depends on
-cl-opengl, whose generated sources do not compile in SBCL's default 1 GB heap. Later loads work
-with the default heap.
 
 ## A first program
 
@@ -103,4 +101,5 @@ Cocoa only allows windows and events on the process main thread. Run programs wi
 ## License
 
 MIT, see [LICENSE](LICENSE). The ported raylib code and its bundled libraries keep their original
-licenses (zlib/libpng for raylib, see the header of each file).
+licenses (zlib/libpng for raylib, see the header of each file). The GLFW libraries in `lib/` are
+under the zlib/libpng license, see [lib/GLFW-LICENSE.md](lib/GLFW-LICENSE.md).

@@ -13,6 +13,7 @@ cl-raylib is a pure Common Lisp implementation of raylib that closely follows th
 ```
 raylib/src/rcore.c -> cl-raylib/src/core.lisp
 raylib/src/platforms/rcore_desktop_glfw.c -> cl-raylib/src/glfw.lisp
+raylib/src/external/glfw/include/GLFW/glfw3.h (functions used by rcore_desktop_glfw.c) -> cl-raylib/src/glfw3.lisp
 raylib/src/rgestures.h -> cl-raylib/src/gestures.lisp
 raylib/src/rlgl.h -> cl-raylib/src/gl.lisp
 raylib/src/raylib.h -> cl-raylib/src/raylib.lisp
@@ -45,7 +46,10 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 
 ## Development Memories
 - cl-raylib is a Common Lisp game library translated from the C project raylib. It aims to cover all of the original library's capabilities while exposing an API close to cl-raylib.cffi (/home/loong0/.quicklisp/local-projects/cl-raylib.cffi/), a cffi binding to the raylib shared library. Because of consistency problems and the difficulty of passing structs through FFI, the project was rewritten as cl-raylib: the public API should stay as close to cl-raylib.cffi as possible (where they conflict, follow the latest raylib), while the implementation details should follow the C logic.
-- Dependencies: quicklisp's glfw system (~/.quicklisp/dists/quicklisp/software/glfw-20260101-git, used through its %glfw cffi package), cffi, 3d-vectors, 3d-matrices, float-features and the others listed in cl-raylib.asd.
+- Dependencies: cffi, 3d-vectors, 3d-matrices, float-features and the others listed in cl-raylib.asd. GLFW is bound
+  directly in glfw3.lisp (package cl-raylib.glfw3, nickname %glfw): the system GLFW is used when it is 3.4 or newer,
+  otherwise the GLFW 3.5.1 builds in lib/ (Linux x86-64 with X11+Wayland, macOS universal arm64+x86-64, both built
+  with CMake from raylib/src/external/glfw; rebuild them when raylib updates its GLFW).
 - When porting an API, keep the implementation close to the C version, and keep functions in the same order as in the C file where practical, so the two versions are easy to compare later.
 - Do not try to fix mismatched parentheses with Python scripts; it costs more than it saves.
 
@@ -76,9 +80,8 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 - macOS (Apple Silicon, tested on macOS 27 with SBCL 2.6.9 over `ssh msu`): all examples run. Audio uses the
   Core Audio AudioQueue backend in miniaudio.lisp; directory scanning reads the darwin dirent layout ($INODE64
   symbols on x86-64, untested). Cocoa requires InitWindow() and the main loop on the process main thread.
-  GetClipboardImage() only warns, like C. Quicklisp's macOS GLFW is 3.4.0: it rejects GLFW_SCALE_FRAMEBUFFER,
-  so the old GLFW_COCOA_RETINA_FRAMEBUFFER hint is used, and GLFW reports the real framebuffer size only after
-  the first event poll. Large stack allocated foreign arrays (with-foreign-objects) fault on SBCL arm64 macOS.
+  GetClipboardImage() only warns, like C. GLFW reports the real framebuffer size only after the first event
+  poll. Large stack allocated foreign arrays (with-foreign-objects) fault on SBCL arm64 macOS.
 - Windows: not supported yet (needs a FindFirstFileW directory scan, a WinMM/WASAPI audio backend and the
   win32_clipboard.h port).
 
@@ -88,7 +91,5 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 - JPG/TGA/PNM and other formats that raylib disables by default are provided through imago.
 
 ### TODO
-- Bind the GLFW functions directly (glfw3.h subset) instead of depending on quicklisp's glfw system, which pulls in
-  cl-opengl: its first compile exhausts SBCL's default 1 GB heap.
 - The camera2d-* helpers in camera2d.lisp and the logging/timing extensions in utils.lisp are not raylib API; consider removing them.
 - raygui.lisp is only a partial port (raygui.h is not part of raylib itself).

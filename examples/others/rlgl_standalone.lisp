@@ -53,7 +53,7 @@
 
 (defpackage #:raylib-examples/rlgl-standalone
   (:use #:cl #:raylib)
-  (:local-nicknames (#:%glfw #:org.shirakumo.fraf.glfw.cffi)) ; GLFW3 C API bindings (glfw system)
+  (:local-nicknames (#:%glfw #:cl-raylib.glfw3)) ; GLFW3 C API bindings (src/glfw3.lisp)
   ;; This example defines its own Color values, Camera type and drawing functions on top of rlgl
   (:shadow #:+red+ #:+raywhite+ #:+darkgray+
            #:camera #:make-camera #:copy-camera #:camera-p #:camera-position #:camera-target
@@ -79,7 +79,7 @@
 (defconstant +glfw-opengl-profile+ #x00022008)
 (defconstant +glfw-opengl-core-profile+ #x00032001)
 (defconstant +glfw-opengl-forward-compat+ #x00022006)
-(defconstant +glfw-cocoa-retina-framebuffer+ #x00023001)
+(defconstant +glfw-scale-framebuffer+ #x0002200D)
 (defconstant +glfw-false+ 0)
 (defconstant +glfw-true+ 1)
 (defconstant +glfw-key-escape+ 256)
@@ -328,8 +328,9 @@
       (%glfw:window-hint +glfw-opengl-profile+ +glfw-opengl-core-profile+)
       ;;(%glfw:window-hint +glfw-opengl-debug-context+ +glfw-true+)
       #+darwin (%glfw:window-hint +glfw-opengl-forward-compat+ +glfw-true+)
-      ;; NOTE: cl-raylib addition, keep a 1:1 framebuffer on Retina displays (the viewport below uses the screen size)
-      #+darwin (%glfw:window-hint +glfw-cocoa-retina-framebuffer+ +glfw-false+)
+      ;; NOTE: cl-raylib addition, GLFW 3.4+ scales the framebuffer on HiDPI displays (Wayland scaling,
+      ;; macOS Retina) but the viewport below uses the screen size: keep a 1:1 framebuffer
+      (%glfw:window-hint +glfw-scale-framebuffer+ +glfw-false+)
 
       (let ((window (%glfw:create-window screen-width screen-height "raylib [others] example - rlgl standalone"
                                          (cffi:null-pointer) (cffi:null-pointer))))
