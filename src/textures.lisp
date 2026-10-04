@@ -3133,8 +3133,8 @@
                       tr-x (+ x dw) tr-y y
                       bl-x x bl-y (+ y dh)
                       br-x (+ x dw) br-y (+ y dh)))
-              (let ((sin-r (sin (* rotation +deg2rad+)))
-                    (cos-r (cos (* rotation +deg2rad+)))
+              (let ((sin-r (%sinf (* rotation +deg2rad+)))
+                    (cos-r (%cosf (* rotation +deg2rad+)))
                     (rx (- ox)) (ry (- oy)))
                 (setf tl-x (+ dx (* rx cos-r) (- (* ry sin-r)))
                       tl-y (+ dy (* rx sin-r) (* ry cos-r))
