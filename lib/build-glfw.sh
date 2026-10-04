@@ -48,8 +48,10 @@ case "$(uname -s)" in
     OUT="$LIB_DIR/macos/libglfw.3.dylib"
     ;;
   MINGW64*|MSYS*)
-    # NOTE: Static libgcc so the DLL only depends on Windows system libraries
-    cmake -S "$GLFW_SRC" -B "$BUILD_DIR" -G "MSYS Makefiles" "${COMMON[@]}" \
+    # NOTE: MSYS2's own cmake has no "MSYS Makefiles" generator and targets the MSYS runtime by default,
+    # so the target system is set to Windows; static libgcc so the DLL only needs Windows system libraries
+    cmake -S "$GLFW_SRC" -B "$BUILD_DIR" -G "Unix Makefiles" "${COMMON[@]}" \
+          -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=gcc -DCMAKE_RC_COMPILER=windres \
           -DCMAKE_SHARED_LINKER_FLAGS="-static-libgcc"
     cmake --build "$BUILD_DIR" --parallel
     mkdir -p "$LIB_DIR/windows-x86-64"
