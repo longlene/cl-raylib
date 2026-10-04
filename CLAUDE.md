@@ -49,7 +49,7 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 - When porting an API, keep the implementation close to the C version, and keep functions in the same order as in the C file where practical, so the two versions are easy to compare later.
 - Do not try to fix mismatched parentheses with Python scripts; it costs more than it saves.
 
-## Porting Progress (last updated: 2026-10-03, branch pure)
+## Porting Progress (last updated: 2026-10-04, branch pure)
 
 ### Overview
 - All 619 RLAPI functions in raylib.h have a Lisp implementation (raymath, rlgl, rcamera and rgestures are complete too).
@@ -63,12 +63,22 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 - raudio: WAV/OGG/MP3/QOA/FLAC/XM/MOD decoding and mixing
 - raymath (trig calls libm sinf/cosf etc. so it matches C exactly), rcamera
 
+### Examples (examples/)
+- All 226 official raylib examples (core/shapes/textures/text/models/shaders/audio/others) are ported one by one, with the same file names as the C versions.
+- Helper headers shipped with the examples are ported next to them: rlights.lisp (models, shaders), reasings.lisp (shapes), msf_gif.lisp (core).
+- Screenshot comparison: pixel-identical to C (including variant tests for raygui interaction, recorded GIFs, etc.), except:
+  - textures_image_drawing: ImageResize differs by 10 pixels; core_directory_files: the listing differs because C and Lisp run in different working directories
+  - examples that depend on audio-thread timing (audio_mixed_processor, audio_raw_stream, audio_stream_callback,
+    audio_spectrum_visualizer) differ between runs of the C version itself; they are verified with fixed-timing variants
+
 ### Known differences (all documented in code comments)
 - Undefined behavior in C (out-of-bounds reads, uninitialized memory) is treated as 0 in Lisp; matching it is not a goal.
 - LOG_FATAL does not exit the process; DecompressData uses chipz (same results for valid data).
 - JPG/TGA/PNM and other formats that raylib disables by default are provided through imago.
+- ImageResize approximates stb_image_resize2; its results are not identical to C.
 
 ### TODO
-- Many examples in examples/ still use the old invented API (camera3d-*, set-camera-mode, init-shader-system, etc.) and need to be rewritten from the raylib examples.
+- Port ImageResize byte for byte from stb_image_resize2.
+- models.lisp and textures.lisp still use CL sin/cos; they could call libm sinf/cosf like raymath.
 - The camera2d-* helpers in camera2d.lisp and the logging/timing extensions in utils.lisp are not raylib API; consider removing them.
 - raygui.lisp is only a partial port (raygui.h is not part of raylib itself).
