@@ -566,12 +566,6 @@
    #:begin-texture-mode #:end-texture-mode #:with-texture-mode
    #:get-render-texture-texture #:get-render-texture-depth
 
-   ;; GUI Functions (raygui)
-   #:gui-enable #:gui-disable #:gui-lock #:gui-unlock #:gui-is-locked
-   #:gui-set-alpha #:gui-set-state #:gui-get-state
-   #:gui-button #:gui-label #:gui-checkbox #:gui-slider #:gui-progress-bar
-   #:+gui-state-normal+ #:+gui-state-focused+ #:+gui-state-pressed+ #:+gui-state-disabled+
-
    ;; raylib.h enum values
     #:+flag-borderless-windowed-mode+ #:+key-left-bracket+ #:+key-backslash+ #:+key-right-bracket+
     #:+key-grave+ #:+key-kb-menu+ #:+key-kp-0+ #:+key-kp-1+ #:+key-kp-2+ #:+key-kp-3+ #:+key-kp-4+ #:+key-kp-5+

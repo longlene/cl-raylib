@@ -53,5 +53,5 @@
    (:file "qoa")                   ; qoa.h + qoaplay.c (used by raudio.c)
    (:file "flac")                  ; dr_flac.h replacement (used by raudio.c)
    (:file "audio")                 ; raudio.c
-   (:file "raygui")                ; GUI system (immediate mode GUI)
+   (:file "raygui")                ; raygui.h v5.0 (separate RAYGUI package)
    (:file "macro")))
