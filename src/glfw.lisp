@@ -740,6 +740,12 @@ NOTE: On X11 returns the Window (XID) integer instead of a pointer to it"
 (defun get-clipboard-image ()
   "Get clipboard image content"
   (let ((image (make-image :data nil :width 0 :height 0 :mipmaps 0 :format 0)))
+    #+windows
+    (let ((bmp-data (win32-get-clipboard-image-data)))
+      (if (null bmp-data)
+          (trace-log +log-warning+ "Clipboard image: Couldn't get clipboard data.")
+          (setf image (load-image-from-memory ".bmp" bmp-data (length bmp-data)))))
+    #-windows
     (if (= (%glfw-platform) +glfw-platform-x11+)
         ;; REF: https://github.com/ColleagueRiley/Clipboard-Copy-Paste/blob/main/x11.c
         (progn

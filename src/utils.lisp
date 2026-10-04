@@ -287,6 +287,40 @@
 (defparameter +opendir-symbol+ #+(and darwin x86-64) "opendir$INODE64" #-(and darwin x86-64) "opendir")
 (defparameter +readdir-symbol+ #+(and darwin x86-64) "readdir$INODE64" #-(and darwin x86-64) "readdir")
 
+;; NOTE: On Windows raylib uses external/dirent.h, opendir()/readdir() emulated with _findfirst()/_findnext();
+;; the Win32 functions they wrap (FindFirstFileW/FindNextFileW) are called here, with UTF-16 file names
+;; WIN32_FIND_DATAW: dwFileAttributes(4) 3*FILETIME(24) nFileSizeHigh/Low(8) dwReserved0/1(8) cFileName[260] at 44
+#+windows
+(progn
+  (defconstant +win32-find-data-size+ 592)
+  (defconstant +win32-find-data-name-offset+ 44)
+
+  (defun %directory-entries (base-path)
+    "Entries of BASE-PATH (excluding . and ..) in FindNextFile() order as (path-string . directory-p),
+path is base-path/name and directory-p is (not IsPathFile(path)) like ScanDirectoryFiles()"
+    (%win32-load-libraries)
+    (let ((entries '())
+          ;; Search pattern must end with suitable wildcard
+          (pattern (if (and (plusp (length base-path)) (find (char base-path (1- (length base-path))) "/\\"))
+                       (concatenate 'string base-path "*")
+                       (concatenate 'string base-path "/*"))))
+      (cffi:with-foreign-object (info :uint8 +win32-find-data-size+)
+        (let ((handle (cffi:with-foreign-string (p pattern :encoding :utf-16le)
+                        (cffi:foreign-funcall "FindFirstFileW" :pointer p :pointer info :pointer))))
+          (unless (= (cffi:pointer-address handle) (ldb (byte 64 0) -1)) ; INVALID_HANDLE_VALUE
+            (unwind-protect
+                 (loop
+                   (let ((name (cffi:foreign-string-to-lisp (cffi:inc-pointer info +win32-find-data-name-offset+)
+                                                           :encoding :utf-16le)))
+                     (unless (or (string= name ".") (string= name ".."))
+                       (let ((path (format nil "~a/~a" base-path name)))
+                         (push (cons path (not (is-path-file path))) entries))))
+                   (when (= 0 (cffi:foreign-funcall "FindNextFileW" :pointer handle :pointer info :int))
+                     (return)))
+              (cffi:foreign-funcall "FindClose" :pointer handle :int)))))
+      (nreverse entries))))
+
+#-windows
 (defun %directory-entries (base-path)
   "Entries of BASE-PATH (excluding . and ..) in readdir() order as (path-string . directory-p),
 path is base-path/name and directory-p is (not IsPathFile(path)) like ScanDirectoryFiles()"

@@ -41,6 +41,7 @@ raylib/src/external/jar_mod.h -> cl-raylib/src/mod.lisp
 raylib/src/external/qoa.h + qoaplay.c -> cl-raylib/src/qoa.lisp
 raylib/src/external/dr_flac.h -> cl-raylib/src/flac.lisp (own decoder, dr_flac output semantics)
 raylib/src/external/sdefl.h -> cl-raylib/src/sdefl.lisp
+raylib/src/external/win32_clipboard.h -> cl-raylib/src/win32-clipboard.lisp
 raylib/src/utils.h -> cl-raylib/src/utils.lisp
 ```
 
@@ -82,8 +83,11 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
   symbols on x86-64, untested). Cocoa requires InitWindow() and the main loop on the process main thread.
   GetClipboardImage() only warns, like C. GLFW reports the real framebuffer size only after the first event
   poll. Large stack allocated foreign arrays (with-foreign-objects) fault on SBCL arm64 macOS.
-- Windows: not supported yet (needs a FindFirstFileW directory scan, a WinMM/WASAPI audio backend and the
-  win32_clipboard.h port).
+- Windows: written but not run yet. Directory scanning uses FindFirstFileW/FindNextFileW (what raylib's
+  external/dirent.h wraps), audio a WinMM (waveOut) backend in miniaudio.lisp, GetClipboardImage() the
+  win32_clipboard.h port (win32-clipboard.lisp), the C runtime functions are loaded from ucrtbase.dll (msvcrt.dll as
+  fallback). Missing: lib/windows-x86-64/glfw3.dll (build it on Windows from raylib/src/external/glfw); the
+  #+windows code was only compile checked on Linux (*features* with :windows).
 
 ### Known differences (all documented in code comments)
 - Undefined behavior in C (out-of-bounds reads, uninitialized memory) is treated as 0 in Lisp; matching it is not a goal.

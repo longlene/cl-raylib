@@ -50,6 +50,11 @@
 ;; C libm float functions: sinf(), cosf(), acosf(), asinf(), atan2f(), powf()
 ;; NOTE: CL SIN/COS/ACOS/ASIN/ATAN compute single-float results through double precision,
 ;; which may differ in the last bit from libm float versions used by raymath
+;; NOTE: On Windows the C runtime functions (libm, remove(), rename()) are in ucrtbase.dll (msvcrt.dll before Windows 10)
+#+windows
+(unless (ignore-errors (cffi:load-foreign-library "ucrtbase.dll"))
+  (cffi:load-foreign-library "msvcrt.dll"))
+
 (defmacro %define-libm-float (name c-name &rest args)
   `(progn
      (declaim (inline ,name))

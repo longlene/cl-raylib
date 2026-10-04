@@ -754,6 +754,7 @@
 ;;; device data callback from a Lisp thread like ma_device does:
 ;;;   - Linux (and other unix): PulseAudio (libpulse-simple), blocking writes
 ;;;   - macOS: Core Audio (AudioQueue), buffers refilled from a run loop owned by the audio thread
+;;;   - Windows: WinMM (waveOut), buffers refilled as the device marks them done
 ;;;----------------------------------------------------------------------------------
 
 (defvar *ma-default-sample-rate* 48000 "Device sample rate used when none is requested")
@@ -775,8 +776,9 @@
   (data-callback nil)                           ; (lambda (device frames-out frame-count))
   (callback-error nil)                          ; An error was already reported by the data callback
   (backend-name "")                             ; ma_get_backend_name()
-  (handle (cffi:null-pointer))                  ; pa_simple (PulseAudio) or AudioQueueRef (Core Audio)
+  (handle (cffi:null-pointer))                  ; pa_simple (PulseAudio), AudioQueueRef (Core Audio) or HWAVEOUT (WinMM)
   (frames nil)                                  ; Lisp buffer the data callback writes into
+  (backend-data nil)                            ; Backend specific state (WinMM headers and event)
   (thread nil)
   (running nil))
 
@@ -814,7 +816,7 @@
 ;;;----------------------------------------------------------------------------------
 ;;; PulseAudio backend (libpulse-simple)
 ;;;----------------------------------------------------------------------------------
-#-darwin
+#-(or darwin windows)
 (progn
   (cffi:define-foreign-library %libpulse-simple
     (:unix (:or "libpulse-simple.so.0" "libpulse-simple.so")))
@@ -900,6 +902,132 @@
     (unless (cffi:null-pointer-p (ma-device-handle device))
       (cffi:foreign-funcall "pa_simple_free" :pointer (ma-device-handle device) :void)
       (setf (ma-device-handle device) (cffi:null-pointer)))))
+
+;;;----------------------------------------------------------------------------------
+;;; WinMM backend (waveOut)
+;;;----------------------------------------------------------------------------------
+;;; NOTE: Like miniaudio's WinMM backend: the device signals an event when a buffer is done, the audio
+;;; thread then refills the buffers in order through the data callback and writes them again
+#+windows
+(progn
+  (cffi:define-foreign-library %winmm (:windows "winmm.dll"))
+  (cffi:define-foreign-library %kernel32-audio (:windows "kernel32.dll"))
+
+  (defconstant +wave-mapper+ #xFFFFFFFF)
+  (defconstant +wave-format-ieee-float+ 3)
+  (defconstant +callback-event+ #x00050000)
+  (defconstant +whdr-done+ 1)
+  (defconstant +mmsyserr-noerror+ 0)
+  (defconstant +waveformatex-size+ 18)    ; packed: wFormatTag nChannels nSamplesPerSec nAvgBytesPerSec nBlockAlign wBitsPerSample cbSize
+  (defconstant +wavehdr-size+ (if (= (cffi:foreign-type-size :pointer) 8) 48 32))
+  (defconstant +wavehdr-flags-offset+ (if (= (cffi:foreign-type-size :pointer) 8) 24 16))
+
+  (defun %wavehdr-set (hdr data bytes)
+    "Fill a WAVEHDR: lpData, dwBufferLength, the rest zeroed"
+    (dotimes (i +wavehdr-size+) (setf (cffi:mem-aref hdr :uint8 i) 0))
+    (setf (cffi:mem-ref hdr :pointer 0) data
+          (cffi:mem-ref hdr :uint32 (cffi:foreign-type-size :pointer)) bytes))
+
+  (defun %wavehdr-done-p (hdr)
+    (logtest (cffi:mem-ref hdr :uint32 +wavehdr-flags-offset+) +whdr-done+))
+
+  (defun ma-device-init (&key (format +ma-format-f32+) (channels 2) (sample-rate 0) (period-size-in-frames 0) data-callback)
+    "Initialize a playback device, returns NIL on failure"
+    (unless (%ma-device-check-format format)
+      (return-from ma-device-init nil))
+    (handler-case (progn (cffi:load-foreign-library '%winmm) (cffi:load-foreign-library '%kernel32-audio))
+      (error (e)
+        (trace-log +log-warning+ "miniaudio: Failed to load winmm.dll: ~a" e)
+        (return-from ma-device-init nil)))
+    (let* ((sample-rate (if (= sample-rate 0) *ma-default-sample-rate* sample-rate))
+           (period (if (= period-size-in-frames 0) *ma-default-period-size-in-frames* period-size-in-frames))
+           (periods *ma-default-periods*)
+           (bytes-per-frame (ma-get-bytes-per-frame format channels))
+           (event (cffi:foreign-funcall "CreateEventW" :pointer (cffi:null-pointer) :int 0 :int 0
+                                                       :pointer (cffi:null-pointer) :pointer))
+           (handle (cffi:with-foreign-objects ((wf :uint8 +waveformatex-size+) (hwo :pointer))
+                     (setf (cffi:mem-ref wf :uint16 0) +wave-format-ieee-float+
+                           (cffi:mem-ref wf :uint16 2) channels
+                           (cffi:mem-ref wf :uint32 4) sample-rate
+                           (cffi:mem-ref wf :uint32 8) (* sample-rate bytes-per-frame)
+                           (cffi:mem-ref wf :uint16 12) bytes-per-frame
+                           (cffi:mem-ref wf :uint16 14) 32
+                           (cffi:mem-ref wf :uint16 16) 0)
+                     (if (= (cffi:foreign-funcall "waveOutOpen" :pointer hwo :uint +wave-mapper+ :pointer wf
+                                                  :pointer event :pointer (cffi:null-pointer)
+                                                  :uint32 +callback-event+ :uint)
+                            +mmsyserr-noerror+)
+                         (cffi:mem-ref hwo :pointer)
+                         nil))))
+      (if (null handle)
+          (progn
+            (cffi:foreign-funcall "CloseHandle" :pointer event :int)
+            nil)
+          ;; One WAVEHDR and sample buffer per period
+          (let* ((bytes (* period bytes-per-frame))
+                 (headers (loop repeat periods
+                                collect (let ((hdr (cffi:foreign-alloc :uint8 :count +wavehdr-size+)))
+                                          (%wavehdr-set hdr (cffi:foreign-alloc :uint8 :count bytes) bytes)
+                                          (cffi:foreign-funcall "waveOutPrepareHeader" :pointer handle :pointer hdr
+                                                                :uint +wavehdr-size+ :uint)
+                                          hdr))))
+            (%make-ma-device :format format :channels channels :sample-rate sample-rate
+                             :internal-format format :internal-channels channels :internal-sample-rate sample-rate
+                             :internal-period-size-in-frames period :internal-periods periods
+                             :data-callback data-callback :handle handle
+                             :backend-data (list :headers headers :event event :bytes bytes)
+                             :backend-name "WinMM (waveOut)")))))
+
+  ;; Fill a buffer with one period from the data callback and write it to the device
+  (defun %ma-winmm-write-buffer (device hdr)
+    (let* ((frame-count (ma-device-internal-period-size-in-frames device))
+           (frames (%ma-device-period-frames device))
+           (bytes (getf (ma-device-backend-data device) :bytes)))
+      (%ma-device-handle-data-callback device frames frame-count)
+      (cffi:with-pointer-to-vector-data (ptr frames)
+        (cffi:foreign-funcall "RtlMoveMemory" :pointer (cffi:mem-ref hdr :pointer 0) :pointer ptr :size bytes :void))
+      ;; Clear WHDR_DONE before writing it again
+      (setf (cffi:mem-ref hdr :uint32 +wavehdr-flags-offset+)
+            (logandc2 (cffi:mem-ref hdr :uint32 +wavehdr-flags-offset+) +whdr-done+))
+      (cffi:foreign-funcall "waveOutWrite" :pointer (ma-device-handle device) :pointer hdr :uint +wavehdr-size+ :uint)))
+
+  (defun %ma-device-thread (device)
+    (let ((headers (getf (ma-device-backend-data device) :headers))
+          (event (getf (ma-device-backend-data device) :event)))
+      (float-features:with-float-traps-masked t
+        ;; Prime all the buffers, then refill each one in order as the device is done with it
+        (dolist (hdr headers) (%ma-winmm-write-buffer device hdr))
+        (loop named playback
+              while (ma-device-running device)
+              do (dolist (hdr headers)
+                   (loop until (or (%wavehdr-done-p hdr) (not (ma-device-running device)))
+                         do (cffi:foreign-funcall "WaitForSingleObject" :pointer event :uint32 100 :uint32))
+                   (unless (ma-device-running device) (return-from playback))
+                   (%ma-winmm-write-buffer device hdr))))))
+
+  (defun ma-device-start (device)
+    (setf (ma-device-running device) t
+          (ma-device-thread device) (bt:make-thread (lambda () (%ma-device-thread device))
+                                                    :name "raylib audio device"))
+    t)
+
+  (defun ma-device-uninit (device)
+    "Stop the device (joins the playback thread) and release it"
+    (when (ma-device-thread device)
+      (setf (ma-device-running device) nil)
+      (bt:join-thread (ma-device-thread device))
+      (setf (ma-device-thread device) nil))
+    (unless (cffi:null-pointer-p (ma-device-handle device))
+      (let ((handle (ma-device-handle device)))
+        (cffi:foreign-funcall "waveOutReset" :pointer handle :uint)
+        (dolist (hdr (getf (ma-device-backend-data device) :headers))
+          (cffi:foreign-funcall "waveOutUnprepareHeader" :pointer handle :pointer hdr :uint +wavehdr-size+ :uint)
+          (cffi:foreign-free (cffi:mem-ref hdr :pointer 0))
+          (cffi:foreign-free hdr))
+        (cffi:foreign-funcall "waveOutClose" :pointer handle :uint)
+        (cffi:foreign-funcall "CloseHandle" :pointer (getf (ma-device-backend-data device) :event) :int))
+      (setf (ma-device-handle device) (cffi:null-pointer)
+            (ma-device-backend-data device) nil))))
 
 ;;;----------------------------------------------------------------------------------
 ;;; Core Audio backend (AudioQueue)

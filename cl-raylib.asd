@@ -28,6 +28,7 @@
    (:file "gl")                    ; OpenGL abstraction layer (matches raylib rlgl.h functionality)
    (:file "gestures")              ; rgestures.h (included by rcore.c)
    (:file "core")                  ; rcore.c
+   (:file "win32-clipboard")       ; external/win32_clipboard.h (used by rcore_desktop_glfw.c on Windows)
    (:file "glfw")                  ; platforms/rcore_desktop_glfw.c (included by rcore.c after CORE data)
    (:file "camera2d")              ; 2D camera system (matches raylib Camera2D)
    (:file "camera3d")

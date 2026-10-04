@@ -19,7 +19,7 @@ cgltf, ...), and only calls into C for the platform: GLFW, OpenGL, libm and the 
 | Linux (X11, Wayland) | Supported, audio through PulseAudio (or PipeWire's PulseAudio server) |
 | macOS (Apple Silicon) | Supported, audio through Core Audio |
 | macOS (Intel) | Should work, not tested yet |
-| Windows | Not supported yet |
+| Windows | In progress: written but not tested yet |
 
 ## Requirements
 

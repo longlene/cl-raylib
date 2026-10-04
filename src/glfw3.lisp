@@ -58,7 +58,8 @@
   "Path of the GLFW library shipped with cl-raylib for this platform, or NIL"
   (let ((file #+(and linux x86-64) "lib/linux-x86-64/libglfw.so.3"
               #+darwin "lib/macos/libglfw.3.dylib"
-              #-(or (and linux x86-64) darwin) nil))
+              #+(and windows x86-64) "lib/windows-x86-64/glfw3.dll"
+              #-(or (and linux x86-64) darwin (and windows x86-64)) nil))
     (when file
       (let ((path (asdf:system-relative-pathname "cl-raylib" file)))
         (and (probe-file path) path)))))
