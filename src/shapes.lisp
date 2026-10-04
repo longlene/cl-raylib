@@ -3,8 +3,8 @@
 ;;;; Port of raylib rshapes.c - Basic functions to draw 2d shapes and check collisions
 ;;;;
 ;;;; NOTE: Where rshapes.c provides both a SUPPORT_QUADS_DRAW_MODE (RL_QUADS) and a
-;;;; RL_TRIANGLES implementation, the RL_TRIANGLES one is ported; functions that only
-;;;; have an RL_QUADS implementation use the shapes texture like raylib does.
+;;;; RL_TRIANGLES implementation, the RL_QUADS one is ported (raylib default
+;;;; SUPPORT_QUADS_DRAW_MODE=1), drawing with the shapes texture like raylib does.
 ;;;; SUPPORT_SPLINE_MITERS is disabled (raylib default).
 ;;;;
 ;;;; Vector2 arguments accept 3d-vectors vec2 or (x y) lists, Rectangle arguments
@@ -39,8 +39,8 @@
 
 (defun %polar (cx cy angle radius-h &optional (radius-v radius-h))
   "rlVertex2f() at ANGLE degrees on the circle/ellipse centered at (CX, CY)"
-  (%vertex (+ cx (* (cos (* +deg2rad+ angle)) radius-h))
-           (+ cy (* (sin (* +deg2rad+ angle)) radius-v))))
+  (%vertex (+ cx (* (%cosf (* +deg2rad+ angle)) radius-h))
+           (+ cy (* (%sinf (* +deg2rad+ angle)) radius-v))))
 
 (defun %points (points)
   "Points sequence as a simple-vector"
@@ -59,12 +59,35 @@
             (th (float (texture-height tex) 1.0)))
         (values (/ x tw) (/ y th) (/ (+ x w) tw) (/ (+ y h) th))))))
 
+;; SUPPORT_QUADS_DRAW_MODE (raylib default): shapes are drawn as RL_QUADS sampling the shapes texture
+(defmacro %with-shapes-quads ((u0 v0 u1 v1) &body body)
+  "rlSetTexture(GetShapesTexture().id); rlBegin(RL_QUADS); BODY; rlEnd(); rlSetTexture(0);
+U0 V0 U1 V1 are bound to the shapes texture rectangle coordinates"
+  `(multiple-value-bind (,u0 ,v0 ,u1 ,v1) (%shapes-texcoords)
+     (declare (ignorable ,u0 ,v0 ,u1 ,v1))
+     (rl-set-texture (texture-id (get-shapes-texture)))
+     (rl-begin +rl-quads+)
+     ,@body
+     (rl-end)
+     (rl-set-texture 0)))
+
+(declaim (inline %tex-vertex))
+(defun %tex-vertex (u v x y)
+  "rlTexCoord2f(u, v); rlVertex2f(x, y);"
+  (rl-tex-coord2f u v)
+  (%vertex x y))
+
+(defun %tex-polar (u v cx cy angle radius-h &optional (radius-v radius-h))
+  "rlTexCoord2f(u, v); then %polar"
+  (rl-tex-coord2f u v)
+  (%polar cx cy angle radius-h radius-v))
+
 (defun %segments-for-arc (arc radius segments min-segments)
   "Calculate the number of segments needed to draw a smooth ARC (degrees) of RADIUS"
   (if (>= segments min-segments)
       segments
       ;; Calculate the maximum angle between segments based on the error rate (usually 0.5f)
-      (let ((th (acos (- (* 2 (expt (- 1 (/ +smooth-circle-error-rate+ radius)) 2)) 1))))
+      (let ((th (%acosf (- (* 2 (expt (- 1 (/ +smooth-circle-error-rate+ radius)) 2)) 1))))
         (if (or (complexp th) (<= th 0.0))
             min-segments
             (let ((n (ceiling (/ (* arc (/ (* 2 +pi+) th)) 360.0))))
@@ -117,16 +140,14 @@
 (defun draw-pixel-v (position color)
   "Draw a pixel (Vector version)"
   (let ((x (%x position)) (y (%y position)))
-    (rl-begin +rl-triangles+)
-    (%color color)
-    (%vertex x y)
-    (%vertex x (+ y 1))
-    (%vertex (+ x 1) y)
+    (%with-shapes-quads (u0 v0 u1 v1)
+      (rl-normal3f 0.0 0.0 1.0)
+      (%color color)
 
-    (%vertex (+ x 1) y)
-    (%vertex x (+ y 1))
-    (%vertex (+ x 1) (+ y 1))
-    (rl-end)))
+      (%tex-vertex u0 v0 x y)
+      (%tex-vertex u0 v1 x (+ y 1))
+      (%tex-vertex u1 v1 (+ x 1) (+ y 1))
+      (%tex-vertex u1 v0 (+ x 1) y))))
 
 (defun draw-line (start-pos-x start-pos-y end-pos-x end-pos-y color)
   "Draw a line (using gl lines)"
@@ -232,14 +253,20 @@
 
 (defun draw-triangle-gradient (v1 v2 v3 c1 c2 c3)
   "Draw triangle with interpolated colors (vertex in counter-clockwise order!)"
-  (rl-begin +rl-triangles+)
-  (%color c1)
-  (%vertex (%x v1) (%y v1))
-  (%color c2)
-  (%vertex (%x v2) (%y v2))
-  (%color c3)
-  (%vertex (%x v3) (%y v3))
-  (rl-end))
+  (%with-shapes-quads (tu0 tv0 tu1 tv1)  ; texcoords named apart from the V1 argument
+    (rl-normal3f 0.0 0.0 1.0)
+
+    (%color c1)
+    (%tex-vertex tu0 tv0 (%x v1) (%y v1))
+
+    (%color c2)
+    (%tex-vertex tu0 tv1 (%x v2) (%y v2))
+
+    (%color c3)
+    (%tex-vertex tu1 tv1 (%x v3) (%y v3))
+
+    (%color c3)
+    (%tex-vertex tu1 tv0 (%x v3) (%y v3))))
 
 (defun draw-triangle-lines (v1 v2 v3 color)
   "Draw triangle outline (vertex in counter-clockwise order!)"
@@ -288,18 +315,14 @@
               (rotatef x1 x4) (rotatef y1 y4)
               (rotatef x2 x5) (rotatef y2 y5)
               (rotatef x3 x6) (rotatef y3 y6))
-            (rl-begin +rl-triangles+)
-            (%color color)
-            ;; Edge 3
-            (%vertex x1 y1) (%vertex x2 y2) (%vertex x4 y4)
-            (%vertex x2 y2) (%vertex x5 y5) (%vertex x4 y4)
-            ;; Edge 1
-            (%vertex x2 y2) (%vertex x3 y3) (%vertex x5 y5)
-            (%vertex x3 y3) (%vertex x6 y6) (%vertex x5 y5)
-            ;; Edge 2
-            (%vertex x3 y3) (%vertex x1 y1) (%vertex x4 y4)
-            (%vertex x3 y3) (%vertex x4 y4) (%vertex x6 y6)
-            (rl-end))))))
+            (%with-shapes-quads (u0 v0 u1 v1)
+              (%color color)
+              ;; Edge 3
+              (%tex-vertex u0 v0 x1 y1) (%tex-vertex u0 v1 x2 y2) (%tex-vertex u1 v1 x5 y5) (%tex-vertex u1 v0 x4 y4)
+              ;; Edge 1
+              (%tex-vertex u0 v0 x2 y2) (%tex-vertex u0 v1 x3 y3) (%tex-vertex u1 v1 x6 y6) (%tex-vertex u1 v0 x5 y5)
+              ;; Edge 2
+              (%tex-vertex u0 v0 x3 y3) (%tex-vertex u0 v1 x1 y1) (%tex-vertex u1 v1 x4 y4) (%tex-vertex u1 v0 x6 y6)))))))
 
 ;; NOTE: First vertex provided is the center, shared by all triangles
 ;; By default, following vertex should be provided in counter-clockwise order
@@ -370,8 +393,8 @@
                   tr-x (+ x rw) tr-y y
                   bl-x x bl-y (+ y rh)
                   br-x (+ x rw) br-y (+ y rh)))
-          (let ((sin-r (sin (* rotation +deg2rad+)))
-                (cos-r (cos (* rotation +deg2rad+)))
+          (let ((sin-r (%sinf (* rotation +deg2rad+)))
+                (cos-r (%cosf (* rotation +deg2rad+)))
                 (dx (- ox)) (dy (- oy)))
             (setf tl-x (+ rx (* dx cos-r) (- (* dy sin-r)))
                   tl-y (+ ry (* dx sin-r) (* dy cos-r))
@@ -381,16 +404,14 @@
                   bl-y (+ ry (* dx sin-r) (* (+ dy rh) cos-r))
                   br-x (+ rx (* (+ dx rw) cos-r) (- (* (+ dy rh) sin-r)))
                   br-y (+ ry (* (+ dx rw) sin-r) (* (+ dy rh) cos-r)))))
-      (rl-begin +rl-triangles+)
-      (%color color)
-      (%vertex tl-x tl-y)
-      (%vertex bl-x bl-y)
-      (%vertex tr-x tr-y)
+      (%with-shapes-quads (u0 v0 u1 v1)
+        (rl-normal3f 0.0 0.0 1.0)
+        (%color color)
 
-      (%vertex tr-x tr-y)
-      (%vertex bl-x bl-y)
-      (%vertex br-x br-y)
-      (rl-end))))
+        (%tex-vertex u0 v0 tl-x tl-y)
+        (%tex-vertex u0 v1 bl-x bl-y)
+        (%tex-vertex u1 v1 br-x br-y)
+        (%tex-vertex u1 v0 tr-x tr-y)))))
 
 (defun draw-rectangle-gradient-v (pos-x pos-y width height top bottom)
   "Draw a vertical-gradient-filled rectangle"
@@ -487,7 +508,7 @@
   (if (>= segments 1)
       segments
       ;; Calculate the maximum angle between segments based on the error rate (usually 0.5f)
-      (let ((th (acos (- (* 2 (expt (- 1 (/ +smooth-circle-error-rate+ radius)) 2)) 1))))
+      (let ((th (%acosf (- (* 2 (expt (- 1 (/ +smooth-circle-error-rate+ radius)) 2)) 1))))
         (if (or (complexp th) (<= th 0.0))
             4
             (let ((n (ceiling (/ (/ (* 2 +pi+) th) 4.0))))
@@ -525,35 +546,50 @@
                              (cons x0 y1) (cons x1 y1) (cons x1 y2) (cons x0 y2)))
              (centers (vector (aref points 8) (aref points 9) (aref points 10) (aref points 11)))
              (angles #(180.0 270.0 0.0 90.0)))
-        (flet ((pt (i) (let ((p (aref points i))) (%vertex (car p) (cdr p)))))
-          (rl-begin +rl-triangles+)
-          ;; Draw all of the 4 corners: [1] Upper Left Corner, [3] Upper Right Corner, [5] Lower Right Corner, [7] Lower Left Corner
-          (dotimes (k 4)
-            (let ((angle (aref angles k))
-                  (cx (car (aref centers k)))
-                  (cy (cdr (aref centers k))))
-              (dotimes (i segments)
-                (%color color)
-                (%vertex cx cy)
-                (%polar cx cy (+ angle step-length) radius)
-                (%polar cx cy angle radius)
-                (incf angle step-length))))
-          ;; [2] Upper Rectangle
-          (%color color)
-          (pt 0) (pt 8) (pt 9) (pt 1) (pt 0) (pt 9)
-          ;; [4] Right Rectangle
-          (%color color)
-          (pt 9) (pt 10) (pt 3) (pt 2) (pt 9) (pt 3)
-          ;; [6] Bottom Rectangle
-          (%color color)
-          (pt 11) (pt 5) (pt 4) (pt 10) (pt 11) (pt 4)
-          ;; [8] Left Rectangle
-          (%color color)
-          (pt 7) (pt 6) (pt 11) (pt 8) (pt 7) (pt 11)
-          ;; [9] Middle Rectangle
-          (%color color)
-          (pt 8) (pt 11) (pt 10) (pt 9) (pt 8) (pt 10)
-          (rl-end))))))
+        (%with-shapes-quads (u0 v0 u1 v1)
+          (flet ((pt (u v i) (let ((p (aref points i))) (%tex-vertex u v (car p) (cdr p))))
+                 (polar (u v cx cy angle) (rl-tex-coord2f u v) (%polar cx cy angle radius)))
+            ;; Draw all the 4 corners: [1] Upper Left Corner, [3] Upper Right Corner, [5] Lower Right Corner, [7] Lower Left Corner
+            (dotimes (k 4)
+              (let ((angle (aref angles k))
+                    (cx (car (aref centers k)))
+                    (cy (cdr (aref centers k))))
+                ;; NOTE: Every QUAD actually represents two segments
+                (dotimes (i (truncate segments 2))
+                  (%color color)
+                  (%tex-vertex u0 v0 cx cy)
+                  (polar u1 v0 cx cy (+ angle (* step-length 2)))
+                  (polar u1 v1 cx cy (+ angle step-length))
+                  (polar u0 v1 cx cy angle)
+                  (incf angle (* step-length 2)))
+
+                ;; NOTE: In case number of segments is odd, adding one last piece to the cake
+                (when (= (mod segments 2) 1)
+                  (%color color)
+                  (%tex-vertex u0 v0 cx cy)
+                  (polar u1 v1 cx cy (+ angle step-length))
+                  (polar u0 v1 cx cy angle)
+                  (%tex-vertex u1 v0 cx cy))))
+
+            ;; [2] Upper Rectangle
+            (%color color)
+            (pt u0 v0 0) (pt u0 v1 8) (pt u1 v1 9) (pt u1 v0 1)
+
+            ;; [4] Right Rectangle
+            (%color color)
+            (pt u0 v0 2) (pt u0 v1 9) (pt u1 v1 10) (pt u1 v0 3)
+
+            ;; [6] Bottom Rectangle
+            (%color color)
+            (pt u0 v0 11) (pt u0 v1 5) (pt u1 v1 4) (pt u1 v0 10)
+
+            ;; [8] Left Rectangle
+            (%color color)
+            (pt u0 v0 7) (pt u0 v1 6) (pt u1 v1 11) (pt u1 v0 8)
+
+            ;; [9] Middle Rectangle
+            (%color color)
+            (pt u0 v0 8) (pt u0 v1 11) (pt u1 v1 10) (pt u1 v0 9)))))))
 
 (defun draw-rectangle-rounded-lines (rec roundness segments color)
   "Draw rectangle lines with rounded edges"
@@ -648,36 +684,37 @@
                              (cons x1 y5) (cons x0 y5) (cons x5 y2) (cons x5 y1)))
              (centers (vector (cons x0 y1) (cons x1 y1) (cons x1 y2) (cons x0 y2)))
              (angles #(180.0 270.0 0.0 90.0)))
-        (flet ((pt (i) (let ((p (aref points i))) (%vertex (car p) (cdr p)))))
-          (rl-begin +rl-triangles+)
-          ;; Draw all of the 4 corners first: Upper Left Corner, Upper Right Corner, Lower Right Corner, Lower Left Corner
-          (dotimes (k 4)
-            (let ((angle (aref angles k))
-                  (cx (car (aref centers k)))
-                  (cy (cdr (aref centers k))))
-              (dotimes (i segments)
-                (%color color)
-                (%polar cx cy angle inner-radius)
-                (%polar cx cy (+ angle step-length) inner-radius)
-                (%polar cx cy angle outer-radius)
+        (%with-shapes-quads (u0 v0 u1 v1)
+          (flet ((pt (u v i) (let ((p (aref points i))) (%tex-vertex u v (car p) (cdr p))))
+                 (polar (u v cx cy angle radius) (rl-tex-coord2f u v) (%polar cx cy angle radius)))
+            ;; Draw all the 4 corners first: Upper Left Corner, Upper Right Corner, Lower Right Corner, Lower Left Corner
+            (dotimes (k 4)
+              (let ((angle (aref angles k))
+                    (cx (car (aref centers k)))
+                    (cy (cdr (aref centers k))))
+                (dotimes (i segments)
+                  (%color color)
+                  (polar u0 v0 cx cy angle inner-radius)
+                  (polar u1 v0 cx cy (+ angle step-length) inner-radius)
+                  (polar u1 v1 cx cy (+ angle step-length) outer-radius)
+                  (polar u0 v1 cx cy angle outer-radius)
+                  (incf angle step-length))))
 
-                (%polar cx cy (+ angle step-length) inner-radius)
-                (%polar cx cy (+ angle step-length) outer-radius)
-                (%polar cx cy angle outer-radius)
-                (incf angle step-length))))
-          ;; Upper rectangle
-          (%color color)
-          (pt 0) (pt 8) (pt 9) (pt 1) (pt 0) (pt 9)
-          ;; Right rectangle
-          (%color color)
-          (pt 10) (pt 11) (pt 3) (pt 2) (pt 10) (pt 3)
-          ;; Lower rectangle
-          (%color color)
-          (pt 13) (pt 5) (pt 4) (pt 12) (pt 13) (pt 4)
-          ;; Left rectangle
-          (%color color)
-          (pt 7) (pt 6) (pt 14) (pt 15) (pt 7) (pt 14)
-          (rl-end))))))
+            ;; Upper rectangle
+            (%color color)
+            (pt u0 v0 0) (pt u0 v1 8) (pt u1 v1 9) (pt u1 v0 1)
+
+            ;; Right rectangle
+            (%color color)
+            (pt u0 v0 2) (pt u0 v1 10) (pt u1 v1 11) (pt u1 v0 3)
+
+            ;; Lower rectangle
+            (%color color)
+            (pt u0 v0 13) (pt u0 v1 5) (pt u1 v1 4) (pt u1 v0 12)
+
+            ;; Left rectangle
+            (%color color)
+            (pt u0 v0 15) (pt u0 v1 7) (pt u1 v1 6) (pt u1 v0 14)))))))
 
 (defun draw-poly (center sides radius rotation color)
   "Draw a regular polygon (Vector version)"
@@ -685,16 +722,15 @@
          (cx (%x center)) (cy (%y center))
          (central-angle (* rotation +deg2rad+))
          (angle-step (* (/ 360.0 sides) +deg2rad+)))
-    (rl-begin +rl-triangles+)
-    (dotimes (i sides)
-      (%color color)
-      (%vertex cx cy)
-      (%vertex (+ cx (* (cos (+ central-angle angle-step)) radius))
-               (+ cy (* (sin (+ central-angle angle-step)) radius)))
-      (%vertex (+ cx (* (cos central-angle) radius))
-               (+ cy (* (sin central-angle) radius)))
-      (incf central-angle angle-step))
-    (rl-end)))
+    (%with-shapes-quads (u0 v0 u1 v1)
+      (dotimes (i sides)
+        (%color color)
+        (let ((next-angle (+ central-angle angle-step)))
+          (%tex-vertex u0 v0 cx cy)
+          (%tex-vertex u0 v1 (+ cx (* (%cosf central-angle) radius)) (+ cy (* (%sinf central-angle) radius)))
+          (%tex-vertex u1 v0 (+ cx (* (%cosf next-angle) radius)) (+ cy (* (%sinf next-angle) radius)))
+          (%tex-vertex u1 v1 (+ cx (* (%cosf central-angle) radius)) (+ cy (* (%sinf central-angle) radius)))
+          (setf central-angle next-angle))))))
 
 (defun draw-poly-lines (center sides radius rotation color)
   "Draw a polygon outline of n sides"
@@ -705,10 +741,10 @@
     (rl-begin +rl-lines+)
     (dotimes (i sides)
       (%color color)
-      (%vertex (+ cx (* (cos central-angle) radius))
-               (+ cy (* (sin central-angle) radius)))
-      (%vertex (+ cx (* (cos (+ central-angle angle-step)) radius))
-               (+ cy (* (sin (+ central-angle angle-step)) radius)))
+      (%vertex (+ cx (* (%cosf central-angle) radius))
+               (+ cy (* (%sinf central-angle) radius)))
+      (%vertex (+ cx (* (%cosf (+ central-angle angle-step)) radius))
+               (+ cy (* (%sinf (+ central-angle angle-step)) radius)))
       (incf central-angle angle-step))
     (rl-end)))
 
@@ -718,7 +754,7 @@
          (cx (%x center)) (cy (%y center))
          (central-angle (* rotation +deg2rad+))
          (exterior-angle (* (/ 360.0 sides) +deg2rad+))
-         (apothem (* radius (cos (/ (* +deg2rad+ 180.0) sides))))
+         (apothem (* radius (%cosf (/ (* +deg2rad+ 180.0) sides))))
          (thick (float line-thick 1.0))
          outer-radius inner-radius)
     (if (>= thick 0.0)
@@ -727,20 +763,16 @@
         (setf thick (- thick)
               outer-radius (+ radius (* thick (/ radius apothem)))
               inner-radius radius))
-    (flet ((pv (angle r) (%vertex (+ cx (* (cos angle) r)) (+ cy (* (sin angle) r)))))
-      (rl-begin +rl-triangles+)
-      (dotimes (i sides)
-        (%color color)
-        (let ((next-angle (+ central-angle exterior-angle)))
-          (pv next-angle outer-radius)
-          (pv central-angle outer-radius)
-          (pv central-angle inner-radius)
-
-          (pv central-angle inner-radius)
-          (pv next-angle inner-radius)
-          (pv next-angle outer-radius)
-          (setf central-angle next-angle)))
-      (rl-end))))
+    (flet ((pv (angle r) (%vertex (+ cx (* (%cosf angle) r)) (+ cy (* (%sinf angle) r)))))
+      (%with-shapes-quads (u0 v0 u1 v1)
+        (dotimes (i sides)
+          (%color color)
+          (let ((next-angle (+ central-angle exterior-angle)))
+            (rl-tex-coord2f u0 v1) (pv central-angle outer-radius)
+            (rl-tex-coord2f u0 v0) (pv central-angle inner-radius)
+            (rl-tex-coord2f u1 v1) (pv next-angle inner-radius)
+            (rl-tex-coord2f u1 v0) (pv next-angle outer-radius)
+            (setf central-angle next-angle)))))))
 
 (defun draw-circle (center-x center-y radius color)
   "Draw a color-filled circle"
@@ -778,14 +810,22 @@
          (segments (%segments-for-arc arc radius segments (ceiling arc 90)))
          (step-length (/ arc (float segments)))
          (angle (float start-angle)))
-    (rl-begin +rl-triangles+)
-    (dotimes (i segments)
-      (%color color)
-      (%vertex cx cy)
-      (%polar cx cy (+ angle step-length) radius)
-      (%polar cx cy angle radius)
-      (incf angle step-length))
-    (rl-end)))
+    (%with-shapes-quads (u0 v0 u1 v1)
+      ;; NOTE: Every QUAD actually represents two segments
+      (dotimes (i (floor segments 2))
+        (%color color)
+        (%tex-vertex u0 v0 cx cy)
+        (%tex-polar u1 v0 cx cy (+ angle (* step-length 2.0)) radius)
+        (%tex-polar u1 v1 cx cy (+ angle step-length) radius)
+        (%tex-polar u0 v1 cx cy angle radius)
+        (incf angle (* step-length 2.0)))
+      ;; NOTE: In case number of segments is odd, adding one last piece to the cake
+      (when (oddp segments)
+        (%color color)
+        (%tex-vertex u0 v0 cx cy)
+        (%tex-polar u1 v1 cx cy (+ angle step-length) radius)
+        (%tex-polar u0 v1 cx cy angle radius)
+        (%tex-vertex u1 v0 cx cy)))))
 
 (defun draw-circle-sector-lines (center radius start-angle end-angle segments color)
   "Draw a piece of a circle outlines"
@@ -842,7 +882,7 @@
            (angle start-angle)
            ;; We are not drawing a circle, we are drawing an n-sided polygon
            ;; So, we need to adjust the outline thickness of the "circle" for it to look correct with fewer segments
-           (apothem (* radius (cos (/ (* +deg2rad+ (/ arc 2.0)) (float segments)))))
+           (apothem (* radius (%cosf (/ (* +deg2rad+ (/ arc 2.0)) (float segments)))))
            (radius-thick (* thick (/ radius apothem)))
            (outer-radius (float radius 1.0))
            (inner-radius (- radius radius-thick))
@@ -859,8 +899,8 @@
       (flet ((full-sector ()
                (return-from draw-circle-sector-lines-ex
                  (draw-circle-sector center radius start-angle end-angle segments color)))
-             (ccos (a) (cos (* +deg2rad+ a)))
-             (csin (a) (sin (* +deg2rad+ a))))
+             (ccos (a) (%cosf (* +deg2rad+ a)))
+             (csin (a) (%sinf (* +deg2rad+ a))))
         (if (>= thick 0.0)
             (when (>= thick inner-radius) (full-sector))
             (rotatef outer-radius inner-radius))
@@ -872,7 +912,7 @@
                 ;; For C1 and C4, we need to find the point that lies on the circle (n-sided polygon, actually)
                 ;; We want C1 and C4 to be `thick` pixels perpendicularly from the `startAngle` and `endAngle` edges
                 ;; and to be on the `innerRadius` edge
-                (let ((c1-angle (* +rad2deg+ (asin (/ thick inner-radius)))))
+                (let ((c1-angle (* +rad2deg+ (%asinf (/ thick inner-radius)))))
                   ;; There are more segments before C1 than there are segments being drawn,
                   ;; so the whole circle sector must be covered
                   (when (>= (/ c1-angle step-length) segments) (full-sector))
@@ -920,14 +960,14 @@
                                    ;; Copied from "raymath.h" Vector2Angle()
                                    (dot (+ (* p1x p2x) (* p1y p2y)))
                                    (det (- (* p1x p2y) (* p1y p2x)))
-                                   (c1-to-s1-angle (atan det dot)))
+                                   (c1-to-s1-angle (%atan2f det dot)))
                               ;; If C1 and C4 are on the wrong side of S1, the whole circle sector is covered
                               (when (< c1-to-s1-angle 0.0) (full-sector))))
                           ;; S1 is outside of the circle
                           (progn
                             (when (<= (- end-angle start-angle) 180.0) (full-sector))
                             (setf s1-outside-of-circle t
-                                  steps-before-c0 (truncate (/ (+ 180.0 (* +rad2deg+ (asin (/ thick (- inner-radius)))))
+                                  steps-before-c0 (truncate (/ (+ 180.0 (* +rad2deg+ (%asinf (/ thick (- inner-radius)))))
                                                                step-length)))
                             ;; Reuse the code for finding C1 and C4 to find C0 and C3
                             (let* ((vertex-angle-before-c0 (* step-length steps-before-c0))
@@ -959,8 +999,8 @@
                 ;; Change the frame of reference so that `center` is the origin and `startAngle` is 0 degrees
                 (flet ((rot (x y angle)
                          ;; Copied from "raymath.h" Vector2Rotate()
-                         (values (- (* (cos angle) x) (* (sin angle) y))
-                                 (+ (* (sin angle) x) (* (cos angle) y)))))
+                         (values (- (* (%cosf angle) x) (* (%sinf angle) y))
+                                 (+ (* (%sinf angle) x) (* (%cosf angle) y)))))
                   (let ((rot-a (- (* +deg2rad+ start-angle))))
                     (multiple-value-bind (c0tx c0ty) (rot (- c0x cx) (- c0y cy) rot-a)
                       (multiple-value-bind (cv1x cv1y) (rot (- c2x cx) (- c2y cy) rot-a)
@@ -994,7 +1034,7 @@
                                     (decf cv4x cv2x) (decf cv4y cv2y)
                                     (decf c1tx cv2x) (decf c1ty cv2y)
                                     ;; Make the line between `circleVertex1` and `circleVertex2` a horizontal line
-                                    (let ((theta (- (atan cv1y cv1x))))
+                                    (let ((theta (- (%atan2f cv1y cv1x))))
                                       (multiple-value-setq (cv1x cv1y) (rot cv1x cv1y theta))
                                       (multiple-value-setq (cv3x cv3y) (rot cv3x cv3y theta))
                                       (multiple-value-setq (cv4x cv4y) (rot cv4x cv4y theta))
@@ -1014,66 +1054,91 @@
                 ;; Swap vertices to correct the winding order
                 (rotatef c0x c2x) (rotatef c0y c2y)
                 (rotatef c3x c5x) (rotatef c3y c5y))))
-        (rl-begin +rl-triangles+)
-        (%color color)
-        ;; Draw the circle outline
-        (dotimes (i segments)
-          (%polar cx cy angle outer-radius)
-          (%polar cx cy angle inner-radius)
-          (%polar cx cy (+ angle step-length) inner-radius)
-
-          (%polar cx cy angle outer-radius)
-          (%polar cx cy (+ angle step-length) inner-radius)
-          (%polar cx cy (+ angle step-length) outer-radius)
-          (incf angle step-length))
-        ;; Draw the caps
-        (when show-cap-lines
-          ;; Cap 1
-          (%vertex cx cy) (%vertex c0x c0y) (%vertex c1x c1y)
-          (%vertex cx cy) (%vertex c1x c1y) (%vertex c2x c2y)
-          ;; Cap 2
-          (%vertex cx cy) (%vertex c5x c5y) (%vertex c4x c4y)
-          (%vertex cx cy) (%vertex c4x c4y) (%vertex c3x c3y)
-          ;; Some extra work may be needed when `thick` is positive
-          (when (>= thick 0.0)
-            ;; Fill in the gaps between cap 1 and the circle outline and cap 2 and the circle outline
-            (when (> steps-before-c1 0)
-              (setf angle 0.0)
-              (dotimes (i steps-before-c1)
-                ;; Cap 1
-                (%vertex c1x c1y)
-                (%polar cx cy (+ start-angle angle step-length) inner-radius)
-                (%polar cx cy (+ start-angle angle) inner-radius)
-                ;; Cap 2
-                (%vertex c4x c4y)
-                (%polar cx cy (- end-angle angle) inner-radius)
-                (%polar cx cy (- end-angle (+ angle step-length)) inner-radius)
-                (incf angle step-length)))
-            ;; Fill in the gap between C0, C3 and the circle outline
-            (when s1-outside-of-circle
-              (let ((vertices-between-c0-and-c3 (1- (- segments (* steps-before-c0 2)))))
-                (if (zerop vertices-between-c0-and-c3)
-                    ;; No gap to fill
-                    (progn (%vertex cx cy) (%vertex c3x c3y) (%vertex c0x c0y))
-                    ;; There's a gap to fill
-                    (progn
-                      ;; Triangle touching C0
-                      (%vertex cx cy)
-                      (%polar cx cy (+ start-angle (* step-length (1+ steps-before-c0))) inner-radius)
-                      (%vertex c0x c0y)
-                      ;; Triangle touching C3
-                      (%vertex cx cy)
-                      (%vertex c3x c3y)
-                      (%polar cx cy (- end-angle (* step-length (1+ steps-before-c0))) inner-radius)
-                      ;; Triangles between the previous two
-                      (decf vertices-between-c0-and-c3)
-                      (setf angle (+ start-angle (* step-length (1+ steps-before-c0))))
-                      (dotimes (i vertices-between-c0-and-c3)
-                        (%vertex cx cy)
-                        (%polar cx cy (+ angle step-length) inner-radius)
-                        (%polar cx cy angle inner-radius)
-                        (incf angle step-length))))))))
-        (rl-end)))))
+        (%with-shapes-quads (u0 v0 u1 v1)
+          (%color color)
+          ;; Draw the circle outline
+          (dotimes (i segments)
+            (%tex-polar u0 v1 cx cy angle outer-radius)
+            (%tex-polar u0 v0 cx cy angle inner-radius)
+            (%tex-polar u1 v0 cx cy (+ angle step-length) inner-radius)
+            (%tex-polar u1 v1 cx cy (+ angle step-length) outer-radius)
+            (incf angle step-length))
+          ;; Draw the caps
+          (when show-cap-lines
+            (%tex-vertex u0 v1 cx cy)
+            (%tex-vertex u0 v0 c0x c0y)
+            (%tex-vertex u1 v0 c1x c1y)
+            (%tex-vertex u1 v1 c2x c2y)
+            (%tex-vertex u0 v1 cx cy)
+            (%tex-vertex u0 v0 c5x c5y)
+            (%tex-vertex u1 v0 c4x c4y)
+            (%tex-vertex u1 v1 c3x c3y)
+            ;; Some extra work may be needed when `thick` is positive
+            (when (>= thick 0.0)
+              ;; Fill in the gaps between cap 1 and the circle outline and cap 2 and the circle outline
+              (when (> steps-before-c1 0)
+                ;; Draw quads using pairs of vertices on the circle outline
+                (setf angle 0.0)
+                (dotimes (i (floor steps-before-c1 2))
+                  ;; Cap1
+                  (%tex-vertex u0 v1 c1x c1y)
+                  (%tex-polar u0 v0 cx cy (+ start-angle (+ angle (* step-length 2.0))) inner-radius)
+                  (%tex-polar u1 v0 cx cy (+ start-angle (+ angle step-length)) inner-radius)
+                  (%tex-polar u1 v1 cx cy (+ start-angle angle) inner-radius)
+                  ;; Cap2
+                  (%tex-vertex u0 v1 c4x c4y)
+                  (%tex-polar u0 v0 cx cy (- end-angle angle) inner-radius)
+                  (%tex-polar u1 v0 cx cy (- end-angle (+ angle step-length)) inner-radius)
+                  (%tex-polar u1 v1 cx cy (- end-angle (+ angle (* step-length 2.0))) inner-radius)
+                  (incf angle (* step-length 2.0)))
+                ;; Draw the last segment if there's an odd number of them
+                (when (oddp steps-before-c1)
+                  ;; Cap1
+                  (%tex-vertex u0 v1 c1x c1y)
+                  (%tex-vertex u0 v0 c1x c1y)
+                  (%tex-polar u1 v0 cx cy (+ start-angle (+ angle step-length)) inner-radius)
+                  (%tex-polar u1 v1 cx cy (+ start-angle angle) inner-radius)
+                  ;; Cap2
+                  (%tex-vertex u0 v1 c4x c4y)
+                  (%tex-vertex u0 v0 c4x c4y)
+                  (%tex-polar u1 v0 cx cy (- end-angle angle) inner-radius)
+                  (%tex-polar u1 v1 cx cy (- end-angle (+ angle step-length)) inner-radius)))
+              ;; Fill in the gap between C0, C3 and the circle outline
+              (when s1-outside-of-circle
+                (let ((vertices-between-c0-and-c3 (1- (- segments (* steps-before-c0 2)))))
+                  (if (zerop vertices-between-c0-and-c3)
+                      ;; No gap to fill
+                      (progn
+                        (%tex-vertex u0 v1 cx cy)
+                        (%tex-vertex u0 v0 cx cy)
+                        (%tex-vertex u1 v0 c3x c3y)
+                        (%tex-vertex u1 v1 c0x c0y))
+                      ;; There's a gap to fill
+                      (progn
+                        ;; Triangle touching C0
+                        (%tex-vertex u0 v1 cx cy)
+                        (%tex-vertex u0 v0 cx cy)
+                        (%tex-polar u1 v0 cx cy (+ start-angle (* step-length (float (1+ steps-before-c0)))) inner-radius)
+                        (%tex-vertex u1 v1 c0x c0y)
+                        ;; Triangle touching C3
+                        (%tex-vertex u0 v1 cx cy)
+                        (%tex-vertex u0 v0 cx cy)
+                        (%tex-vertex u1 v0 c3x c3y)
+                        (%tex-polar u1 v1 cx cy (- end-angle (* step-length (float (1+ steps-before-c0)))) inner-radius)
+                        ;; Triangles between the previous two
+                        (decf vertices-between-c0-and-c3)
+                        (setf angle (+ start-angle (* step-length (1+ steps-before-c0))))
+                        (dotimes (i (floor vertices-between-c0-and-c3 2))
+                          (%tex-vertex u0 v1 cx cy)
+                          (%tex-polar u0 v0 cx cy (+ angle (* step-length 2.0)) inner-radius)
+                          (%tex-polar u1 v0 cx cy (+ angle step-length) inner-radius)
+                          (%tex-polar u1 v1 cx cy angle inner-radius)
+                          (incf angle (* step-length 2.0)))
+                        (when (oddp vertices-between-c0-and-c3)
+                          (%tex-vertex u0 v1 cx cy)
+                          (%tex-vertex u0 v0 cx cy)
+                          (%tex-polar u1 v0 cx cy (+ angle step-length) inner-radius)
+                          (%tex-polar u1 v1 cx cy angle inner-radius)))))))))))))
 
 (defun draw-circle-lines (center-x center-y radius color)
   "Draw circle outline"
@@ -1135,17 +1200,13 @@
         ;; The outline is growing outside of the ellipse, so swap the inner and outer radius
         (progn (rotatef outer-h inner-h)
                (rotatef outer-v inner-v)))
-    (rl-begin +rl-triangles+)
-    (%color color)
-    (loop for i from 0 below 360 by 10
-          do (%polar cx cy i inner-h inner-v)
-             (%polar cx cy (+ i 10) inner-h inner-v)
-             (%polar cx cy (+ i 10) outer-h outer-v)
-
-             (%polar cx cy i inner-h inner-v)
-             (%polar cx cy (+ i 10) outer-h outer-v)
-             (%polar cx cy i outer-h outer-v))
-    (rl-end)))
+    (%with-shapes-quads (u0 v0 u1 v1)
+      (%color color)
+      (loop for i from 0 below 360 by 10
+            do (%tex-polar u0 v0 cx cy i inner-h inner-v)
+               (%tex-polar u0 v1 cx cy (+ i 10) inner-h inner-v)
+               (%tex-polar u1 v1 cx cy (+ i 10) outer-h outer-v)
+               (%tex-polar u1 v0 cx cy i outer-h outer-v)))))
 
 (defun draw-ring (center inner-radius outer-radius start-angle end-angle segments color)
   "Draw ring"
@@ -1166,18 +1227,14 @@
     (let ((cx (%x center)) (cy (%y center))
           (step-length (/ arc (float segments)))
           (angle (float start-angle)))
-      (rl-begin +rl-triangles+)
-      (dotimes (i segments)
-        (%color color)
-        (%polar cx cy angle inner-radius)
-        (%polar cx cy (+ angle step-length) inner-radius)
-        (%polar cx cy angle outer-radius)
-
-        (%polar cx cy (+ angle step-length) inner-radius)
-        (%polar cx cy (+ angle step-length) outer-radius)
-        (%polar cx cy angle outer-radius)
-        (incf angle step-length))
-      (rl-end))))
+      (%with-shapes-quads (u0 v0 u1 v1)
+        (dotimes (i segments)
+          (%color color)
+          (%tex-polar u0 v1 cx cy angle outer-radius)
+          (%tex-polar u0 v0 cx cy angle inner-radius)
+          (%tex-polar u1 v0 cx cy (+ angle step-length) inner-radius)
+          (%tex-polar u1 v1 cx cy (+ angle step-length) outer-radius)
+          (incf angle step-length))))))
 
 (defun draw-ring-lines (center inner-radius outer-radius start-angle end-angle segments color)
   "Draw ring outline"
@@ -1245,7 +1302,7 @@
            (step-length (/ arc (float segments)))
            ;; We are not drawing a circle, we are drawing an n-sided polygon
            ;; So, we need to adjust the outline thickness of the "circle" for it to look correct with fewer segments
-           (apothem (* outer-radius (cos (/ (* +deg2rad+ (/ arc 2.0)) (float segments)))))
+           (apothem (* outer-radius (%cosf (/ (* +deg2rad+ (/ arc 2.0)) (float segments)))))
            (radius-thick (* thick (/ outer-radius apothem)))
            ;; Since 2 rings are being drawn, there are 4 radii
            ;; "Inner" means closer to the center, "outer" means farther from the center
@@ -1267,8 +1324,8 @@
            (cap2-second-outer-x 0.0) (cap2-second-outer-y 0.0)
            (caps-intersect nil)
            (cap-intersection-x 0.0) (cap-intersection-y 0.0))
-      (flet ((ccos (a) (cos (* +deg2rad+ a)))
-             (csin (a) (sin (* +deg2rad+ a))))
+      (flet ((ccos (a) (%cosf (* +deg2rad+ a)))
+             (csin (a) (%sinf (* +deg2rad+ a))))
         (if (>= thick 0.0)
             (progn
               (setf inner-radius (max 0.0 inner-radius))
@@ -1350,8 +1407,8 @@
                 ;; Rotate the frame of reference so that cap 1's I0->I2 edge is a vertical line
                 ;; Copied from "raymath.h" Vector2Rotate(), though we only use the x axis
                 (let* ((rotate-by (/ (- (* +deg2rad+ step-length)) 2.0))
-                       (cosres (cos rotate-by))
-                       (sinres (sin rotate-by))
+                       (cosres (%cosf rotate-by))
+                       (sinres (%sinf rotate-by))
                        (r-cap1-i2x (- (* cap1-i2x cosres) (* cap1-i2y sinres)))
                        (r-cap1-o2x (- (* cap1-o2x cosres) (* cap1-o2y sinres)))
                        (r-cap2-i0x (- (* cap2-i0x cosres) (* cap2-i0y sinres)))
@@ -1411,164 +1468,187 @@
                         cap2-second-inner-x cap2-i2x cap2-second-inner-y cap2-i2y
                         cap2-second-outer-x cap2-o2x cap2-second-outer-y cap2-o2y)))))
         (let ((angle start-angle))
-          (rl-begin +rl-triangles+)
-          (%color color)
-          (dotimes (i segments)
-            ;; `innerRadius` outline
-            (%polar cx cy angle outer-inner-radius)
-            (%polar cx cy angle inner-inner-radius)
-            (%polar cx cy (+ angle step-length) inner-inner-radius)
-
-            (%polar cx cy angle outer-inner-radius)
-            (%polar cx cy (+ angle step-length) inner-inner-radius)
-            (%polar cx cy (+ angle step-length) outer-inner-radius)
-            ;; `outerRadius` outline
-            (%polar cx cy angle outer-outer-radius)
-            (%polar cx cy angle inner-outer-radius)
-            (%polar cx cy (+ angle step-length) inner-outer-radius)
-
-            (%polar cx cy angle outer-outer-radius)
-            (%polar cx cy (+ angle step-length) inner-outer-radius)
-            (%polar cx cy (+ angle step-length) outer-outer-radius)
-            (incf angle step-length))
-          (when show-cap-lines
-            (if (>= thick 0.0)
-                (progn
-                  (setf angle 0.0)
-                  (dotimes (i steps-before-outer)
-                    ;; Cap 1
-                    (%polar cx cy (+ start-angle angle) outer-inner-radius)
-                    (%polar cx cy (+ start-angle angle step-length) outer-inner-radius)
-                    (%polar cx cy (+ start-angle angle step-length) inner-outer-radius)
-
-                    (%polar cx cy (+ start-angle angle) outer-inner-radius)
-                    (%polar cx cy (+ start-angle angle step-length) inner-outer-radius)
-                    (%polar cx cy (+ start-angle angle) inner-outer-radius)
-                    ;; Cap 2
-                    (%polar cx cy (- end-angle angle) outer-inner-radius)
-                    (%polar cx cy (- end-angle angle) inner-outer-radius)
-                    (%polar cx cy (- end-angle angle step-length) inner-outer-radius)
-
-                    (%polar cx cy (- end-angle angle) outer-inner-radius)
-                    (%polar cx cy (- end-angle angle step-length) inner-outer-radius)
-                    (%polar cx cy (- end-angle angle step-length) outer-inner-radius)
-                    (incf angle step-length))
-                  ;; We've already moved `stepsBeforeOuter` steps from each end
-                  (let* ((total-steps-left (- segments (* steps-before-outer 2)))
-                         (inner-steps-left (- steps-before-inner steps-before-outer))
-                         ;; Cap 1
-                         (c1-obe-x (+ cx (* (ccos (+ start-angle angle)) inner-outer-radius)))
-                         (c1-obe-y (+ cy (* (csin (+ start-angle angle)) inner-outer-radius)))
-                         (c1-oae-x (+ cx (* (ccos (+ start-angle angle step-length)) inner-outer-radius)))
-                         (c1-oae-y (+ cy (* (csin (+ start-angle angle step-length)) inner-outer-radius)))
-                         (c1-ibe-x (+ cx (* (ccos (+ start-angle angle (* inner-steps-left step-length))) outer-inner-radius)))
-                         (c1-ibe-y (+ cy (* (csin (+ start-angle angle (* inner-steps-left step-length))) outer-inner-radius)))
-                         (c1-iae-x (+ cx (* (ccos (+ start-angle angle (* (1+ inner-steps-left) step-length))) outer-inner-radius)))
-                         (c1-iae-y (+ cy (* (csin (+ start-angle angle (* (1+ inner-steps-left) step-length))) outer-inner-radius)))
-                         (c1-ie-x (+ c1-ibe-x (* (- c1-iae-x c1-ibe-x) t-inner)))
-                         (c1-ie-y (+ c1-ibe-y (* (- c1-iae-y c1-ibe-y) t-inner)))
-                         (c1-oe-x (+ c1-obe-x (* (- c1-oae-x c1-obe-x) t-outer)))
-                         (c1-oe-y (+ c1-obe-y (* (- c1-oae-y c1-obe-y) t-outer)))
-                         ;; Cap 2
-                         (c2-obe-x (+ cx (* (ccos (- end-angle angle)) inner-outer-radius)))
-                         (c2-obe-y (+ cy (* (csin (- end-angle angle)) inner-outer-radius)))
-                         (c2-oae-x (+ cx (* (ccos (- end-angle angle step-length)) inner-outer-radius)))
-                         (c2-oae-y (+ cy (* (csin (- end-angle angle step-length)) inner-outer-radius)))
-                         (c2-ibe-x (+ cx (* (ccos (- end-angle angle (* inner-steps-left step-length))) outer-inner-radius)))
-                         (c2-ibe-y (+ cy (* (csin (- end-angle angle (* inner-steps-left step-length))) outer-inner-radius)))
-                         (c2-iae-x (+ cx (* (ccos (- end-angle angle (* (1+ inner-steps-left) step-length))) outer-inner-radius)))
-                         (c2-iae-y (+ cy (* (csin (- end-angle angle (* (1+ inner-steps-left) step-length))) outer-inner-radius)))
-                         (c2-ie-x (+ c2-ibe-x (* (- c2-iae-x c2-ibe-x) t-inner)))
-                         (c2-ie-y (+ c2-ibe-y (* (- c2-iae-y c2-ibe-y) t-inner)))
-                         (c2-oe-x (+ c2-obe-x (* (- c2-oae-x c2-obe-x) t-outer)))
-                         (c2-oe-y (+ c2-obe-y (* (- c2-oae-y c2-obe-y) t-outer)))
-                         (steps-count (if inner-angles-cross-each-other (floor total-steps-left 2) inner-steps-left)))
-                    (dotimes (i steps-count)
+          (%with-shapes-quads (u0 v0 u1 v1)
+            (%color color)
+            (dotimes (i segments)
+              ;; `innerRadius` outline
+              (%tex-polar u0 v1 cx cy angle outer-inner-radius)
+              (%tex-polar u0 v0 cx cy angle inner-inner-radius)
+              (%tex-polar u1 v0 cx cy (+ angle step-length) inner-inner-radius)
+              (%tex-polar u1 v1 cx cy (+ angle step-length) outer-inner-radius)
+              ;; `outerRadius` outline
+              (%tex-polar u0 v1 cx cy angle outer-outer-radius)
+              (%tex-polar u0 v0 cx cy angle inner-outer-radius)
+              (%tex-polar u1 v0 cx cy (+ angle step-length) inner-outer-radius)
+              (%tex-polar u1 v1 cx cy (+ angle step-length) outer-outer-radius)
+              (incf angle step-length))
+            (when show-cap-lines
+              (if (>= thick 0.0)
+                  (progn
+                    (setf angle 0.0)
+                    (dotimes (i steps-before-outer)
                       ;; Cap 1
-                      (%vertex c1-obe-x c1-obe-y)
-                      (%polar cx cy (+ start-angle angle) outer-inner-radius)
-                      (%polar cx cy (+ start-angle angle step-length) outer-inner-radius)
+                      (%tex-polar u0 v1 cx cy (+ start-angle angle) outer-inner-radius)
+                      (%tex-polar u0 v0 cx cy (+ start-angle angle step-length) outer-inner-radius)
+                      (%tex-polar u1 v0 cx cy (+ start-angle angle step-length) inner-outer-radius)
+                      (%tex-polar u1 v1 cx cy (+ start-angle angle) inner-outer-radius)
                       ;; Cap 2
-                      (%vertex c2-obe-x c2-obe-y)
-                      (%polar cx cy (- end-angle angle step-length) outer-inner-radius)
-                      (%polar cx cy (- end-angle angle) outer-inner-radius)
+                      (%tex-polar u0 v1 cx cy (- end-angle angle) outer-inner-radius)
+                      (%tex-polar u0 v0 cx cy (- end-angle angle) inner-outer-radius)
+                      (%tex-polar u1 v0 cx cy (- end-angle angle step-length) inner-outer-radius)
+                      (%tex-polar u1 v1 cx cy (- end-angle angle step-length) outer-inner-radius)
                       (incf angle step-length))
-                    ;; When the inner angles coming from `startAngle` and `endAngle` cross each other,
-                    ;; the `*innerVertexEnd` vertices go past each other and cause the geometry to intersect itself
-                    (if inner-angles-cross-each-other
-                        ;; We need to find where the line defined by `cap1InnerVertexEnd` and `cap1OuterVertexEnd` intersects
-                        ;; the line defined by `cap2InnerVertexEnd` and `cap2OuterVertexEnd`
-                        ;; That point is then used instead to prevent the outline from intersecting itself
-                        (let* (;; Make `cap1InnerVertexEnd` the origin and the angle to `cap1OuterVertexEnd` 0 degrees
-                               (t1ox (- c1-oe-x c1-ie-x)) (t1oy (- c1-oe-y c1-ie-y))
-                               (t2ix (- c2-ie-x c1-ie-x)) (t2iy (- c2-ie-y c1-ie-y))
-                               (t2ox (- c2-oe-x c1-ie-x)) (t2oy (- c2-oe-y c1-ie-y))
-                               (rotate-by (- (atan t1oy t1ox)))
-                               ;; We only need the y coordinates, so only rotate the y coordinates
-                               (start (+ (* (sin rotate-by) t2ix) (* (cos rotate-by) t2iy)))
-                               (end (+ (* (sin rotate-by) t2ox) (* (cos rotate-by) t2oy)))
-                               (t-cross (/ start (- start end)))
-                               (ix (+ c2-ie-x (* (- c2-oe-x c2-ie-x) t-cross)))
-                               (iy (+ c2-ie-y (* (- c2-oe-y c2-ie-y) t-cross))))
-                          (if (evenp segments)
-                              ;; There are an even number of segments (which means there's an odd number of vertices),
-                              ;; so there's 1 vertex exactly in the middle
-                              (let ((mx (+ cx (* (ccos (+ start-angle angle)) outer-inner-radius)))
-                                    (my (+ cy (* (csin (+ start-angle angle)) outer-inner-radius))))
-                                ;; Cap 1
-                                (%vertex ix iy) (%vertex c1-oe-x c1-oe-y) (%vertex c1-obe-x c1-obe-y)
-                                (%vertex ix iy) (%vertex c1-obe-x c1-obe-y) (%vertex mx my)
-                                ;; Cap 2
-                                (%vertex ix iy) (%vertex mx my) (%vertex c2-obe-x c2-obe-y)
-                                (%vertex ix iy) (%vertex c2-obe-x c2-obe-y) (%vertex c2-oe-x c2-oe-y))
-                              ;; There are an odd number of segments (which means there's an even number of vertices),
-                              ;; so there are 2 vertices in the middle
-                              (let ((m1x (+ cx (* (ccos (+ start-angle angle)) outer-inner-radius)))
-                                    (m1y (+ cy (* (csin (+ start-angle angle)) outer-inner-radius)))
-                                    (m2x (+ cx (* (ccos (- end-angle angle)) outer-inner-radius)))
-                                    (m2y (+ cy (* (csin (- end-angle angle)) outer-inner-radius))))
-                                ;; Cap 1
-                                (%vertex ix iy) (%vertex c1-oe-x c1-oe-y) (%vertex c1-obe-x c1-obe-y)
-                                (%vertex ix iy) (%vertex c1-obe-x c1-obe-y) (%vertex m1x m1y)
-                                ;; Cap 2
-                                (%vertex ix iy) (%vertex m2x m2y) (%vertex c2-obe-x c2-obe-y)
-                                (%vertex ix iy) (%vertex c2-obe-x c2-obe-y) (%vertex c2-oe-x c2-oe-y)
-                                ;; Triangle between the caps
-                                (%vertex ix iy) (%vertex ix iy) (%vertex m1x m1y)
-                                (%vertex ix iy) (%vertex m1x m1y) (%vertex m2x m2y))))
-                        (progn
-                          ;; Cap 1
-                          (%vertex c1-obe-x c1-obe-y) (%vertex c1-ibe-x c1-ibe-y) (%vertex c1-ie-x c1-ie-y)
-                          (%vertex c1-obe-x c1-obe-y) (%vertex c1-ie-x c1-ie-y) (%vertex c1-oe-x c1-oe-y)
-                          ;; Cap 2
-                          (%vertex c2-obe-x c2-obe-y) (%vertex c2-oe-x c2-oe-y) (%vertex c2-ie-x c2-ie-y)
-                          (%vertex c2-obe-x c2-obe-y) (%vertex c2-ie-x c2-ie-y) (%vertex c2-ibe-x c2-ibe-y)))))
-                (let (;; Cap 1
-                      (c1-fi-x (+ cx (* (ccos start-angle) inner-inner-radius)))
-                      (c1-fi-y (+ cy (* (csin start-angle) inner-inner-radius)))
-                      (c1-fo-x (+ cx (* (ccos start-angle) outer-outer-radius)))
-                      (c1-fo-y (+ cy (* (csin start-angle) outer-outer-radius)))
-                      ;; Cap 2
-                      (c2-fi-x (+ cx (* (ccos end-angle) inner-inner-radius)))
-                      (c2-fi-y (+ cy (* (csin end-angle) inner-inner-radius)))
-                      (c2-fo-x (+ cx (* (ccos end-angle) outer-outer-radius)))
-                      (c2-fo-y (+ cy (* (csin end-angle) outer-outer-radius))))
-                  ;; Cap 1
-                  (%vertex c1-fi-x c1-fi-y) (%vertex c1-fo-x c1-fo-y) (%vertex cap1-second-outer-x cap1-second-outer-y)
-                  (%vertex c1-fi-x c1-fi-y) (%vertex cap1-second-outer-x cap1-second-outer-y) (%vertex cap1-second-inner-x cap1-second-inner-y)
-                  ;; Cap 2
-                  (%vertex c2-fi-x c2-fi-y) (%vertex cap2-second-inner-x cap2-second-inner-y) (%vertex cap2-second-outer-x cap2-second-outer-y)
-                  (%vertex c2-fi-x c2-fi-y) (%vertex cap2-second-outer-x cap2-second-outer-y) (%vertex c2-fo-x c2-fo-y)
-                  (when caps-intersect
+                    ;; We've already moved `stepsBeforeOuter` steps from each end
+                    (let* ((total-steps-left (- segments (* steps-before-outer 2)))
+                           (inner-steps-left (- steps-before-inner steps-before-outer))
+                           ;; Cap 1
+                           (c1-obe-x (+ cx (* (ccos (+ start-angle angle)) inner-outer-radius)))
+                           (c1-obe-y (+ cy (* (csin (+ start-angle angle)) inner-outer-radius)))
+                           (c1-oae-x (+ cx (* (ccos (+ start-angle angle step-length)) inner-outer-radius)))
+                           (c1-oae-y (+ cy (* (csin (+ start-angle angle step-length)) inner-outer-radius)))
+                           (c1-ibe-x (+ cx (* (ccos (+ start-angle angle (* inner-steps-left step-length))) outer-inner-radius)))
+                           (c1-ibe-y (+ cy (* (csin (+ start-angle angle (* inner-steps-left step-length))) outer-inner-radius)))
+                           (c1-iae-x (+ cx (* (ccos (+ start-angle angle (* (1+ inner-steps-left) step-length))) outer-inner-radius)))
+                           (c1-iae-y (+ cy (* (csin (+ start-angle angle (* (1+ inner-steps-left) step-length))) outer-inner-radius)))
+                           (c1-ie-x (+ c1-ibe-x (* (- c1-iae-x c1-ibe-x) t-inner)))
+                           (c1-ie-y (+ c1-ibe-y (* (- c1-iae-y c1-ibe-y) t-inner)))
+                           (c1-oe-x (+ c1-obe-x (* (- c1-oae-x c1-obe-x) t-outer)))
+                           (c1-oe-y (+ c1-obe-y (* (- c1-oae-y c1-obe-y) t-outer)))
+                           ;; Cap 2
+                           (c2-obe-x (+ cx (* (ccos (- end-angle angle)) inner-outer-radius)))
+                           (c2-obe-y (+ cy (* (csin (- end-angle angle)) inner-outer-radius)))
+                           (c2-oae-x (+ cx (* (ccos (- end-angle angle step-length)) inner-outer-radius)))
+                           (c2-oae-y (+ cy (* (csin (- end-angle angle step-length)) inner-outer-radius)))
+                           (c2-ibe-x (+ cx (* (ccos (- end-angle angle (* inner-steps-left step-length))) outer-inner-radius)))
+                           (c2-ibe-y (+ cy (* (csin (- end-angle angle (* inner-steps-left step-length))) outer-inner-radius)))
+                           (c2-iae-x (+ cx (* (ccos (- end-angle angle (* (1+ inner-steps-left) step-length))) outer-inner-radius)))
+                           (c2-iae-y (+ cy (* (csin (- end-angle angle (* (1+ inner-steps-left) step-length))) outer-inner-radius)))
+                           (c2-ie-x (+ c2-ibe-x (* (- c2-iae-x c2-ibe-x) t-inner)))
+                           (c2-ie-y (+ c2-ibe-y (* (- c2-iae-y c2-ibe-y) t-inner)))
+                           (c2-oe-x (+ c2-obe-x (* (- c2-oae-x c2-obe-x) t-outer)))
+                           (c2-oe-y (+ c2-obe-y (* (- c2-oae-y c2-obe-y) t-outer)))
+                           (steps-count (if inner-angles-cross-each-other (floor total-steps-left 2) inner-steps-left)))
+                      ;; Iterate over pairs of steps
+                      (dotimes (i (floor steps-count 2))
+                        ;; Cap 1
+                        (%tex-vertex u0 v1 c1-obe-x c1-obe-y)
+                        (%tex-polar u0 v0 cx cy (+ start-angle angle) outer-inner-radius)
+                        (%tex-polar u1 v0 cx cy (+ start-angle angle step-length) outer-inner-radius)
+                        (%tex-polar u1 v1 cx cy (+ start-angle angle (* step-length 2.0)) outer-inner-radius)
+                        ;; Cap 2
+                        (%tex-vertex u0 v1 c2-obe-x c2-obe-y)
+                        (%tex-polar u0 v0 cx cy (- end-angle angle (* step-length 2.0)) outer-inner-radius)
+                        (%tex-polar u1 v0 cx cy (- end-angle angle step-length) outer-inner-radius)
+                        (%tex-polar u1 v1 cx cy (- end-angle angle) outer-inner-radius)
+                        (incf angle (* step-length 2.0)))
+                      ;; Handle the last step if there's an odd amount
+                      (when (oddp steps-count)
+                        ;; Cap 1
+                        (%tex-vertex u0 v1 c1-obe-x c1-obe-y)
+                        (%tex-vertex u0 v0 c1-obe-x c1-obe-y)
+                        (%tex-polar u1 v0 cx cy (+ start-angle angle) outer-inner-radius)
+                        (%tex-polar u1 v1 cx cy (+ start-angle angle step-length) outer-inner-radius)
+                        ;; Cap 2
+                        (%tex-vertex u0 v1 c2-obe-x c2-obe-y)
+                        (%tex-vertex u0 v0 c2-obe-x c2-obe-y)
+                        (%tex-polar u1 v0 cx cy (- end-angle angle step-length) outer-inner-radius)
+                        (%tex-polar u1 v1 cx cy (- end-angle angle) outer-inner-radius)
+                        (incf angle step-length))
+                      ;; When the inner angles coming from `startAngle` and `endAngle` cross each other,
+                      ;; the `*innerVertexEnd` vertices go past each other and cause the geometry to intersect itself
+                      (if inner-angles-cross-each-other
+                          ;; We need to find where the line defined by `cap1InnerVertexEnd` and `cap1OuterVertexEnd` intersects
+                          ;; the line defined by `cap2InnerVertexEnd` and `cap2OuterVertexEnd`
+                          ;; That point is then used instead to prevent the outline from intersecting itself
+                          (let* (;; Make `cap1InnerVertexEnd` the origin and the angle to `cap1OuterVertexEnd` 0 degrees
+                                 (t1ox (- c1-oe-x c1-ie-x)) (t1oy (- c1-oe-y c1-ie-y))
+                                 (t2ix (- c2-ie-x c1-ie-x)) (t2iy (- c2-ie-y c1-ie-y))
+                                 (t2ox (- c2-oe-x c1-ie-x)) (t2oy (- c2-oe-y c1-ie-y))
+                                 (rotate-by (- (%atan2f t1oy t1ox)))
+                                 ;; We only need the y coordinates, so only rotate the y coordinates
+                                 (start (+ (* (%sinf rotate-by) t2ix) (* (%cosf rotate-by) t2iy)))
+                                 (end (+ (* (%sinf rotate-by) t2ox) (* (%cosf rotate-by) t2oy)))
+                                 (t-cross (/ start (- start end)))
+                                 (ix (+ c2-ie-x (* (- c2-oe-x c2-ie-x) t-cross)))
+                                 (iy (+ c2-ie-y (* (- c2-oe-y c2-ie-y) t-cross))))
+                            (if (evenp segments)
+                                ;; There are an even number of segments (which means there's an odd number of vertices),
+                                ;; so there's 1 vertex exactly in the middle
+                                (let ((mx (+ cx (* (ccos (+ start-angle angle)) outer-inner-radius)))
+                                      (my (+ cy (* (csin (+ start-angle angle)) outer-inner-radius))))
+                                  ;; Cap 1
+                                  (%tex-vertex u0 v1 ix iy)
+                                  (%tex-vertex u0 v0 c1-oe-x c1-oe-y)
+                                  (%tex-vertex u1 v0 c1-obe-x c1-obe-y)
+                                  (%tex-vertex u1 v1 mx my)
+                                  ;; Cap 2
+                                  (%tex-vertex u0 v1 ix iy)
+                                  (%tex-vertex u0 v0 mx my)
+                                  (%tex-vertex u1 v0 c2-obe-x c2-obe-y)
+                                  (%tex-vertex u1 v1 c2-oe-x c2-oe-y))
+                                ;; There are an odd number of segments (which means there's an even number of vertices),
+                                ;; so there are 2 vertices in the middle
+                                (let ((m1x (+ cx (* (ccos (+ start-angle angle)) outer-inner-radius)))
+                                      (m1y (+ cy (* (csin (+ start-angle angle)) outer-inner-radius)))
+                                      (m2x (+ cx (* (ccos (- end-angle angle)) outer-inner-radius)))
+                                      (m2y (+ cy (* (csin (- end-angle angle)) outer-inner-radius))))
+                                  ;; Cap 1
+                                  (%tex-vertex u0 v1 ix iy)
+                                  (%tex-vertex u0 v0 c1-oe-x c1-oe-y)
+                                  (%tex-vertex u1 v0 c1-obe-x c1-obe-y)
+                                  (%tex-vertex u1 v1 m1x m1y)
+                                  ;; Cap 2
+                                  (%tex-vertex u0 v1 ix iy)
+                                  (%tex-vertex u0 v0 m2x m2y)
+                                  (%tex-vertex u1 v0 c2-obe-x c2-obe-y)
+                                  (%tex-vertex u1 v1 c2-oe-x c2-oe-y)
+                                  ;; Triangle between the caps
+                                  (%tex-vertex u0 v1 ix iy)
+                                  (%tex-vertex u0 v0 ix iy)
+                                  (%tex-vertex u1 v0 m1x m1y)
+                                  (%tex-vertex u1 v1 m2x m2y))))
+                          (progn
+                            ;; Cap 1
+                            (%tex-vertex u0 v1 c1-obe-x c1-obe-y)
+                            (%tex-vertex u0 v0 c1-ibe-x c1-ibe-y)
+                            (%tex-vertex u1 v0 c1-ie-x c1-ie-y)
+                            (%tex-vertex u1 v1 c1-oe-x c1-oe-y)
+                            ;; Cap 2
+                            (%tex-vertex u0 v1 c2-obe-x c2-obe-y)
+                            (%tex-vertex u0 v0 c2-oe-x c2-oe-y)
+                            (%tex-vertex u1 v0 c2-ie-x c2-ie-y)
+                            (%tex-vertex u1 v1 c2-ibe-x c2-ibe-y)))))
+                  (let (;; Cap 1
+                        (c1-fi-x (+ cx (* (ccos start-angle) inner-inner-radius)))
+                        (c1-fi-y (+ cy (* (csin start-angle) inner-inner-radius)))
+                        (c1-fo-x (+ cx (* (ccos start-angle) outer-outer-radius)))
+                        (c1-fo-y (+ cy (* (csin start-angle) outer-outer-radius)))
+                        ;; Cap 2
+                        (c2-fi-x (+ cx (* (ccos end-angle) inner-inner-radius)))
+                        (c2-fi-y (+ cy (* (csin end-angle) inner-inner-radius)))
+                        (c2-fo-x (+ cx (* (ccos end-angle) outer-outer-radius)))
+                        (c2-fo-y (+ cy (* (csin end-angle) outer-outer-radius))))
                     ;; Cap 1
-                    (%vertex cap1-second-inner-x cap1-second-inner-y)
-                    (%vertex cap1-second-outer-x cap1-second-outer-y)
-                    (%vertex cap-intersection-x cap-intersection-y)
+                    (%tex-vertex u0 v1 c1-fi-x c1-fi-y)
+                    (%tex-vertex u0 v0 c1-fo-x c1-fo-y)
+                    (%tex-vertex u1 v0 cap1-second-outer-x cap1-second-outer-y)
+                    (%tex-vertex u1 v1 cap1-second-inner-x cap1-second-inner-y)
                     ;; Cap 2
-                    (%vertex cap2-second-inner-x cap2-second-inner-y)
-                    (%vertex cap-intersection-x cap-intersection-y)
-                    (%vertex cap2-second-outer-x cap2-second-outer-y)))))
-          (rl-end))))))
+                    (%tex-vertex u0 v1 c2-fi-x c2-fi-y)
+                    (%tex-vertex u0 v0 cap2-second-inner-x cap2-second-inner-y)
+                    (%tex-vertex u1 v0 cap2-second-outer-x cap2-second-outer-y)
+                    (%tex-vertex u1 v1 c2-fo-x c2-fo-y)
+                    (when caps-intersect
+                      ;; Cap 1
+                      (%tex-vertex u0 v1 cap1-second-inner-x cap1-second-inner-y)
+                      (%tex-vertex u0 v0 cap1-second-inner-x cap1-second-inner-y)
+                      (%tex-vertex u1 v0 cap1-second-outer-x cap1-second-outer-y)
+                      (%tex-vertex u1 v1 cap-intersection-x cap-intersection-y)
+                      ;; Cap 2
+                      (%tex-vertex u0 v1 cap2-second-inner-x cap2-second-inner-y)
+                      (%tex-vertex u0 v0 cap-intersection-x cap-intersection-y)
+                      (%tex-vertex u1 v0 cap2-second-outer-x cap2-second-outer-y)
+                      (%tex-vertex u1 v1 cap2-second-inner-x cap2-second-inner-y)))))))))))
 
 ;;;----------------------------------------------------------------------------------
 ;;; Module Functions Definition - Splines functions
@@ -1750,10 +1830,10 @@
 (defun draw-spline-segment-bezier-cubic (p1 c2 c3 p4 thick color)
   "Draw spline segment: Cubic Bezier, 2 points, 2 control points"
   (%draw-spline-segment (lambda (tt)
-                          (let ((a (expt (- 1.0 tt) 3))
+                          (let ((a (%powf (- 1.0 tt) 3.0))
                                 (b (* 3.0 (expt (- 1.0 tt) 2) tt))
                                 (c (* 3.0 (- 1.0 tt) (expt tt 2)))
-                                (d (expt tt 3)))
+                                (d (%powf tt 3.0)))
                             (values (+ (* a (%x p1)) (* b (%x c2)) (* c (%x c3)) (* d (%x p4)))
                                     (+ (* a (%y p1)) (* b (%y c2)) (* c (%y c3)) (* d (%y p4))))))
                         (%x p1) (%y p1) thick color))
@@ -1784,10 +1864,10 @@
 
 (defun get-spline-point-bezier-cubic (start-pos start-control-pos end-control-pos end-pos tt)
   "Get (evaluate) spline point: Cubic Bezier"
-  (let ((a (expt (- 1.0 tt) 3))
+  (let ((a (%powf (- 1.0 tt) 3.0))
         (b (* 3.0 (expt (- 1.0 tt) 2) tt))
         (c (* 3.0 (- 1.0 tt) (expt tt 2)))
-        (d (expt tt 3)))
+        (d (%powf tt 3.0)))
     (vec2 (+ (* a (%x start-pos)) (* b (%x start-control-pos)) (* c (%x end-control-pos)) (* d (%x end-pos)))
           (+ (* a (%y start-pos)) (* b (%y start-control-pos)) (* c (%y end-control-pos)) (* d (%y end-pos))))))
 
