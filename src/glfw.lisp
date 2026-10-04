@@ -1018,6 +1018,11 @@ NOTE: Some safety checks have been added to mitigate security issues"
   ;; NOTE: glfwInitAllocator() is not used, RL_*ALLOC wrappers are plain malloc/realloc/free
 
   #+darwin (%glfw:init-hint #x00051001 +glfw-false+) ; GLFW_COCOA_CHDIR_RESOURCES
+  ;; NOTE: Cocoa only allows windows and events on the process main thread (REPL worker threads,
+  ;; i.e. SLIME/Sly, are not), use trivial-main-thread or run the program with sbcl --load
+  #+(and darwin sbcl)
+  (unless (sb-thread:main-thread-p)
+    (trace-log-warning "GLFW: InitWindow() must be called from the main thread on macOS"))
   ;; Initialize GLFW internal global state
   (let ((result (%with-glfw-traps-masked (%glfw:init))))
     (unless result

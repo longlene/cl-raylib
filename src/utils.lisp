@@ -278,17 +278,24 @@
 (defparameter +file-filter-tag-file-only+ "FILES*" "Filter to include all file types on scan (no directories)")
 (defparameter +file-filter-tag-dir-only+ "DIRS*" "Filter to include only directories on scan")
 
-;; NOTE: struct dirent d_name offset on Linux glibc 64-bit (d_ino, d_off, d_reclen, d_type, d_name)
-(defconstant +dirent-name-offset+ 19)
+;; NOTE: struct dirent d_name offset:
+;;   - Linux glibc 64-bit: d_ino(8), d_off(8), d_reclen(2), d_type(1), d_name
+;;   - macOS 64-bit inodes: d_ino(8), d_seekoff(8), d_reclen(2), d_namlen(2), d_type(1), d_name
+;;     (on x86-64 the plain opendir/readdir symbols keep the old 32-bit inode layout, the
+;;     $INODE64 variants return the 64-bit one; arm64 only has the 64-bit layout)
+(defconstant +dirent-name-offset+ #+darwin 21 #-darwin 19)
+(defparameter +opendir-symbol+ #+(and darwin x86-64) "opendir$INODE64" #-(and darwin x86-64) "opendir")
+(defparameter +readdir-symbol+ #+(and darwin x86-64) "readdir$INODE64" #-(and darwin x86-64) "readdir")
 
 (defun %directory-entries (base-path)
   "Entries of BASE-PATH (excluding . and ..) in readdir() order as (path-string . directory-p),
 path is base-path/name and directory-p is (not IsPathFile(path)) like ScanDirectoryFiles()"
-  (let ((dir (cffi:foreign-funcall "opendir" :string base-path :pointer))
+  (let ((dir (cffi:foreign-funcall-pointer (cffi:foreign-symbol-pointer +opendir-symbol+) () :string base-path :pointer))
+        (readdir (cffi:foreign-symbol-pointer +readdir-symbol+))
         (entries '()))
     (unless (cffi:null-pointer-p dir)
       (unwind-protect
-           (loop for dp = (cffi:foreign-funcall "readdir" :pointer dir :pointer)
+           (loop for dp = (cffi:foreign-funcall-pointer readdir () :pointer dir :pointer)
                  until (cffi:null-pointer-p dp)
                  do (let ((name (cffi:foreign-string-to-lisp (cffi:inc-pointer dp +dirent-name-offset+) :encoding :utf-8)))
                       (unless (or (string= name ".") (string= name ".."))

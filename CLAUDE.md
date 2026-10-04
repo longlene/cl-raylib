@@ -71,6 +71,15 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
   - examples that depend on audio-thread timing (audio_mixed_processor, audio_raw_stream, audio_stream_callback,
     audio_spectrum_visualizer) differ between runs of the C version itself; they are verified with fixed-timing variants
 
+### Platforms
+- Linux (X11 and Wayland): complete and verified against C.
+- macOS: audio (Core Audio AudioQueue backend in miniaudio.lisp) and directory scanning (darwin dirent layout,
+  $INODE64 symbols on x86-64) are implemented, and the darwin code paths compile, but they have not been run on a
+  Mac yet. Cocoa requires InitWindow() and the main loop on the process main thread (not a SLIME/Sly worker thread).
+  GetClipboardImage() only warns, like C.
+- Windows: not supported yet (needs a FindFirstFileW directory scan, a WinMM/WASAPI audio backend and the
+  win32_clipboard.h port).
+
 ### Known differences (all documented in code comments)
 - Undefined behavior in C (out-of-bounds reads, uninitialized memory) is treated as 0 in Lisp; matching it is not a goal.
 - LOG_FATAL does not exit the process; DecompressData uses chipz (same results for valid data).

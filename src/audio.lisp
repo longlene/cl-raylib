@@ -194,7 +194,7 @@
       (setf (audio-data-device *audio*) nil)
       (return-from init-audio-device nil))
     (trace-log +log-info+ "AUDIO: Device initialized successfully")
-    (trace-log +log-info+ "    > Backend:       PulseAudio (libpulse-simple)")
+    (trace-log +log-info+ "    > Backend:       ~a" (ma-device-backend-name device))
     (trace-log +log-info+ "    > Format:        ~a -> ~a" (ma-get-format-name (ma-device-format device))
                (ma-get-format-name (ma-device-internal-format device)))
     (trace-log +log-info+ "    > Channels:      ~d -> ~d" (ma-device-channels device) (ma-device-internal-channels device))

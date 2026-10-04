@@ -10,8 +10,8 @@
 ;;;   - Low-pass filters (ma_lpf1, ma_biquad/ma_lpf2, ma_lpf)
 ;;;   - Linear resampler (ma_linear_resampler)
 ;;;   - Data converter (ma_data_converter, ma_convert_frames)
-;;;   - Playback device: replaces miniaudio backends with a PulseAudio (libpulse-simple)
-;;;     output thread that calls the device data callback like ma_device does
+;;;   - Playback device: replaces miniaudio backends with PulseAudio (libpulse-simple, unix) and
+;;;     Core Audio (AudioQueue, macOS) outputs that call the device data callback like ma_device does
 ;;;
 ;;; NOTE: Sample buffers are typed Lisp arrays: u8 -> (unsigned-byte 8), s16 -> (signed-byte 16),
 ;;; f32 -> single-float. Positions and counts are given in samples/frames instead of bytes
@@ -749,26 +749,12 @@
               (t (nth-value 1 (ma-data-converter-process-pcm-frames conv in 0 frame-count-in out 0 frame-count-out)))))))
 
 ;;;----------------------------------------------------------------------------------
-;;; Playback Device (PulseAudio backend)
+;;; Playback Device
+;;; NOTE: miniaudio backends are replaced by one backend per platform, all of them call the
+;;; device data callback from a Lisp thread like ma_device does:
+;;;   - Linux (and other unix): PulseAudio (libpulse-simple), blocking writes
+;;;   - macOS: Core Audio (AudioQueue), buffers refilled from a run loop owned by the audio thread
 ;;;----------------------------------------------------------------------------------
-
-(cffi:define-foreign-library %libpulse-simple
-  (:unix (:or "libpulse-simple.so.0" "libpulse-simple.so")))
-
-(cffi:defcstruct %pa-sample-spec
-  (format :int)
-  (rate :uint32)
-  (channels :uint8))
-
-(cffi:defcstruct %pa-buffer-attr
-  (maxlength :uint32)
-  (tlength :uint32)
-  (prebuf :uint32)
-  (minreq :uint32)
-  (fragsize :uint32))
-
-(defconstant +pa-stream-playback+ 1)
-(defconstant +pa-sample-float32le+ 5)
 
 (defvar *ma-default-sample-rate* 48000 "Device sample rate used when none is requested")
 (defvar *ma-default-period-size-in-frames* 1024
@@ -788,44 +774,11 @@
   (no-clip nil)
   (data-callback nil)                           ; (lambda (device frames-out frame-count))
   (callback-error nil)                          ; An error was already reported by the data callback
-  (handle (cffi:null-pointer))                  ; pa_simple
+  (backend-name "")                             ; ma_get_backend_name()
+  (handle (cffi:null-pointer))                  ; pa_simple (PulseAudio) or AudioQueueRef (Core Audio)
+  (frames nil)                                  ; Lisp buffer the data callback writes into
   (thread nil)
   (running nil))
-
-(defun ma-device-init (&key (format +ma-format-f32+) (channels 2) (sample-rate 0) (period-size-in-frames 0) data-callback)
-  "Initialize a playback device, returns NIL on failure"
-  (unless (= format +ma-format-f32+)
-    (return-from ma-device-init nil))
-  (handler-case (cffi:load-foreign-library '%libpulse-simple)
-    (error (e)
-      (trace-log +log-warning+ "miniaudio: Failed to load libpulse-simple: ~a" e)
-      (return-from ma-device-init nil)))
-  (let* ((sample-rate (if (= sample-rate 0) *ma-default-sample-rate* sample-rate))
-         (period (if (= period-size-in-frames 0) *ma-default-period-size-in-frames* period-size-in-frames))
-         (periods *ma-default-periods*)
-         (bytes-per-frame (ma-get-bytes-per-frame format channels))
-         (handle (cffi:with-foreign-objects ((ss '(:struct %pa-sample-spec))
-                                             (attr '(:struct %pa-buffer-attr))
-                                             (err :int))
-                   (setf (cffi:foreign-slot-value ss '(:struct %pa-sample-spec) 'format) +pa-sample-float32le+
-                         (cffi:foreign-slot-value ss '(:struct %pa-sample-spec) 'rate) sample-rate
-                         (cffi:foreign-slot-value ss '(:struct %pa-sample-spec) 'channels) channels)
-                   (setf (cffi:foreign-slot-value attr '(:struct %pa-buffer-attr) 'maxlength) #xffffffff
-                         (cffi:foreign-slot-value attr '(:struct %pa-buffer-attr) 'tlength) (* period periods bytes-per-frame)
-                         (cffi:foreign-slot-value attr '(:struct %pa-buffer-attr) 'prebuf) #xffffffff
-                         (cffi:foreign-slot-value attr '(:struct %pa-buffer-attr) 'minreq) (* period bytes-per-frame)
-                         (cffi:foreign-slot-value attr '(:struct %pa-buffer-attr) 'fragsize) #xffffffff)
-                   (cffi:foreign-funcall "pa_simple_new"
-                                         :pointer (cffi:null-pointer) :string "raylib"
-                                         :int +pa-stream-playback+ :pointer (cffi:null-pointer)
-                                         :string "Playback" :pointer ss :pointer (cffi:null-pointer)
-                                         :pointer attr :pointer err :pointer))))
-    (if (cffi:null-pointer-p handle)
-        nil
-        (%make-ma-device :format format :channels channels :sample-rate sample-rate
-                         :internal-format format :internal-channels channels :internal-sample-rate sample-rate
-                         :internal-period-size-in-frames period :internal-periods periods
-                         :data-callback data-callback :handle handle))))
 
 ;; ma_device__handle_data_callback(): data callback, master volume and clipping
 (defun %ma-device-handle-data-callback (device frames-out frame-count)
@@ -847,37 +800,272 @@
       (dotimes (i sample-count)
         (setf (aref frames-out i) (%ma-clip-f32 (aref frames-out i)))))))
 
-(defun %ma-device-thread (device)
-  (let* ((frame-count (ma-device-internal-period-size-in-frames device))
-         (frames (make-array (* frame-count (ma-device-channels device)) :element-type 'single-float
-                                                                         :initial-element 0f0))
-         (bytes (* frame-count (ma-get-bytes-per-frame (ma-device-format device) (ma-device-channels device)))))
+(defun %ma-device-period-frames (device)
+  "Lisp sample buffer for one period of the device"
+  (or (ma-device-frames device)
+      (setf (ma-device-frames device)
+            (make-array (* (ma-device-internal-period-size-in-frames device) (ma-device-channels device))
+                        :element-type 'single-float :initial-element 0f0))))
+
+(defun %ma-device-check-format (format)
+  "Only f32 output is supported by the backends (the format raudio uses)"
+  (= format +ma-format-f32+))
+
+;;;----------------------------------------------------------------------------------
+;;; PulseAudio backend (libpulse-simple)
+;;;----------------------------------------------------------------------------------
+#-darwin
+(progn
+  (cffi:define-foreign-library %libpulse-simple
+    (:unix (:or "libpulse-simple.so.0" "libpulse-simple.so")))
+
+  (cffi:defcstruct %pa-sample-spec
+    (format :int)
+    (rate :uint32)
+    (channels :uint8))
+
+  (cffi:defcstruct %pa-buffer-attr
+    (maxlength :uint32)
+    (tlength :uint32)
+    (prebuf :uint32)
+    (minreq :uint32)
+    (fragsize :uint32))
+
+  (defconstant +pa-stream-playback+ 1)
+  (defconstant +pa-sample-float32le+ 5)
+
+  (defun ma-device-init (&key (format +ma-format-f32+) (channels 2) (sample-rate 0) (period-size-in-frames 0) data-callback)
+    "Initialize a playback device, returns NIL on failure"
+    (unless (%ma-device-check-format format)
+      (return-from ma-device-init nil))
+    (handler-case (cffi:load-foreign-library '%libpulse-simple)
+      (error (e)
+        (trace-log +log-warning+ "miniaudio: Failed to load libpulse-simple: ~a" e)
+        (return-from ma-device-init nil)))
+    (let* ((sample-rate (if (= sample-rate 0) *ma-default-sample-rate* sample-rate))
+           (period (if (= period-size-in-frames 0) *ma-default-period-size-in-frames* period-size-in-frames))
+           (periods *ma-default-periods*)
+           (bytes-per-frame (ma-get-bytes-per-frame format channels))
+           (handle (cffi:with-foreign-objects ((ss '(:struct %pa-sample-spec))
+                                               (attr '(:struct %pa-buffer-attr))
+                                               (err :int))
+                     (setf (cffi:foreign-slot-value ss '(:struct %pa-sample-spec) 'format) +pa-sample-float32le+
+                           (cffi:foreign-slot-value ss '(:struct %pa-sample-spec) 'rate) sample-rate
+                           (cffi:foreign-slot-value ss '(:struct %pa-sample-spec) 'channels) channels)
+                     (setf (cffi:foreign-slot-value attr '(:struct %pa-buffer-attr) 'maxlength) #xffffffff
+                           (cffi:foreign-slot-value attr '(:struct %pa-buffer-attr) 'tlength) (* period periods bytes-per-frame)
+                           (cffi:foreign-slot-value attr '(:struct %pa-buffer-attr) 'prebuf) #xffffffff
+                           (cffi:foreign-slot-value attr '(:struct %pa-buffer-attr) 'minreq) (* period bytes-per-frame)
+                           (cffi:foreign-slot-value attr '(:struct %pa-buffer-attr) 'fragsize) #xffffffff)
+                     (cffi:foreign-funcall "pa_simple_new"
+                                           :pointer (cffi:null-pointer) :string "raylib"
+                                           :int +pa-stream-playback+ :pointer (cffi:null-pointer)
+                                           :string "Playback" :pointer ss :pointer (cffi:null-pointer)
+                                           :pointer attr :pointer err :pointer))))
+      (if (cffi:null-pointer-p handle)
+          nil
+          (%make-ma-device :format format :channels channels :sample-rate sample-rate
+                           :internal-format format :internal-channels channels :internal-sample-rate sample-rate
+                           :internal-period-size-in-frames period :internal-periods periods
+                           :data-callback data-callback :handle handle
+                           :backend-name "PulseAudio (libpulse-simple)"))))
+
+  (defun %ma-device-thread (device)
+    (let* ((frame-count (ma-device-internal-period-size-in-frames device))
+           (frames (%ma-device-period-frames device))
+           (bytes (* frame-count (ma-get-bytes-per-frame (ma-device-format device) (ma-device-channels device)))))
+      (float-features:with-float-traps-masked t
+        (cffi:with-foreign-object (err :int)
+          (loop while (ma-device-running device)
+                do (%ma-device-handle-data-callback device frames frame-count)
+                   (when (< (cffi:with-pointer-to-vector-data (ptr frames)
+                              (cffi:foreign-funcall "pa_simple_write" :pointer (ma-device-handle device)
+                                                    :pointer ptr :size bytes :pointer err :int))
+                            0)
+                     (trace-log +log-warning+ "miniaudio: Failed to write to playback device")
+                     (return)))))))
+
+  (defun ma-device-start (device)
+    (setf (ma-device-running device) t
+          (ma-device-thread device) (bt:make-thread (lambda () (%ma-device-thread device))
+                                                    :name "raylib audio device"))
+    t)
+
+  (defun ma-device-uninit (device)
+    "Stop the device (joins the playback thread) and release it"
+    (when (ma-device-thread device)
+      (setf (ma-device-running device) nil)
+      (bt:join-thread (ma-device-thread device))
+      (setf (ma-device-thread device) nil))
+    (unless (cffi:null-pointer-p (ma-device-handle device))
+      (cffi:foreign-funcall "pa_simple_free" :pointer (ma-device-handle device) :void)
+      (setf (ma-device-handle device) (cffi:null-pointer)))))
+
+;;;----------------------------------------------------------------------------------
+;;; Core Audio backend (AudioQueue)
+;;;----------------------------------------------------------------------------------
+;;; NOTE: The queue is created on the audio thread with that thread's run loop, so the output
+;;; callback runs on a Lisp thread (inside CFRunLoopRunInMode) instead of a Core Audio thread
+#+darwin
+(progn
+  (cffi:define-foreign-library %core-foundation (:darwin (:framework "CoreFoundation")))
+  (cffi:define-foreign-library %audio-toolbox (:darwin (:framework "AudioToolbox")))
+
+  ;; AudioStreamBasicDescription
+  (cffi:defcstruct %audio-stream-basic-description
+    (sample-rate :double)
+    (format-id :uint32)
+    (format-flags :uint32)
+    (bytes-per-packet :uint32)
+    (frames-per-packet :uint32)
+    (bytes-per-frame :uint32)
+    (channels-per-frame :uint32)
+    (bits-per-channel :uint32)
+    (reserved :uint32))
+
+  ;; AudioQueueBuffer
+  (cffi:defcstruct %audio-queue-buffer
+    (audio-data-bytes-capacity :uint32)
+    (audio-data :pointer)
+    (audio-data-byte-size :uint32)
+    (user-data :pointer)
+    (packet-description-capacity :uint32)
+    (packet-descriptions :pointer)
+    (packet-description-count :uint32))
+
+  (defconstant +audio-format-linear-pcm+ #x6C70636D)  ; 'lpcm'
+  (defconstant +audio-format-flag-is-float+ 1)
+  (defconstant +audio-format-flag-is-packed+ 8)
+
+  (defvar *ma-coreaudio-device* nil "Device whose AudioQueue is running (raylib uses a single device)")
+
+  (defun %ma-coreaudio-load ()
+    (cffi:load-foreign-library '%core-foundation)
+    (cffi:load-foreign-library '%audio-toolbox))
+
+  (defun %ma-coreaudio-new-queue (asbd callback run-loop run-loop-mode)
+    "AudioQueueNewOutput(), returns the queue or NIL"
+    (cffi:with-foreign-object (queue :pointer)
+      (let ((status (cffi:foreign-funcall "AudioQueueNewOutput" :pointer asbd :pointer callback :pointer (cffi:null-pointer)
+                                                                :pointer run-loop :pointer run-loop-mode :uint32 0
+                                                                :pointer queue :int32)))
+        (if (= status 0) (cffi:mem-ref queue :pointer) nil))))
+
+  (defmacro %with-asbd ((var channels sample-rate) &body body)
+    "Bind VAR to an AudioStreamBasicDescription for interleaved f32 samples"
+    (let ((ch (gensym "CHANNELS")) (rate (gensym "RATE")))
+      `(let ((,ch ,channels) (,rate (float ,sample-rate 1d0)))
+         (cffi:with-foreign-object (,var '(:struct %audio-stream-basic-description))
+           (setf (cffi:foreign-slot-value ,var '(:struct %audio-stream-basic-description) 'sample-rate) ,rate
+                 (cffi:foreign-slot-value ,var '(:struct %audio-stream-basic-description) 'format-id) +audio-format-linear-pcm+
+                 ;; native (little) endian
+                 (cffi:foreign-slot-value ,var '(:struct %audio-stream-basic-description) 'format-flags)
+                 (logior +audio-format-flag-is-float+ +audio-format-flag-is-packed+)
+                 (cffi:foreign-slot-value ,var '(:struct %audio-stream-basic-description) 'bytes-per-packet) (* 4 ,ch)
+                 (cffi:foreign-slot-value ,var '(:struct %audio-stream-basic-description) 'frames-per-packet) 1
+                 (cffi:foreign-slot-value ,var '(:struct %audio-stream-basic-description) 'bytes-per-frame) (* 4 ,ch)
+                 (cffi:foreign-slot-value ,var '(:struct %audio-stream-basic-description) 'channels-per-frame) ,ch
+                 (cffi:foreign-slot-value ,var '(:struct %audio-stream-basic-description) 'bits-per-channel) 32
+                 (cffi:foreign-slot-value ,var '(:struct %audio-stream-basic-description) 'reserved) 0)
+           ,@body))))
+
+  ;; Fill an AudioQueueBuffer with one period from the data callback and enqueue it
+  (defun %ma-coreaudio-fill-buffer (device queue buffer)
+    (let* ((frame-count (ma-device-internal-period-size-in-frames device))
+           (frames (%ma-device-period-frames device))
+           (bytes (* frame-count (ma-get-bytes-per-frame (ma-device-format device) (ma-device-channels device)))))
+      (%ma-device-handle-data-callback device frames frame-count)
+      (cffi:with-pointer-to-vector-data (ptr frames)
+        (cffi:foreign-funcall "memcpy" :pointer (cffi:foreign-slot-value buffer '(:struct %audio-queue-buffer) 'audio-data)
+                                       :pointer ptr :size bytes :pointer))
+      (setf (cffi:foreign-slot-value buffer '(:struct %audio-queue-buffer) 'audio-data-byte-size) bytes)
+      (cffi:foreign-funcall "AudioQueueEnqueueBuffer" :pointer queue :pointer buffer :uint32 0 :pointer (cffi:null-pointer) :int32)))
+
+  ;; AudioQueueOutputCallback: a buffer was played, refill it
+  (cffi:defcallback %ma-coreaudio-output-callback :void ((user-data :pointer) (queue :pointer) (buffer :pointer))
+    (declare (ignore user-data))
+    (let ((device *ma-coreaudio-device*))
+      (when (and device (ma-device-running device))
+        (float-features:with-float-traps-masked t
+          (%ma-coreaudio-fill-buffer device queue buffer)))))
+
+  (defun ma-device-init (&key (format +ma-format-f32+) (channels 2) (sample-rate 0) (period-size-in-frames 0) data-callback)
+    "Initialize a playback device, returns NIL on failure"
+    (unless (%ma-device-check-format format)
+      (return-from ma-device-init nil))
+    (handler-case (%ma-coreaudio-load)
+      (error (e)
+        (trace-log +log-warning+ "miniaudio: Failed to load AudioToolbox: ~a" e)
+        (return-from ma-device-init nil)))
+    (let ((sample-rate (if (= sample-rate 0) *ma-default-sample-rate* sample-rate))
+          (period (if (= period-size-in-frames 0) *ma-default-period-size-in-frames* period-size-in-frames)))
+      ;; Check that an output queue can be created for this format (the real queue is created by the audio thread)
+      (let ((probe (%with-asbd (asbd channels sample-rate)
+                     (float-features:with-float-traps-masked t
+                       (%ma-coreaudio-new-queue asbd (cffi:callback %ma-coreaudio-output-callback)
+                                                (cffi:null-pointer) (cffi:null-pointer))))))
+        (unless probe
+          (return-from ma-device-init nil))
+        (cffi:foreign-funcall "AudioQueueDispose" :pointer probe :uint8 1 :int32))
+      (%make-ma-device :format format :channels channels :sample-rate sample-rate
+                       :internal-format format :internal-channels channels :internal-sample-rate sample-rate
+                       :internal-period-size-in-frames period :internal-periods *ma-default-periods*
+                       :data-callback data-callback
+                       :backend-name "Core Audio (AudioQueue)")))
+
+  (defun %ma-device-thread (device started)
+    "Create the queue on this thread's run loop, prime its buffers and run the loop until stopped"
     (float-features:with-float-traps-masked t
-      (cffi:with-foreign-object (err :int)
+      (let* ((run-loop-mode (cffi:mem-ref (cffi:foreign-symbol-pointer "kCFRunLoopDefaultMode") :pointer))
+             (queue (%with-asbd (asbd (ma-device-channels device) (ma-device-sample-rate device))
+                      (%ma-coreaudio-new-queue asbd (cffi:callback %ma-coreaudio-output-callback)
+                                               (cffi:foreign-funcall "CFRunLoopGetCurrent" :pointer) run-loop-mode)))
+             (bytes (* (ma-device-internal-period-size-in-frames device)
+                       (ma-get-bytes-per-frame (ma-device-format device) (ma-device-channels device)))))
+        (unless queue
+          (setf (ma-device-running device) nil)
+          (funcall started nil)
+          (return-from %ma-device-thread nil))
+        (setf (ma-device-handle device) queue
+              *ma-coreaudio-device* device)
+        ;; Allocate and prime the buffers (one per period)
+        (dotimes (i (ma-device-internal-periods device))
+          (cffi:with-foreign-object (buffer :pointer)
+            (when (= (cffi:foreign-funcall "AudioQueueAllocateBuffer" :pointer queue :uint32 bytes :pointer buffer :int32) 0)
+              (%ma-coreaudio-fill-buffer device queue (cffi:mem-ref buffer :pointer)))))
+        (let ((ok (= (cffi:foreign-funcall "AudioQueueStart" :pointer queue :pointer (cffi:null-pointer) :int32) 0)))
+          (unless ok (setf (ma-device-running device) nil))
+          (funcall started ok))
+        ;; Output callbacks are delivered while the run loop runs
         (loop while (ma-device-running device)
-              do (%ma-device-handle-data-callback device frames frame-count)
-                 (when (< (cffi:with-pointer-to-vector-data (ptr frames)
-                            (cffi:foreign-funcall "pa_simple_write" :pointer (ma-device-handle device)
-                                                  :pointer ptr :size bytes :pointer err :int))
-                          0)
-                   (trace-log +log-warning+ "miniaudio: Failed to write to playback device")
-                   (return)))))))
+              do (cffi:foreign-funcall "CFRunLoopRunInMode" :pointer run-loop-mode :double 0.01d0 :uint8 0 :int32))
+        ;; Stop and release the queue (and its buffers) from the thread that owns its run loop
+        (cffi:foreign-funcall "AudioQueueStop" :pointer queue :uint8 1 :int32)
+        (cffi:foreign-funcall "AudioQueueDispose" :pointer queue :uint8 1 :int32)
+        (setf (ma-device-handle device) (cffi:null-pointer)
+              *ma-coreaudio-device* nil))))
 
-(defun ma-device-start (device)
-  (setf (ma-device-running device) t
-        (ma-device-thread device) (bt:make-thread (lambda () (%ma-device-thread device))
-                                                  :name "raylib audio device"))
-  t)
+  (defun ma-device-start (device)
+    "Start the audio thread, returns T once the queue is playing"
+    (let ((lock (bt:make-lock)) (cv (bt:make-condition-variable)) (result :pending))
+      (setf (ma-device-running device) t
+            (ma-device-thread device)
+            (bt:make-thread (lambda ()
+                              (%ma-device-thread device (lambda (ok)
+                                                          (bt:with-lock-held (lock)
+                                                            (setf result ok)
+                                                            (bt:condition-notify cv)))))
+                            :name "raylib audio device"))
+      (bt:with-lock-held (lock)
+        (loop while (eq result :pending) do (bt:condition-wait cv lock)))
+      result))
 
-(defun ma-device-uninit (device)
-  "Stop the device (joins the playback thread) and release it"
-  (when (ma-device-thread device)
-    (setf (ma-device-running device) nil)
-    (bt:join-thread (ma-device-thread device))
-    (setf (ma-device-thread device) nil))
-  (unless (cffi:null-pointer-p (ma-device-handle device))
-    (cffi:foreign-funcall "pa_simple_free" :pointer (ma-device-handle device) :void)
-    (setf (ma-device-handle device) (cffi:null-pointer))))
+  (defun ma-device-uninit (device)
+    "Stop the device (joins the audio thread, which disposes the queue) and release it"
+    (when (ma-device-thread device)
+      (setf (ma-device-running device) nil)
+      (bt:join-thread (ma-device-thread device))
+      (setf (ma-device-thread device) nil))))
 
 (defun ma-device-set-master-volume (device volume)
   (when (and device (>= volume 0))
