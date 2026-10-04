@@ -370,84 +370,6 @@
       (setf frequency (* frequency lacunarity)
             amplitude (* amplitude gain)))))
 
-;;; Image resampling used by ImageResize()
-;;; NOTE: raylib uses stb_image_resize2 stbir_resize_uint8_linear(); this implements
-;;; the same default filters (Catmull-Rom upsampling, Mitchell downsampling, clamped
-;;; edges, alpha weighting for RGBA) but output is not guaranteed bit-identical
-
-(defun %stbir-kernel (upsample x)
-  (let ((x (abs x)))
-    (if upsample
-        (cond ((< x 1.0) (- 1.0 (* x x (- 2.5 (* 1.5 x)))))
-              ((< x 2.0) (- 2.0 (* x (+ 4.0 (* x (- (* 0.5 x) 2.5))))))
-              (t 0.0))
-        (cond ((< x 1.0) (/ (+ 16.0 (* x x (- (* 21.0 x) 36.0))) 18.0))
-              ((< x 2.0) (/ (+ 32.0 (* x (+ -60.0 (* x (- 36.0 (* 7.0 x)))))) 18.0))
-              (t 0.0)))))
-
-(defun %resample-weights (src-size dst-size)
-  "For each destination index: (first-source-index . weights vector)"
-  (let* ((scale (/ (float dst-size) src-size))
-         (upsample (>= scale 1.0))
-         (support (if upsample 2.0 (/ 2.0 scale)))
-         (result (make-array dst-size)))
-    (dotimes (d dst-size result)
-      (let* ((center (- (/ (+ d 0.5) scale) 0.5))
-             (first (ceiling (- center support)))
-             (last (floor (+ center support)))
-             (weights (make-array (1+ (- last first)) :element-type 'single-float))
-             (sum 0.0))
-        (loop for s from first to last
-              for k from 0
-              do (let ((w (%stbir-kernel upsample (if upsample (- s center) (* (- s center) scale)))))
-                   (setf (aref weights k) w)
-                   (incf sum w)))
-        (unless (zerop sum)
-          (dotimes (k (length weights)) (setf (aref weights k) (/ (aref weights k) sum))))
-        (setf (aref result d) (cons first weights))))))
-
-(defun %resize-uint8 (src width height channels new-width new-height &optional alpha-weighted)
-  "Separable resampling of an interleaved 8-bit image with CHANNELS components"
-  (let* ((xw (%resample-weights width new-width))
-         (yw (%resample-weights height new-height))
-         (tmp (make-array (* new-width height channels) :element-type 'single-float :initial-element 0.0))
-         (out (%make-octets (* new-width new-height channels)))
-         (alpha (1- channels)))
-    (flet ((sample (x y c)
-             (let* ((x (max 0 (min (1- width) x)))
-                    (y (max 0 (min (1- height) y)))
-                    (o (* (+ (* y width) x) channels))
-                    (v (float (aref src (+ o c)))))
-               (if (and alpha-weighted (/= c alpha))
-                   (* v (/ (aref src (+ o alpha)) 255.0))
-                   v))))
-      ;; Horizontal pass
-      (dotimes (y height)
-        (dotimes (x new-width)
-          (destructuring-bind (first . weights) (aref xw x)
-            (dotimes (c channels)
-              (let ((acc 0.0))
-                (dotimes (k (length weights))
-                  (incf acc (* (aref weights k) (sample (+ first k) y c))))
-                (setf (aref tmp (+ (* (+ (* y new-width) x) channels) c)) acc))))))
-      ;; Vertical pass
-      (dotimes (y new-height)
-        (destructuring-bind (first . weights) (aref yw y)
-          (dotimes (x new-width)
-            (let ((values (make-array channels :element-type 'single-float :initial-element 0.0)))
-              (dotimes (c channels)
-                (dotimes (k (length weights))
-                  (let ((sy (max 0 (min (1- height) (+ first k)))))
-                    (incf (aref values c) (* (aref weights k) (aref tmp (+ (* (+ (* sy new-width) x) channels) c)))))))
-              (let ((a (if alpha-weighted (aref values alpha) 255.0)))
-                (dotimes (c channels)
-                  (let ((v (if (and alpha-weighted (/= c alpha))
-                               (if (> a 0.0) (/ (aref values c) (/ a 255.0)) 0.0)
-                               (aref values c))))
-                    (setf (aref out (+ (* (+ (* y new-width) x) channels) c))
-                          (max 0 (min 255 (floor (+ v 0.5)))))))))))))
-    out))
-
 ;;;------------------------------------------------------------------------------------
 ;;; Image file decoders/encoders
 ;;; NOTE: raylib uses stb_image/stb_image_write/qoi.h; here PNG/JPG/TGA/PNM go through
@@ -1580,13 +1502,13 @@
                              +pixelformat-uncompressed-r8g8b8+ +pixelformat-uncompressed-r8g8b8a8+))
         (let ((bpp (%bytes-per-pixel format)))
           (setf (image-data image)
-                (%resize-uint8 (image-data image) (image-width image) (image-height image) bpp
-                               new-width new-height (= bpp 4))
+                (%stbir-resize-uint8-linear (image-data image) (image-width image) (image-height image)
+                                            new-width new-height bpp)
                 (image-width image) new-width
                 (image-height image) new-height))
         ;; Get data as Color pixels array to work with it
-        (let ((output (%resize-uint8 (%load-image-colors image) (image-width image) (image-height image) 4
-                                     new-width new-height t)))
+        (let ((output (%stbir-resize-uint8-linear (%load-image-colors image) (image-width image) (image-height image)
+                                                  new-width new-height 4)))
           (setf (image-width image) new-width
                 (image-height image) new-height)
           (%set-image-rgba8 image output))))  ; Reformat 32bit RGBA image to original format

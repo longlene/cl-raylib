@@ -29,6 +29,7 @@ raylib/src/rtext.h -> cl-raylib/src/text.lisp
 raylib/src/external/stb_truetype.h + stb_rect_pack.h -> cl-raylib/src/truetype.lisp
 raylib/src/rtextures.h -> cl-raylib/src/textures.lisp
 raylib/src/external/stb_image_write.h (PNG/BMP writers) -> cl-raylib/src/stb-image-write.lisp
+raylib/src/external/stb_image_resize2.h (stbir_resize_uint8_linear path) -> cl-raylib/src/stb-image-resize.lisp
 raylib/src/raudio.c -> cl-raylib/src/audio.lisp
 raylib/src/external/miniaudio.h (data conversion subset + PulseAudio device) -> cl-raylib/src/miniaudio.lisp
 raylib/src/external/dr_wav.h -> cl-raylib/src/wav.lisp
@@ -58,7 +59,7 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 
 ### Modules verified byte-identical to C
 - rlgl (GL 3.3); rcore shaders, VR, file and path functions, CompressData (sdefl), clipboard images (X11)
-- rshapes; rtextures (including PNG/BMP export via stb_image_write); rtext (stb_truetype)
+- rshapes; rtextures (including PNG/BMP export via stb_image_write and ImageResize via stb_image_resize2); rtext (stb_truetype)
 - rmodels: 3D shapes, GenMesh*, materials, animations, collisions, and the OBJ/MTL, IQM, VOX, glTF/GLB and M3D loaders
 - raudio: WAV/OGG/MP3/QOA/FLAC/XM/MOD decoding and mixing
 - raymath (trig calls libm sinf/cosf etc. so it matches C exactly), rcamera
@@ -67,7 +68,7 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 - All 226 official raylib examples (core/shapes/textures/text/models/shaders/audio/others) are ported one by one, with the same file names as the C versions.
 - Helper headers shipped with the examples are ported next to them: rlights.lisp (models, shaders), reasings.lisp (shapes), msf_gif.lisp (core).
 - Screenshot comparison: pixel-identical to C (including variant tests for raygui interaction, recorded GIFs, etc.), except:
-  - textures_image_drawing: ImageResize differs by 10 pixels; core_directory_files: the listing differs because C and Lisp run in different working directories
+  - core_directory_files: the listing differs because C and Lisp run in different working directories
   - examples that depend on audio-thread timing (audio_mixed_processor, audio_raw_stream, audio_stream_callback,
     audio_spectrum_visualizer) differ between runs of the C version itself; they are verified with fixed-timing variants
 
@@ -75,10 +76,8 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 - Undefined behavior in C (out-of-bounds reads, uninitialized memory) is treated as 0 in Lisp; matching it is not a goal.
 - LOG_FATAL does not exit the process; DecompressData uses chipz (same results for valid data).
 - JPG/TGA/PNM and other formats that raylib disables by default are provided through imago.
-- ImageResize approximates stb_image_resize2; its results are not identical to C.
 
 ### TODO
-- Port ImageResize byte for byte from stb_image_resize2.
 - models.lisp and textures.lisp still use CL sin/cos; they could call libm sinf/cosf like raymath.
 - The camera2d-* helpers in camera2d.lisp and the logging/timing extensions in utils.lisp are not raylib API; consider removing them.
 - raygui.lisp is only a partial port (raygui.h is not part of raylib itself).

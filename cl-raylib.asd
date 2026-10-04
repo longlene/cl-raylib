@@ -32,6 +32,7 @@
    (:file "camera3d")
    (:file "color")
    (:file "stb-image-write")       ; external/stb_image_write.h (used by rtextures.c)
+   (:file "stb-image-resize")      ; external/stb_image_resize2.h (used by rtextures.c)
    (:file "textures")
    (:file "sdefl")                 ; external/sdefl.h (used by rcore.c)
    (:file "utils")                 ; Utility functions and logging system (required for raylib compatibility)
