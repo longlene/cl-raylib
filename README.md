@@ -29,7 +29,7 @@ cgltf, ...), and only calls into C for the platform: GLFW, OpenGL, libm and the 
 
 GLFW does not need to be installed: cl-raylib uses the system GLFW when it is version 3.4 or newer,
 and otherwise the GLFW 3.5.1 libraries shipped in `lib/` (Linux x86-64, macOS universal), built from
-the GLFW sources bundled with raylib.
+the GLFW sources bundled with raylib by `lib/build-glfw.sh`.
 
 ## Installation
 

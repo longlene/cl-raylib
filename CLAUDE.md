@@ -50,7 +50,8 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 - Dependencies: cffi, 3d-vectors, 3d-matrices, float-features and the others listed in cl-raylib.asd. GLFW is bound
   directly in glfw3.lisp (package cl-raylib.glfw3, nickname %glfw): the system GLFW is used when it is 3.4 or newer,
   otherwise the GLFW 3.5.1 builds in lib/ (Linux x86-64 with X11+Wayland, macOS universal arm64+x86-64, both built
-  with CMake from raylib/src/external/glfw; rebuild them when raylib updates its GLFW).
+  with CMake from raylib/src/external/glfw by lib/build-glfw.sh, which reproduces them byte for byte; rerun it on
+  each platform when raylib updates its GLFW).
 - When porting an API, keep the implementation close to the C version, and keep functions in the same order as in the C file where practical, so the two versions are easy to compare later.
 - Do not try to fix mismatched parentheses with Python scripts; it costs more than it saves.
 
