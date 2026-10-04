@@ -24,10 +24,10 @@ raylib/src/external/tinyobj_loader_c.h -> cl-raylib/src/tinyobj.lisp
 raylib/src/external/vox_loader.h -> cl-raylib/src/vox.lisp
 raylib/src/external/cgltf.h (parser/loader subset used by rmodels.c) -> cl-raylib/src/gltf.lisp
 raylib/src/external/m3d.h (binary importer used by rmodels.c) -> cl-raylib/src/m3d.lisp
-raylib/src/rshapes.h -> cl-raylib/src/shapes.lisp
-raylib/src/rtext.h -> cl-raylib/src/text.lisp
+raylib/src/rshapes.c -> cl-raylib/src/shapes.lisp
+raylib/src/rtext.c -> cl-raylib/src/text.lisp
 raylib/src/external/stb_truetype.h + stb_rect_pack.h -> cl-raylib/src/truetype.lisp
-raylib/src/rtextures.h -> cl-raylib/src/textures.lisp
+raylib/src/rtextures.c -> cl-raylib/src/textures.lisp
 raylib/src/external/stb_image_write.h (PNG/BMP writers) -> cl-raylib/src/stb-image-write.lisp
 raylib/src/external/stb_image_resize2.h (stbir_resize_uint8_linear path) -> cl-raylib/src/stb-image-resize.lisp
 raylib/src/raudio.c -> cl-raylib/src/audio.lisp
@@ -41,7 +41,6 @@ raylib/src/external/qoa.h + qoaplay.c -> cl-raylib/src/qoa.lisp
 raylib/src/external/dr_flac.h -> cl-raylib/src/flac.lisp (own decoder, dr_flac output semantics)
 raylib/src/external/sdefl.h -> cl-raylib/src/sdefl.lisp
 raylib/src/utils.h -> cl-raylib/src/utils.lisp
-
 ```
 
 ## Development Memories
@@ -54,7 +53,7 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 
 ### Overview
 - All 619 RLAPI functions in raylib.h have a Lisp implementation (raymath, rlgl, rcamera and rgestures are complete too).
-- About 38,600 lines in 34 source files of pure Common Lisp (cffi is only used to call GLFW/OpenGL/libm/PulseAudio/X11).
+- About 44,700 lines in 35 source files of pure Common Lisp (cffi is only used to call GLFW/OpenGL/libm/PulseAudio/X11).
 - Verification: outputs (pixels, meshes, audio, files) are compared byte for byte against C raylib (a GL 3.3 build in the scratchpad).
 
 ### Modules verified byte-identical to C
