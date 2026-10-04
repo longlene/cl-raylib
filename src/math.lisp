@@ -550,16 +550,75 @@ NOTE: Assumes P is on the plane of the triangle"
 (defun vector3-unproject (source projection view)
   "Projects a Vector3 from screen space into object space
 NOTE: We are avoiding calling other raymath functions despite available"
-  ;; Calculate unprojected matrix (multiply view matrix by projection matrix) and invert it
-  (let* ((mat-view-proj-inv (matrix-invert (matrix-multiply view projection)))
-         ;; Create quaternion from source point
-         (quat (vec4 (vx source) (vy source) (vz source) 1.0))
-         ;; Multiply quat point by unprojecte matrix
-         (qtransformed (quaternion-transform quat mat-view-proj-inv)))
-    ;; Normalized world points in vectors
-    (vec3 (/ (vx qtransformed) (vw qtransformed))
-          (/ (vy qtransformed) (vw qtransformed))
-          (/ (vz qtransformed) (vw qtransformed)))))
+  ;; NOTE: raymath builds matViewProj and matViewProjInv with Matrix initializer lists, which fill
+  ;; the fields in struct order (m0, m4, m8, m12, m1, ...): the 16 expressions written for
+  ;; m0, m1, m2, m3, ... land transposed. The result is the same mathematically but not
+  ;; the same floats as MatrixInvert(MatrixMultiply()), so the C arithmetic is reproduced here:
+  ;; E holds the initializer values of matViewProj, so field m(4r+c) is (aref e (+ (* c 4) r))
+  (macrolet ((v (i) `(%m view ,i))
+             (p (i) `(%m projection ,i)))
+    (let* ((e (vector (+ (* (v 0) (p 0)) (* (v 1) (p 4)) (* (v 2) (p 8)) (* (v 3) (p 12)))
+                      (+ (* (v 0) (p 1)) (* (v 1) (p 5)) (* (v 2) (p 9)) (* (v 3) (p 13)))
+                      (+ (* (v 0) (p 2)) (* (v 1) (p 6)) (* (v 2) (p 10)) (* (v 3) (p 14)))
+                      (+ (* (v 0) (p 3)) (* (v 1) (p 7)) (* (v 2) (p 11)) (* (v 3) (p 15)))
+                      (+ (* (v 4) (p 0)) (* (v 5) (p 4)) (* (v 6) (p 8)) (* (v 7) (p 12)))
+                      (+ (* (v 4) (p 1)) (* (v 5) (p 5)) (* (v 6) (p 9)) (* (v 7) (p 13)))
+                      (+ (* (v 4) (p 2)) (* (v 5) (p 6)) (* (v 6) (p 10)) (* (v 7) (p 14)))
+                      (+ (* (v 4) (p 3)) (* (v 5) (p 7)) (* (v 6) (p 11)) (* (v 7) (p 15)))
+                      (+ (* (v 8) (p 0)) (* (v 9) (p 4)) (* (v 10) (p 8)) (* (v 11) (p 12)))
+                      (+ (* (v 8) (p 1)) (* (v 9) (p 5)) (* (v 10) (p 9)) (* (v 11) (p 13)))
+                      (+ (* (v 8) (p 2)) (* (v 9) (p 6)) (* (v 10) (p 10)) (* (v 11) (p 14)))
+                      (+ (* (v 8) (p 3)) (* (v 9) (p 7)) (* (v 10) (p 11)) (* (v 11) (p 15)))
+                      (+ (* (v 12) (p 0)) (* (v 13) (p 4)) (* (v 14) (p 8)) (* (v 15) (p 12)))
+                      (+ (* (v 12) (p 1)) (* (v 13) (p 5)) (* (v 14) (p 9)) (* (v 15) (p 13)))
+                      (+ (* (v 12) (p 2)) (* (v 13) (p 6)) (* (v 14) (p 10)) (* (v 15) (p 14)))
+                      (+ (* (v 12) (p 3)) (* (v 13) (p 7)) (* (v 14) (p 11)) (* (v 15) (p 15)))))
+           ;; Calculate inverted matrix -> MatrixInvert(matViewProj);
+           (a00 (aref e 0)) (a01 (aref e 4)) (a02 (aref e 8)) (a03 (aref e 12))
+           (a10 (aref e 1)) (a11 (aref e 5)) (a12 (aref e 9)) (a13 (aref e 13))
+           (a20 (aref e 2)) (a21 (aref e 6)) (a22 (aref e 10)) (a23 (aref e 14))
+           (a30 (aref e 3)) (a31 (aref e 7)) (a32 (aref e 11)) (a33 (aref e 15))
+           (b00 (- (* a00 a11) (* a01 a10)))
+           (b01 (- (* a00 a12) (* a02 a10)))
+           (b02 (- (* a00 a13) (* a03 a10)))
+           (b03 (- (* a01 a12) (* a02 a11)))
+           (b04 (- (* a01 a13) (* a03 a11)))
+           (b05 (- (* a02 a13) (* a03 a12)))
+           (b06 (- (* a20 a31) (* a21 a30)))
+           (b07 (- (* a20 a32) (* a22 a30)))
+           (b08 (- (* a20 a33) (* a23 a30)))
+           (b09 (- (* a21 a32) (* a22 a31)))
+           (b10 (- (* a21 a33) (* a23 a31)))
+           (b11 (- (* a22 a33) (* a23 a32)))
+           ;; Calculate the invert determinant (inlined to avoid double-caching)
+           (inv-det (/ 1.0 (+ (- (+ (+ (- (* b00 b11) (* b01 b10)) (* b02 b09)) (* b03 b08)) (* b04 b07)) (* b05 b06))))
+           ;; F holds the initializer values of matViewProjInv
+           (f (vector (* (+ (- (* a11 b11) (* a12 b10)) (* a13 b09)) inv-det)
+                      (* (- (+ (- (* a01 b11)) (* a02 b10)) (* a03 b09)) inv-det)
+                      (* (+ (- (* a31 b05) (* a32 b04)) (* a33 b03)) inv-det)
+                      (* (- (+ (- (* a21 b05)) (* a22 b04)) (* a23 b03)) inv-det)
+                      (* (- (+ (- (* a10 b11)) (* a12 b08)) (* a13 b07)) inv-det)
+                      (* (+ (- (* a00 b11) (* a02 b08)) (* a03 b07)) inv-det)
+                      (* (- (+ (- (* a30 b05)) (* a32 b02)) (* a33 b01)) inv-det)
+                      (* (+ (- (* a20 b05) (* a22 b02)) (* a23 b01)) inv-det)
+                      (* (+ (- (* a10 b10) (* a11 b08)) (* a13 b06)) inv-det)
+                      (* (- (+ (- (* a00 b10)) (* a01 b08)) (* a03 b06)) inv-det)
+                      (* (+ (- (* a30 b04) (* a31 b02)) (* a33 b00)) inv-det)
+                      (* (- (+ (- (* a20 b04)) (* a21 b02)) (* a23 b00)) inv-det)
+                      (* (- (+ (- (* a10 b09)) (* a11 b07)) (* a12 b06)) inv-det)
+                      (* (+ (- (* a00 b09) (* a01 b07)) (* a02 b06)) inv-det)
+                      (* (- (+ (- (* a30 b03)) (* a31 b01)) (* a32 b00)) inv-det)
+                      (* (+ (- (* a20 b03) (* a21 b01)) (* a22 b00)) inv-det)))
+           ;; Create quaternion from source point
+           (x (vx source)) (y (vy source)) (z (vz source)) (w 1.0)
+           ;; Multiply quat point by unprojected matrix: QuaternionTransform(quat, matViewProjInv)
+           ;; (field m0, m4, m8, m12 of matViewProjInv is F 0, 1, 2, 3, and so on)
+           (qx (+ (* (aref f 0) x) (* (aref f 1) y) (* (aref f 2) z) (* (aref f 3) w)))
+           (qy (+ (* (aref f 4) x) (* (aref f 5) y) (* (aref f 6) z) (* (aref f 7) w)))
+           (qz (+ (* (aref f 8) x) (* (aref f 9) y) (* (aref f 10) z) (* (aref f 11) w)))
+           (qw (+ (* (aref f 12) x) (* (aref f 13) y) (* (aref f 14) z) (* (aref f 15) w))))
+      ;; Normalized world points in vectors
+      (vec3 (/ qx qw) (/ qy qw) (/ qz qw)))))
 
 (defun vector3-to-float-v (v)
   "Get Vector3 as float array"
@@ -763,7 +822,8 @@ r: ratio of the refractive index of the medium from where the ray comes
            (b10 (- (* a21 a33) (* a23 a31)))
            (b11 (- (* a22 a33) (* a23 a32)))
            ;; Calculate the invert determinant (inlined to avoid double-caching)
-           (inv-det (/ 1.0 (+ (- (* b00 b11) (* b01 b10)) (* b02 b09) (- (* b03 b08) (* b04 b07)) (* b05 b06)))))
+           ;; NOTE: Summed left to right like C, float rounding depends on the association
+           (inv-det (/ 1.0 (+ (- (+ (+ (- (* b00 b11) (* b01 b10)) (* b02 b09)) (* b03 b08)) (* b04 b07)) (* b05 b06)))))
       (%matrix (* (+ (- (* a11 b11) (* a12 b10)) (* a13 b09)) inv-det)
                (* (- (+ (- (* a01 b11)) (* a02 b10)) (* a03 b09)) inv-det)
                (* (+ (- (* a31 b05) (* a32 b04)) (* a33 b03)) inv-det)
