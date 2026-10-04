@@ -92,8 +92,10 @@
            (color-loc (get-shader-location shader "color")))
 
       ;; Initialize the vertex buffer for the particles and assign each particle random values
-      (cffi:with-foreign-objects ((particles :float (* +max-particles+ +particle-floats+))
-                                  (vao :uint)
+      ;; NOTE: The particles buffer is heap allocated (12KB): large stack allocated foreign arrays
+      ;; fault on SBCL arm64 macOS
+      (let ((particles (cffi:foreign-alloc :float :count (* +max-particles+ +particle-floats+))))
+      (cffi:with-foreign-objects ((vao :uint)
                                   (vbo :uint)
                                   (color-v :float 4))
         (dotimes (i +max-particles+)
@@ -114,6 +116,7 @@
         (gl-gen-buffers 1 vbo)
         (gl-bind-buffer +gl-array-buffer+ (cffi:mem-ref vbo :uint))
         (gl-buffer-data +gl-array-buffer+ (* +max-particles+ +particle-floats+ 4) particles +gl-static-draw+)
+        (cffi:foreign-free particles)   ; the data is now in the vertex buffer
         ;; Note: load-shader automatically fetches the attribute index of "vertexPosition" and saves it in shader.locs[SHADER_LOC_VERTEX_POSITION]
         (gl-vertex-attrib-pointer (aref (shader-locs shader) +shader-loc-vertex-position+) 3 +gl-float+ +gl-false+ 0 (cffi:null-pointer))
         (gl-enable-vertex-attrib-array 0)
@@ -174,7 +177,7 @@
         ;; De-Initialization
         ;;--------------------------------------------------------------------------------------
         (gl-delete-buffers 1 vbo)
-        (gl-delete-vertex-arrays 1 vao))
+        (gl-delete-vertex-arrays 1 vao)))
 
       (unload-shader shader)            ; Unload shader
 

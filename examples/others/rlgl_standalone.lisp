@@ -79,6 +79,8 @@
 (defconstant +glfw-opengl-profile+ #x00022008)
 (defconstant +glfw-opengl-core-profile+ #x00032001)
 (defconstant +glfw-opengl-forward-compat+ #x00022006)
+(defconstant +glfw-cocoa-retina-framebuffer+ #x00023001)
+(defconstant +glfw-false+ 0)
 (defconstant +glfw-true+ 1)
 (defconstant +glfw-key-escape+ 256)
 (defconstant +glfw-press+ 1)
@@ -326,6 +328,8 @@
       (%glfw:window-hint +glfw-opengl-profile+ +glfw-opengl-core-profile+)
       ;;(%glfw:window-hint +glfw-opengl-debug-context+ +glfw-true+)
       #+darwin (%glfw:window-hint +glfw-opengl-forward-compat+ +glfw-true+)
+      ;; NOTE: cl-raylib addition, keep a 1:1 framebuffer on Retina displays (the viewport below uses the screen size)
+      #+darwin (%glfw:window-hint +glfw-cocoa-retina-framebuffer+ +glfw-false+)
 
       (let ((window (%glfw:create-window screen-width screen-height "raylib [others] example - rlgl standalone"
                                          (cffi:null-pointer) (cffi:null-pointer))))
