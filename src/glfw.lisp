@@ -37,6 +37,9 @@
 (defconstant +glfw-opengl-profile+ #x00022008)
 (defconstant +glfw-scale-to-monitor+ #x0002200C)
 (defconstant +glfw-scale-framebuffer+ #x0002200D)
+;; NOTE: macOS name of GLFW_SCALE_FRAMEBUFFER before GLFW 3.4 (still accepted as an alias), quicklisp's
+;; macOS GLFW build rejects GLFW_SCALE_FRAMEBUFFER as an invalid hint
+(defconstant +glfw-cocoa-retina-framebuffer+ #x00023001)
 (defconstant +glfw-opengl-core-profile+ #x00032001)
 (defconstant +glfw-cursor+ #x00033001)
 (defconstant +glfw-lock-key-mods+ #x00033004)
@@ -1079,16 +1082,16 @@ NOTE: Some safety checks have been added to mitigate security issues"
 
       (if (flag-p +flag-window-highdpi+)
           (progn
-            #+darwin (%glfw:window-hint +glfw-scale-framebuffer+ +glfw-false+)
+            #+darwin (%glfw:window-hint +glfw-cocoa-retina-framebuffer+ +glfw-false+)
             ;; Resize window content area based on the monitor content scale
             ;; NOTE: This hint only has an effect on platforms where screen coordinates and
             ;; pixels always map 1:1 such as Windows and X11
             ;; On platforms like macOS the resolution of the framebuffer is changed independently of the window size
             (%glfw:window-hint +glfw-scale-to-monitor+ +glfw-true+)
-            #+darwin (%glfw:window-hint +glfw-scale-framebuffer+ +glfw-true+))
+            #+darwin (%glfw:window-hint +glfw-cocoa-retina-framebuffer+ +glfw-true+))
           (progn
             (%glfw:window-hint +glfw-scale-to-monitor+ +glfw-false+)
-            #+darwin (%glfw:window-hint +glfw-scale-framebuffer+ +glfw-false+)
+            #+darwin (%glfw:window-hint +glfw-cocoa-retina-framebuffer+ +glfw-false+)
             ;; GLFW 3.4+ defaults GLFW_SCALE_FRAMEBUFFER to TRUE,
             ;; causing framebuffer/window size mismatch on Wayland with display scaling
             (when (%glfw-wayland-p) (%glfw:window-hint +glfw-scale-framebuffer+ +glfw-false+))))
@@ -1361,9 +1364,9 @@ NOTE: Some safety checks have been added to mitigate security issues"
 
 (defun close-platform ()
   "Close platform"
-  (%glfw:destroy-window (%handle))
+  (%with-glfw-traps-masked (%glfw:destroy-window (%handle)))
   (setf (platform-data-handle *platform*) (cffi:null-pointer))
-  (%glfw:terminate)
+  (%with-glfw-traps-masked (%glfw:terminate))
   (values))
 
 ;;; GLFW3: Error callback, runs on GLFW3 error
