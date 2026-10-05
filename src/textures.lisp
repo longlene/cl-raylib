@@ -372,9 +372,9 @@
 
 ;;;------------------------------------------------------------------------------------
 ;;; Image file decoders/encoders
-;;; NOTE: raylib uses stb_image/stb_image_write/qoi.h; here PNG/BMP/QOI decoding is implemented here,
-;;; GIF goes through skippy, PNG/BMP writing through stb-image-write.lisp. Formats raylib disables by
-;;; default (JPG, TGA, PNM) are provided by the optional cl-raylib/imago system.
+;;; NOTE: raylib uses stb_image/stb_image_write/qoi.h/rltexgpu.h; here the PNG/BMP/QOI/TGA/PNM/DDS
+;;; decoders are implemented here (TGA/PNM ported from stb_image), GIF goes through skippy and JPG through
+;;; cl-jpeg, PNG/BMP/TGA/JPG writing through stb-image-write.lisp.
 ;;; Decoded images keep the component count stb_image would report (1..4 channels)
 ;;;------------------------------------------------------------------------------------
 
@@ -723,18 +723,304 @@
       (make-image :data (first frames) :width width :height height :mipmaps 1
                   :format +pixelformat-uncompressed-r8g8b8a8+))))
 
+;; stb_image.h stbi__context reading functions over DATA
+;; NOTE: Reads past the end of the data return 0 and do not advance, like stbi__get8()
+(defmacro %with-stbi-reader ((data) &body body)
+  `(let ((pos 0) (end (length ,data)))
+     (declare (ignorable end))
+     (labels ((at-eof () (>= pos end))
+              (get8 () (if (< pos end) (prog1 (aref ,data pos) (incf pos)) 0))
+              (get16le () (let ((z (get8))) (logior z (ash (get8) 8))))
+              (skip (n) (if (< n 0) (setf pos end) (incf pos n)))
+              (getn (out start n)
+                (when (<= (+ pos n) end)
+                  (replace out ,data :start1 start :start2 pos :end2 (+ pos n))
+                  (incf pos n)
+                  t)))
+       (declare (ignorable #'at-eof #'get8 #'get16le #'skip #'getn))
+       ,@body)))
+
+(defun %stbi-tga-get-comp (bits-per-pixel is-grey)
+  "Component count for TGA BITS-PER-PIXEL and whether pixels are 15/16 bit RGB (stbi__tga_get_comp)"
+  ;; only RGB or RGBA (incl. 16bit) or grey allowed
+  (case bits-per-pixel
+    (8 (values 1 nil))
+    (16 (if is-grey (values 2 nil) (values 3 t)))
+    (15 (values 3 t))
+    ((24 32) (values (floor bits-per-pixel 8) nil))
+    (t (values 0 nil))))
+
+(defun %stbi-tga-test (data)
+  "stbi__tga_test()"
+  (%with-stbi-reader (data)
+    (get8)                                                  ; discard Offset
+    (let ((tga-color-type (get8))                           ; color type
+          (sz (get8)))                                      ; image type
+      (and (<= tga-color-type 1)                            ; only RGB or indexed allowed
+           (if (= tga-color-type 1)                         ; colormapped (paletted) image
+               (and (member sz '(1 9))                      ; colortype 1 demands image type 1 or 9
+                    (progn (skip 4) (member (get8) '(8 15 16 24 32))) ; check bits per palette color entry
+                    (progn (skip 4) t))                     ; skip image x and y origin
+               (and (member sz '(2 3 10 11))                ; only RGB or grey allowed, +/- RLE
+                    (progn (skip 9) t)))                    ; skip colormap specification and image x/y origin
+           (>= (get16le) 1)                                 ; test width
+           (>= (get16le) 1)                                 ; test height
+           (let ((sz (get8)))                               ; bits per pixel
+             (and (not (and (= tga-color-type 1) (/= sz 8) (/= sz 16))) ; for colormapped images, bpp is size of an index
+                  (member sz '(8 15 16 24 32))))
+           t))))
+
+(defun %load-tga (data)
+  "Decode a TGA file (stb_image.h stbi__tga_load())"
+  (unless (%stbi-tga-test data) (error "Image not of any known type, or corrupt"))
+  (%with-stbi-reader (data)
+    (labels ((read-rgb16 (out o)
+               ;; read 16bit value and convert to 24bit RGB
+               (let* ((px (get16le))
+                      ;; we have 3 channels with 5bits each
+                      (r (logand (ash px -10) 31))
+                      (g (logand (ash px -5) 31))
+                      (b (logand px 31)))
+                 ;; Note that this saves the data in RGB(A) order, so it doesn't need to be swapped later
+                 (setf (aref out o) (floor (* r 255) 31)
+                       (aref out (+ o 1)) (floor (* g 255) 31)
+                       (aref out (+ o 2)) (floor (* b 255) 31)))))
+      ;; read in the TGA header stuff
+      (let* ((tga-offset (get8))
+             (tga-indexed (get8))
+             (tga-image-type (get8))
+             (tga-is-rle nil)
+             (tga-palette-start (get16le))
+             (tga-palette-len (get16le))
+             (tga-palette-bits (get8))
+             (tga-x-origin (get16le))
+             (tga-y-origin (get16le))
+             (tga-width (get16le))
+             (tga-height (get16le))
+             (tga-bits-per-pixel (get8))
+             (tga-inverted (get8)))
+        (declare (ignore tga-x-origin tga-y-origin))
+        ;; do a tiny bit of precessing
+        (when (>= tga-image-type 8)
+          (decf tga-image-type 8)
+          (setf tga-is-rle t))
+        (setf tga-inverted (- 1 (logand (ash tga-inverted -5) 1)))
+        ;; If I'm paletted, then I'll use the number of bits from the palette
+        (multiple-value-bind (tga-comp tga-rgb16)
+            (if (/= tga-indexed 0)
+                (%stbi-tga-get-comp tga-palette-bits nil)
+                (%stbi-tga-get-comp tga-bits-per-pixel (= tga-image-type 3)))
+          (when (zerop tga-comp) (error "Can't find out TGA pixelformat"))
+          (let ((tga-data (%make-octets (* tga-width tga-height tga-comp))))
+            ;; skip to the data's starting position (offset usually = 0)
+            (skip tga-offset)
+            (if (and (zerop tga-indexed) (not tga-is-rle) (not tga-rgb16))
+                ;; NOTE: Rows past the end of truncated data stay uninitialized in C (undefined), 0 here
+                (dotimes (i tga-height)
+                  (let ((row (if (= tga-inverted 1) (- tga-height i 1) i)))
+                    (getn tga-data (* row tga-width tga-comp) (* tga-width tga-comp))))
+                (let ((tga-palette nil)
+                      (raw-data (%make-octets 4))
+                      (rle-count 0)
+                      (rle-repeating 0)
+                      (read-next-pixel t))
+                  ;; do I need to load a palette?
+                  (when (/= tga-indexed 0)
+                    (when (zerop tga-palette-len) (error "Corrupt TGA: bad palette"))
+                    ;; any data to skip? (offset usually = 0)
+                    (skip tga-palette-start)
+                    ;; load the palette
+                    (setf tga-palette (%make-octets (* tga-palette-len tga-comp)))
+                    (if tga-rgb16
+                        (dotimes (i tga-palette-len) (read-rgb16 tga-palette (* i tga-comp)))
+                        (unless (getn tga-palette 0 (* tga-palette-len tga-comp))
+                          (error "Corrupt TGA: bad palette"))))
+                  ;; load the data
+                  (dotimes (i (* tga-width tga-height))
+                    ;; if I'm in RLE mode, do I need to get a RLE stbi__pngchunk?
+                    (if tga-is-rle
+                        (cond ((zerop rle-count)
+                               ;; yep, get the next byte as a RLE command
+                               (let ((rle-cmd (get8)))
+                                 (setf rle-count (+ 1 (logand rle-cmd 127))
+                                       rle-repeating (ash rle-cmd -7)
+                                       read-next-pixel t)))
+                              ((zerop rle-repeating) (setf read-next-pixel t)))
+                        (setf read-next-pixel t))
+                    ;; OK, if I need to read a pixel, do it now
+                    (when read-next-pixel
+                      (cond ((/= tga-indexed 0)
+                             ;; read in index, then perform the lookup
+                             (let ((pal-idx (if (= tga-bits-per-pixel 8) (get8) (get16le))))
+                               (when (>= pal-idx tga-palette-len) (setf pal-idx 0)) ; invalid index
+                               (setf pal-idx (* pal-idx tga-comp))
+                               (dotimes (j tga-comp)
+                                 (setf (aref raw-data j) (aref tga-palette (+ pal-idx j))))))
+                            (tga-rgb16 (read-rgb16 raw-data 0))
+                            ;; read in the data raw
+                            (t (dotimes (j tga-comp) (setf (aref raw-data j) (get8)))))
+                      ;; clear the reading flag for the next pixel
+                      (setf read-next-pixel nil))
+                    ;; copy data
+                    (dotimes (j tga-comp)
+                      (setf (aref tga-data (+ (* i tga-comp) j)) (aref raw-data j)))
+                    ;; in case we're in RLE mode, keep counting down
+                    (decf rle-count))
+                  ;; do I need to invert the image?
+                  (when (= tga-inverted 1)
+                    (loop for j from 0
+                          while (< (* j 2) tga-height)
+                          do (let ((index1 (* j tga-width tga-comp))
+                                   (index2 (* (- tga-height 1 j) tga-width tga-comp)))
+                               (dotimes (k (* tga-width tga-comp))
+                                 (rotatef (aref tga-data (+ index1 k)) (aref tga-data (+ index2 k)))))))))
+            ;; swap RGB - if the source data was RGB16, it already is in the right order
+            (when (and (>= tga-comp 3) (not tga-rgb16))
+              (loop for p from 0 below (* tga-width tga-height tga-comp) by tga-comp
+                    do (rotatef (aref tga-data p) (aref tga-data (+ p 2)))))
+            (make-image :data tga-data :width tga-width :height tga-height :mipmaps 1
+                        :format (%channels->format tga-comp))))))))
+
+(defun %load-pnm (data)
+  "Decode a binary PGM/PPM file (stb_image.h stbi__pnm_load())"
+  (%with-stbi-reader (data)
+    ;; Get identifier
+    (let ((p (get8)) (tt (get8)))
+      (unless (and (= p (char-code #\P)) (or (= tt (char-code #\5)) (= tt (char-code #\6))))
+        (error "Image not of any known type, or corrupt"))
+      (let ((comp (if (= tt (char-code #\6)) 3 1))  ; '5' is 1-component .pgm; '6' is 3-component .ppm
+            (c (get8)))
+        (labels ((pnm-space-p (c) (member c '(32 9 10 11 12 13)))
+                 (skip-whitespace ()
+                   (loop (loop while (and (not (at-eof)) (pnm-space-p c)) do (setf c (get8)))
+                         (when (or (at-eof) (/= c (char-code #\#))) (return))
+                         (loop while (and (not (at-eof)) (/= c 10) (/= c 13)) do (setf c (get8)))))
+                 (get-integer ()
+                   ;; NOTE: Overflow returns 0 (stbi__err())
+                   (let ((value 0))
+                     (loop while (and (not (at-eof)) (<= 48 c 57))
+                           do (setf value (+ (* value 10) (- c 48))
+                                    c (get8))
+                              (when (or (> value 214748364) (and (= value 214748364) (< 55 c 128)))
+                                (return-from get-integer 0)))
+                     value)))
+          (skip-whitespace)
+          (let ((x (get-integer)))                  ; read width
+            (when (zerop x) (error "PPM image header had zero or overflowing width"))
+            (skip-whitespace)
+            (let ((y (get-integer)))                ; read height
+              (when (zerop y) (error "PPM image header had zero or overflowing width"))
+              (skip-whitespace)
+              (let ((maxv (get-integer)))           ; read max value
+                (when (> maxv 65535) (error "PPM image supports only 8-bit and 16-bit images"))
+                (let* ((bytes-per-channel (if (> maxv 255) 2 1))
+                       (out (%make-octets (* comp x y bytes-per-channel))))
+                  (unless (getn out 0 (length out)) (error "PNM file truncated"))
+                  (when (= bytes-per-channel 2)
+                    ;; stbi__convert_16_to_8(): top byte of each 16 bit value
+                    ;; NOTE: stb_image does not swap the big endian samples, so on little endian
+                    ;; machines the top byte of the value it reads is the second byte in the file
+                    (let ((reduced (%make-octets (* comp x y))))
+                      (dotimes (i (length reduced)) (setf (aref reduced i) (aref out (1+ (* 2 i)))))
+                      (setf out reduced)))
+                  (make-image :data out :width x :height y :mipmaps 1 :format (%channels->format comp)))))))))))
+
+(defun %load-jpg (data)
+  "Decode a baseline JPEG file through cl-jpeg
+   NOTE: raylib uses stb_image, so decoded pixels can differ slightly; progressive JPEGs are not supported"
+  (let ((descriptor (jpeg:make-descriptor))
+        (pos 0))
+    (setf (jpeg:descriptor-byte-reader descriptor) (lambda () (prog1 (aref data pos) (incf pos))))
+    (multiple-value-bind (buffer height width ncomp) (jpeg:decode-stream :memory :descriptor descriptor)
+      (case ncomp
+        (1 (make-image :data (coerce buffer '%octets) :width width :height height :mipmaps 1
+                       :format +pixelformat-uncompressed-grayscale+))
+        (3 (let ((out (%make-octets (* width height 3))))
+             ;; cl-jpeg returns BGR pixels
+             (loop for p from 0 below (length out) by 3
+                   do (setf (aref out p) (aref buffer (+ p 2))
+                            (aref out (+ p 1)) (aref buffer (+ p 1))
+                            (aref out (+ p 2)) (aref buffer p)))
+             (make-image :data out :width width :height height :mipmaps 1
+                         :format +pixelformat-uncompressed-r8g8b8+)))
+        (t (error "Unsupported JPEG component count: ~d" ncomp))))))
+
+(defun %load-dds (data)
+  "Load DDS image data, compressed or uncompressed (rltexgpu.h rl_load_dds_from_memory())"
+  (flet ((u32 (offset) (if (<= (+ offset 4) (length data)) (%u32-le data offset) 0))
+         (copy-data (size)
+           ;; NOTE: C copies past the end of short files (undefined), zeros here
+           (let ((out (%make-octets size)))
+             (when (< 128 (length data)) (replace out data :start2 128))
+             out)))
+    ;; Verify the type of file
+    (if (or (< (length data) 4) (/= (aref data 0) (char-code #\D)) (/= (aref data 1) (char-code #\D))
+            (/= (aref data 2) (char-code #\S)) (/= (aref data 3) (char-code #\Space)))
+        (progn (trace-log-warning "IMAGE: DDS file data not valid") nil)
+        ;; DDS header (124 bytes) after the 4 bytes id, pixel format (ddspf) at header offset 72
+        (let* ((height (u32 12)) (width (u32 16)) (pitch-or-linear-size (u32 20)) (mipmap-count (u32 28))
+               (pf-flags (u32 80)) (pf-fourcc (u32 84)) (pf-rgb-bit-count (u32 88)) (pf-a-bit-mask (u32 104))
+               (image-pixel-size (* width height))
+               (image-data nil)
+               (format 0))
+          (when (/= (mod width 4) 0) (trace-log-warning "IMAGE: DDS file width must be multiple of 4. Image will not display correctly"))
+          (when (/= (mod height 4) 0) (trace-log-warning "IMAGE: DDS file height must be multiple of 4. Image will not display correctly"))
+          (flet ((uncompressed-size (bytes-per-pixel)
+                   (let ((data-size (* image-pixel-size bytes-per-pixel)))
+                     (if (> mipmap-count 1) (+ data-size (floor data-size 3)) data-size)))
+                 (reorder-16 (d shift alpha-shift)
+                   ;; Move the top alpha bits of each 16 bit value to the bottom
+                   (dotimes (i (floor (length d) 2) d)
+                     (let* ((v (logior (aref d (* 2 i)) (ash (aref d (1+ (* 2 i))) 8)))
+                            (v (+ (logand (ash v shift) #xffff) (ash v (- alpha-shift)))))
+                       (setf (aref d (* 2 i)) (logand v #xff) (aref d (1+ (* 2 i))) (ash v -8))))))
+            (cond ((= pf-rgb-bit-count 16)        ; 16bit mode, no compressed
+                   (cond ((= pf-flags #x40)        ; No alpha channel
+                          (setf image-data (copy-data (uncompressed-size 2))
+                                format +pixelformat-uncompressed-r5g6b5+))
+                         ((= pf-flags #x41)        ; With alpha channel
+                          (cond ((= pf-a-bit-mask #x8000) ; 1bit alpha
+                                 ;; NOTE: Data comes as A1R5G5B5, it must be reordered to R5G5B5A1
+                                 (setf image-data (reorder-16 (copy-data (uncompressed-size 2)) 1 15)
+                                       format +pixelformat-uncompressed-r5g5b5a1+))
+                                ((= pf-a-bit-mask #xf000) ; 4bit alpha
+                                 ;; NOTE: Data comes as A4R4G4B4, it must be reordered R4G4B4A4
+                                 (setf image-data (reorder-16 (copy-data (uncompressed-size 2)) 4 12)
+                                       format +pixelformat-uncompressed-r4g4b4a4+))))))
+                  ((and (= pf-flags #x40) (= pf-rgb-bit-count 24)) ; DDS_RGB, no compressed
+                   (setf image-data (copy-data (uncompressed-size 3))
+                         format +pixelformat-uncompressed-r8g8b8+))
+                  ((and (= pf-flags #x41) (= pf-rgb-bit-count 32)) ; DDS_RGBA, no compressed
+                   (setf image-data (copy-data (uncompressed-size 4)))
+                   ;; NOTE: Data comes as A8R8G8B8, it must be reordered R8G8B8A8
+                   ;; DirecX understand ARGB as a 32bit DWORD but the actual memory byte alignment is BGRA
+                   ;; So, we must realign B8G8R8A8 to R8G8B8A8
+                   ;; NOTE: With mipmaps the size is not a multiple of 4 and C swaps with a byte past the
+                   ;; end of the buffer (undefined), read as 0 here
+                   (loop with size = (length image-data)
+                         for i from 0 below size by 4
+                         do (let ((blue (aref image-data i)))
+                              (setf (aref image-data i) (if (< (+ i 2) size) (aref image-data (+ i 2)) 0))
+                              (when (< (+ i 2) size) (setf (aref image-data (+ i 2)) blue))))
+                   (setf format +pixelformat-uncompressed-r8g8b8a8+))
+                  ((and (or (= pf-flags #x04) (= pf-flags #x05)) (> pf-fourcc 0)) ; Compressed
+                   ;; Calculate data size, including all mipmaps
+                   (setf image-data (copy-data (if (> mipmap-count 1)
+                                                   (+ pitch-or-linear-size (floor pitch-or-linear-size 3))
+                                                   pitch-or-linear-size)))
+                   (case pf-fourcc
+                     (#x31545844 (setf format (if (= pf-flags #x04)        ; "DXT1"
+                                                  +pixelformat-compressed-dxt1-rgb+
+                                                  +pixelformat-compressed-dxt1-rgba+)))
+                     (#x33545844 (setf format +pixelformat-compressed-dxt3-rgba+)) ; "DXT3"
+                     (#x35545844 (setf format +pixelformat-compressed-dxt5-rgba+)))))) ; "DXT5"
+          (when image-data
+            (make-image :data image-data :width width :height height
+                        :mipmaps (if (zerop mipmap-count) 1 mipmap-count) :format format))))))
+
 (defun %file-type-p (file-type &rest extensions)
   (and file-type (member file-type extensions :test #'string-equal)))
 
-(defvar *image-loaders* '()
-  "Alist (\".ext\" . function) of extra image decoders: (lambda (file-data)) -> image or nil")
-
-(defvar *image-exporters* '()
-  "Alist (\".ext\" . function) of extra image encoders: (lambda (file-name data width height channels))
-   -> success, DATA holds 8-bit pixels with CHANNELS components")
-
-(defun %extra-image-handler (handlers file-type)
-  (and file-type (cdr (assoc file-type handlers :test #'string-equal))))
 
 ;;;------------------------------------------------------------------------------------
 ;;; Image loading functions
@@ -809,10 +1095,15 @@
                  (setf image (%load-gif file-data)))
                 ((%file-type-p file-type ".qoi")
                  (setf image (%load-qoi file-data)))
-                ;; NOTE: Formats disabled by default in raylib config.h (JPG, TGA, PNM...) can be
-                ;; registered by optional systems, see *image-loaders* (cl-raylib/imago)
-                ((%extra-image-handler *image-loaders* file-type)
-                 (setf image (funcall (%extra-image-handler *image-loaders* file-type) file-data)))
+                ;; NOTE: TGA, JPG and PNM are disabled by default in raylib config.h, always supported here
+                ((%file-type-p file-type ".tga")
+                 (setf image (%load-tga file-data)))
+                ((%file-type-p file-type ".jpg" ".jpeg")
+                 (setf image (%load-jpg file-data)))
+                ((%file-type-p file-type ".ppm" ".pgm")
+                 (setf image (%load-pnm file-data)))
+                ((%file-type-p file-type ".dds")
+                 (setf image (%load-dds file-data)))
                 (t (trace-log-warning "IMAGE: Data format not supported")))
         (error (e)
           (trace-log-warning "IMAGE: Failed to decode image data: ~a" e)
@@ -898,11 +1189,13 @@
                      (when (member qoi-channels '(3 4))
                        (let ((file-data (%encode-qoi (image-data image) w h qoi-channels)))
                          (setf result (save-file-data file-name file-data (length file-data)))))))
-                  ;; NOTE: Formats disabled by default in raylib config.h (JPG...) can be
-                  ;; registered by optional systems, see *image-exporters* (cl-raylib/imago)
-                  ((%extra-image-handler *image-exporters* (get-file-extension file-name))
-                   (setf result (funcall (%extra-image-handler *image-exporters* (get-file-extension file-name))
-                                         file-name data w h channels)))
+                  ;; NOTE: TGA and JPG are disabled by default in raylib config.h, always supported here
+                  ((is-file-extension file-name ".tga")
+                   (let ((file-data (stbi-write-tga-to-mem w h channels data)))
+                     (setf result (save-file-data file-name file-data (length file-data)))))
+                  ((or (is-file-extension file-name ".jpg") (is-file-extension file-name ".jpeg"))
+                   (let ((file-data (stbi-write-jpg-to-mem w h channels data 90))) ; JPG quality: between 1 and 100
+                     (setf result (save-file-data file-name file-data (length file-data)))))
                   ((is-file-extension file-name ".raw")
                    ;; Export raw pixel data (without header)
                    ;; NOTE: It's up to the user to track image parameters

@@ -92,9 +92,10 @@ The `with-*` macros pair raylib's Begin/End calls and always run the End call, e
 exit: `with-window`, `with-drawing`, `with-mode-2d`, `with-mode-3d`, `with-texture-mode`,
 `with-shader-mode`, `with-blend-mode`, `with-scissor-mode`, `with-audio-device`, ...
 
-Images load and export in the formats raylib enables by default (PNG, BMP, GIF, QOI, ...). JPG, TGA and
-PNM, which raylib disables by default, are available by loading the optional system
-`(ql:quickload :cl-raylib/imago)` (SBCL only: imago depends on serapeum, which does not build on ECL).
+Images load from PNG, BMP, GIF, QOI, DDS, TGA, JPG and binary PPM/PGM files and export to PNG, BMP, QOI,
+TGA and JPG (raylib leaves TGA, JPG and PNM disabled by default; cl-raylib always includes them). JPG
+decoding goes through [cl-jpeg](https://github.com/sharplispers/cl-jpeg), which handles baseline JPEGs
+only.
 
 ### macOS
 

@@ -29,7 +29,8 @@ raylib/src/rshapes.c -> cl-raylib/src/shapes.lisp
 raylib/src/rtext.c -> cl-raylib/src/text.lisp
 raylib/src/external/stb_truetype.h + stb_rect_pack.h -> cl-raylib/src/truetype.lisp
 raylib/src/rtextures.c -> cl-raylib/src/textures.lisp
-raylib/src/external/stb_image_write.h (PNG/BMP writers) -> cl-raylib/src/stb-image-write.lisp
+raylib/src/external/stb_image.h (TGA/PNM loaders) + rltexgpu.h (DDS loader) -> cl-raylib/src/textures.lisp
+raylib/src/external/stb_image_write.h (PNG/BMP/TGA/JPG writers) -> cl-raylib/src/stb-image-write.lisp
 raylib/src/external/stb_image_resize2.h (stbir_resize_uint8_linear path) -> cl-raylib/src/stb-image-resize.lisp
 raylib/src/raudio.c -> cl-raylib/src/audio.lisp
 raylib/src/external/miniaudio.h (data conversion subset + PulseAudio device) -> cl-raylib/src/miniaudio.lisp
@@ -99,8 +100,9 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
 ### Known differences (all documented in code comments)
 - Undefined behavior in C (out-of-bounds reads, uninitialized memory) is treated as 0 in Lisp; matching it is not a goal.
 - LOG_FATAL does not exit the process; DecompressData uses chipz (same results for valid data).
-- JPG/TGA/PNM and other formats that raylib disables by default are provided by the optional system
-  cl-raylib/imago (src/imago.lisp, registers *image-loaders*/*image-exporters*); the core does not depend on imago.
+- TGA, JPG and PNM, which raylib disables by default, are always enabled. TGA/PNM loading (stb_image),
+  TGA/JPG writing (stb_image_write) and DDS loading (rltexgpu.h) match C byte for byte; JPG decoding uses
+  cl-jpeg (baseline only, pixels differ slightly from stb_image).
 
 ### TODO
 - The camera2d-* helpers in camera2d.lisp and the logging/timing extensions in utils.lisp are not raylib API; consider removing them.
