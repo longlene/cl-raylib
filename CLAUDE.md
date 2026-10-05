@@ -84,11 +84,12 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
   are not supported. Cocoa requires InitWindow() and the main loop on the process main thread.
   GetClipboardImage() only warns, like C. GLFW reports the real framebuffer size only after the first event
   poll. Large stack allocated foreign arrays (with-foreign-objects) fault on SBCL arm64 macOS.
-- Windows: written but not run yet. Directory scanning uses FindFirstFileW/FindNextFileW (what raylib's
-  external/dirent.h wraps), audio a WinMM (waveOut) backend in miniaudio.lisp, GetClipboardImage() the
-  win32_clipboard.h port (win32-clipboard.lisp), the C runtime functions are loaded from ucrtbase.dll (msvcrt.dll as
-  fallback). Missing: lib/windows-x86-64/glfw3.dll (build it on Windows from raylib/src/external/glfw); the
-  #+windows code was only compile checked on Linux (*features* with :windows).
+- Windows x86-64 (tested on Windows 11 with SBCL 2.5.0 over `ssh win`): all examples run; 213/225 match C raylib
+  (MinGW build) pixel for pixel. The others: audio thread timing (5), working directory and file mtime (2), and 5
+  that use sinf/cosf, where MinGW's libm differs in the last bit from ucrtbase.dll, which cl-raylib calls.
+  Directory scanning uses FindFirstFileW/FindNextFileW (what raylib's external/dirent.h wraps), audio a WinMM
+  (waveOut) backend in miniaudio.lisp, GetClipboardImage() the win32_clipboard.h port (win32-clipboard.lisp), the C
+  runtime functions are loaded from ucrtbase.dll (msvcrt.dll as fallback).
 
 ### Known differences (all documented in code comments)
 - Undefined behavior in C (out-of-bounds reads, uninitialized memory) is treated as 0 in Lisp; matching it is not a goal.
