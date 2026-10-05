@@ -372,8 +372,9 @@
 
 ;;;------------------------------------------------------------------------------------
 ;;; Image file decoders/encoders
-;;; NOTE: raylib uses stb_image/stb_image_write/qoi.h; here PNG/JPG/TGA/PNM go through
-;;; imago, GIF through skippy, PNG/BMP writing through stb-image-write.lisp, QOI is implemented here.
+;;; NOTE: raylib uses stb_image/stb_image_write/qoi.h; here PNG/BMP/QOI decoding is implemented here,
+;;; GIF goes through skippy, PNG/BMP writing through stb-image-write.lisp. Formats raylib disables by
+;;; default (JPG, TGA, PNM) are provided by the optional cl-raylib/imago system.
 ;;; Decoded images keep the component count stb_image would report (1..4 channels)
 ;;;------------------------------------------------------------------------------------
 
@@ -417,20 +418,6 @@
               (2 (setf (aref out d) (aref rgba s) (aref out (1+ d)) (aref rgba (+ s 3))))
               (3 (setf (aref out d) (aref rgba s) (aref out (+ d 1)) (aref rgba (+ s 1))
                        (aref out (+ d 2)) (aref rgba (+ s 2))))))))))
-
-(defun %imago->image (imago-image channels)
-  "Convert an imago image to an image with CHANNELS components per pixel"
-  (let* ((rgb (if (typep imago-image 'imago:rgb-image) imago-image (imago:convert-to-rgb imago-image)))
-         (width (imago:image-width rgb))
-         (height (imago:image-height rgb))
-         (rgba (%make-octets (* width height 4))))
-    (dotimes (y height)
-      (dotimes (x width)
-        (let ((pixel (imago:image-pixel rgb x y)))
-          (%put-rgba rgba (+ (* y width) x) (imago:color-red pixel) (imago:color-green pixel)
-                     (imago:color-blue pixel) (imago:color-alpha pixel)))))
-    (make-image :data (%rgba->channels rgba (* width height) channels) :width width :height height
-                :mipmaps 1 :format (%channels->format channels))))
 
 (defun %load-png (data)
   "Decode a PNG file"
@@ -537,15 +524,6 @@
                                     always (= (aref samples (+ (* i img-n) c)) (nth c key)))
                               0 255)))))))
         (make-image :data out :width width :height height :mipmaps 1 :format (%channels->format out-n))))))
-
-(defun %read-imago-from-memory (reader file-data)
-  "Decode FILE-DATA with an imago stream reader
-   NOTE: imago readers require a file stream (they use file-length), so data goes through a temporary file"
-  (uiop:with-temporary-file (:stream out :pathname path :element-type '(unsigned-byte 8))
-    (write-sequence file-data out)
-    (finish-output out)
-    (with-open-file (in path :element-type '(unsigned-byte 8))
-      (funcall reader in))))
 
 (defun %load-bmp (data)
   "Decode an uncompressed BMP file (1/4/8 bit paletted, 16/24/32 bit)"
@@ -748,6 +726,16 @@
 (defun %file-type-p (file-type &rest extensions)
   (and file-type (member file-type extensions :test #'string-equal)))
 
+(defvar *image-loaders* '()
+  "Alist (\".ext\" . function) of extra image decoders: (lambda (file-data)) -> image or nil")
+
+(defvar *image-exporters* '()
+  "Alist (\".ext\" . function) of extra image encoders: (lambda (file-name data width height channels))
+   -> success, DATA holds 8-bit pixels with CHANNELS components")
+
+(defun %extra-image-handler (handlers file-type)
+  (and file-type (cdr (assoc file-type handlers :test #'string-equal))))
+
 ;;;------------------------------------------------------------------------------------
 ;;; Image loading functions
 ;;;------------------------------------------------------------------------------------
@@ -821,16 +809,10 @@
                  (setf image (%load-gif file-data)))
                 ((%file-type-p file-type ".qoi")
                  (setf image (%load-qoi file-data)))
-                ;; NOTE: Formats disabled by default in raylib config.h, supported through imago
-                ((%file-type-p file-type ".jpg" ".jpeg")
-                 (let ((im (%read-imago-from-memory #'imago:read-jpg-from-stream file-data)))
-                   (setf image (%imago->image im (if (typep im 'imago:grayscale-image) 1 3)))))
-                ((%file-type-p file-type ".tga")
-                 (setf image (%imago->image (%read-imago-from-memory #'imago:read-tga-from-stream file-data)
-                                            (if (= (aref file-data 16) 32) 4 3))))
-                ((%file-type-p file-type ".ppm" ".pgm")
-                 (setf image (%imago->image (%read-imago-from-memory #'imago:read-pnm-from-stream file-data)
-                                            (if (%file-type-p file-type ".pgm") 1 3))))
+                ;; NOTE: Formats disabled by default in raylib config.h (JPG, TGA, PNM...) can be
+                ;; registered by optional systems, see *image-loaders* (cl-raylib/imago)
+                ((%extra-image-handler *image-loaders* file-type)
+                 (setf image (funcall (%extra-image-handler *image-loaders* file-type) file-data)))
                 (t (trace-log-warning "IMAGE: Data format not supported")))
         (error (e)
           (trace-log-warning "IMAGE: Failed to decode image data: ~a" e)
@@ -916,18 +898,11 @@
                      (when (member qoi-channels '(3 4))
                        (let ((file-data (%encode-qoi (image-data image) w h qoi-channels)))
                          (setf result (save-file-data file-name file-data (length file-data)))))))
-                  ;; NOTE: JPG export is disabled by default in raylib config.h, supported through imago
-                  ((or (is-file-extension file-name ".jpg") (is-file-extension file-name ".jpeg"))
-                   (let ((rgb (imago:make-rgb-image w h)))
-                     (dotimes (y h)
-                       (dotimes (x w)
-                         (let ((s (* (+ (* y w) x) channels)))
-                           (setf (imago:image-pixel rgb x y)
-                                 (if (< channels 3)
-                                     (imago:make-color (aref data s) (aref data s) (aref data s))
-                                     (imago:make-color (aref data s) (aref data (+ s 1)) (aref data (+ s 2))))))))
-                     (imago:write-jpg rgb file-name)
-                     (setf result t)))
+                  ;; NOTE: Formats disabled by default in raylib config.h (JPG...) can be
+                  ;; registered by optional systems, see *image-exporters* (cl-raylib/imago)
+                  ((%extra-image-handler *image-exporters* (get-file-extension file-name))
+                   (setf result (funcall (%extra-image-handler *image-exporters* (get-file-extension file-name))
+                                         file-name data w h channels)))
                   ((is-file-extension file-name ".raw")
                    ;; Export raw pixel data (without header)
                    ;; NOTE: It's up to the user to track image parameters

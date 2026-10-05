@@ -1,5 +1,21 @@
 (in-package #:cl-raylib)
 
+;;; Float bit reinterpretation (C type punning through unions/memcpy), portable through float-features
+(declaim (inline %bits->f32 %f32->bits %f32->sbits %bits->f64))
+(defun %bits->f32 (bits)
+  "Single float with the IEEE 754 bit pattern BITS (signed or unsigned 32-bit integer)"
+  (float-features:bits-single-float (ldb (byte 32 0) bits)))
+(defun %f32->bits (x)
+  "IEEE 754 bit pattern of the single float X as an unsigned 32-bit integer"
+  (float-features:single-float-bits x))
+(defun %f32->sbits (x)
+  "IEEE 754 bit pattern of the single float X as a signed 32-bit integer (C int32_t punning)"
+  (let ((u (float-features:single-float-bits x)))
+    (if (>= u #x80000000) (- u #x100000000) u)))
+(defun %bits->f64 (high low)
+  "Double float with the IEEE 754 bit pattern HIGH:LOW (32-bit words, signed or unsigned)"
+  (float-features:bits-double-float (logior (ash (ldb (byte 32 0) high) 32) (ldb (byte 32 0) low))))
+
 ;;; Rectangle structure for texture operations
 (defstruct rectangle
   "Rectangle structure for texture regions"

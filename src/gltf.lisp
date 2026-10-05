@@ -189,17 +189,17 @@
                ;; Correctly rounded rational -> double, with overflow to infinity
                (cond ((zerop rational) (if negative -0d0 0d0))
                      ((> rational most-positive-double-float)
-                      (if negative sb-ext:double-float-negative-infinity sb-ext:double-float-positive-infinity))
+                      (if negative float-features:double-float-negative-infinity float-features:double-float-positive-infinity))
                      (t (signed (coerce rational 'double-float))))))
       (loop while (%c-isspace (ch)) do (incf i))
       (case (ch)
         (45 (setf negative t) (incf i))
         (43 (incf i)))
       (cond ((match "inf")
-             (signed sb-ext:double-float-positive-infinity))
+             (signed float-features:double-float-positive-infinity))
             ((match "nan")
              ;; Quiet NaN, sign bit set for "-nan"
-             (if negative (sb-kernel:make-double-float -524288 0) (sb-kernel:make-double-float 2146959360 0)))
+             (if negative (%bits->f64 #xFFF80000 0) (%bits->f64 #x7FF80000 0)))
             (t
              (let* ((base (if (and (= (ch) 48) (= (lower 1) 120) (or (digit (ch 2) 16) (and (= (ch 2) 46) (digit (ch 3) 16)))) 16 10))
                     (mantissa 0) (scale 0) (any-digit nil))
@@ -1219,10 +1219,11 @@
                    (catch '%cgltf-error
                      (%parse-json-root 0 data)))))
       ;; Arrays not defined in the file are empty
-      (dolist (accessor '(cgltf-data-meshes cgltf-data-materials cgltf-data-accessors cgltf-data-buffer-views
-                          cgltf-data-buffers cgltf-data-images cgltf-data-textures cgltf-data-samplers
-                          cgltf-data-skins cgltf-data-nodes cgltf-data-scenes cgltf-data-animations))
-        (unless (funcall accessor data) (funcall (fdefinition `(setf ,accessor)) #() data)))
+      (macrolet ((empty-unless-defined (&rest accessors)
+                   `(progn ,@(loop for a in accessors collect `(unless (,a data) (setf (,a data) #()))))))
+        (empty-unless-defined cgltf-data-meshes cgltf-data-materials cgltf-data-accessors cgltf-data-buffer-views
+                              cgltf-data-buffers cgltf-data-images cgltf-data-textures cgltf-data-samplers
+                              cgltf-data-skins cgltf-data-nodes cgltf-data-scenes cgltf-data-animations))
       (cond ((minusp code)
              (values (case code (#.+cgltf-error-nomem+ :out-of-memory) (#.+cgltf-error-legacy+ :legacy-gltf) (t :invalid-gltf)) nil))
             ((minusp (catch '%cgltf-error (%cgltf-fixup-pointers data)))
@@ -1449,7 +1450,7 @@
 (defun %gltf-s16 (data offset)
   (let ((v (%gltf-u16 data offset))) (if (>= v #x8000) (- v #x10000) v)))
 (defun %gltf-f32 (data offset)
-  (sb-kernel:make-single-float (%i32 (%gltf-u32 data offset))))
+  (%bits->f32 (%gltf-u32 data offset)))
 
 (defun %cgltf-component-read-integer (data offset component-type)
   (case component-type

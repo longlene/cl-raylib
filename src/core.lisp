@@ -1016,7 +1016,7 @@ take longer than expected... for that reason a partial busy wait loop is used
         (aref *rprand-state* 1) (ldb (byte 32 32) (%rprand-splitmix64))
         (aref *rprand-state* 2) (ldb (byte 32 0) (%rprand-splitmix64))
         (aref *rprand-state* 3) (ldb (byte 32 32) (%rprand-splitmix64)))
-  (setf *cl-raylib-random-state* #+sbcl (sb-ext:seed-random-state (logand seed #xffffffff)) #-sbcl (make-random-state t))
+  (setf *cl-raylib-random-state* #+sbcl (sb-ext:seed-random-state (logand seed #xffffffff)) #+ecl (make-random-state (logand seed #xffffffff)) #-(or sbcl ecl) (make-random-state t))
   nil)
 
 (defun get-random-value (min max)
@@ -1094,7 +1094,7 @@ To configure window states after creation, use SetWindowState()"
 
 (defun get-application-directory ()
   "Get the directory of the running application (with trailing separator)"
-  (let ((exe #+sbcl sb-ext:*runtime-pathname* #-sbcl nil))
+  (let ((exe #+sbcl sb-ext:*runtime-pathname* #-sbcl (uiop:argv0)))
     (if exe
         (directory-namestring (truename exe))
         "./")))

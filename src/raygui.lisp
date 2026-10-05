@@ -3560,7 +3560,7 @@
 (defun %s16 (data offset) (let ((u (logior (aref data offset) (ash (aref data (+ offset 1)) 8)))) (if (>= u #x8000) (- u #x10000) u)))
 (defun %u32 (data offset) (logior (aref data offset) (ash (aref data (+ offset 1)) 8) (ash (aref data (+ offset 2)) 16) (ash (aref data (+ offset 3)) 24)))
 (defun %s32 (data offset) (let ((u (%u32 data offset))) (if (>= u #x80000000) (- u #x100000000) u)))
-(defun %f32 (data offset) (sb-kernel:make-single-float (%s32 data offset)))
+(defun %f32 (data offset) (cl-raylib::%bits->f32 (%s32 data offset)))
 
 ;; Load style from memory
 ;; WARNING: Binary files only

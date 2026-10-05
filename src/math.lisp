@@ -43,8 +43,8 @@
 (declaim (inline %sqrtf))
 (defun %sqrtf (x)
   (let ((x (float x 1.0)))
-    (if (or (sb-ext:float-nan-p x) (minusp x))
-        (sb-kernel:make-single-float -4194304) ; -NaN, as x86-64 sqrtss
+    (if (or (float-features:float-nan-p x) (minusp x))
+        (%bits->f32 #xFFC00000) ; -NaN, as x86-64 sqrtss
         (sqrt x))))
 
 ;; C libm float functions: sinf(), cosf(), acosf(), asinf(), atan2f(), powf()
@@ -68,6 +68,7 @@
 (%define-libm-float %asinf "asinf" x)
 (%define-libm-float %atan2f "atan2f" y x)
 (%define-libm-float %powf "powf" x y)
+(%define-libm-float %fmodf "fmodf" x y)   ; NOTE: CL rem is not exact on every implementation (ECL)
 
 ;; Matrix field access by raylib index: (%m mat 12) <=> mat.m12
 (defmacro %m (mat index)

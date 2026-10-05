@@ -29,9 +29,15 @@
       (values
        (let* ((start (1+ (position #\{ text)))
               (end (position #\} text :start start))
-              (bytes (loop for token in (uiop:split-string (subseq text start end) :separator (cons #\, whitespace))
-                           unless (string= token "")
-                             collect (parse-integer token :start 2 :radix 16))))
+              ;; NOTE: Scan the 0x.. tokens directly: uiop:split-string is quadratic on ECL for MB-sized text
+              (bytes (loop with i = start
+                           for p = (search "0x" text :start2 i :end2 end)
+                           while p
+                           collect (let ((j (or (position-if-not (lambda (c) (digit-char-p c 16)) text
+                                                                 :start (+ p 2) :end end)
+                                                end)))
+                                     (prog1 (parse-integer text :start (+ p 2) :end j :radix 16)
+                                       (setf i j))))))
          (make-array (length bytes) :element-type '(unsigned-byte 8) :initial-contents bytes))
        (with-input-from-string (s text)
          (loop for line = (read-line s nil)

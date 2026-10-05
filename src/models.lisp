@@ -2360,19 +2360,19 @@ CAP-FACES is a list of (c w1 w2 w3 w4), MIDDLE-FACES a list of (w1 w2 w3 w4)"
 
 (defun %fmin (a b)
   "C fmin(): NaN arguments are ignored"
-  (cond ((sb-ext:float-nan-p a) b)
-        ((sb-ext:float-nan-p b) a)
+  (cond ((float-features:float-nan-p a) b)
+        ((float-features:float-nan-p b) a)
         (t (min a b))))
 
 (defun %fmax (a b)
   "C fmax(): NaN arguments are ignored"
-  (cond ((sb-ext:float-nan-p a) b)
-        ((sb-ext:float-nan-p b) a)
+  (cond ((float-features:float-nan-p a) b)
+        ((float-features:float-nan-p b) a)
         (t (max a b))))
 
 (defun %c-float-to-int (x)
   "C (int) conversion of a float (truncation, 0x80000000 for NaN/out of range as on x86-64)"
-  (if (or (sb-ext:float-nan-p x) (sb-ext:float-infinity-p x) (>= (abs x) 2147483648.0))
+  (if (or (float-features:float-nan-p x) (float-features:float-infinity-p x) (>= (abs x) 2147483648.0))
       -2147483648
       (truncate x)))
 
@@ -4085,7 +4085,7 @@ CAP-FACES is a list of (c w1 w2 w3 w4), MIDDLE-FACES a list of (w1 w2 w3 w4)"
 
 (defun %m3d-prop-float (value)
   "prop->value.fnum: the property value as a float (union with the integer values)"
-  (if (floatp value) value (sb-kernel:make-single-float (%i32 value))))
+  (if (floatp value) value (%bits->f32 value)))
 
 (defconstant +m3d-animdelay+ 17 "Animation frames delay, (~1000 ms/60 FPS = 16.666666 ms)")
 

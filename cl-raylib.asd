@@ -10,7 +10,6 @@
                #:3d-vectors
                #:alexandria
                #:uiop
-               #:imago
                #:ieee-floats
                #:babel
                #:flexi-streams
@@ -58,3 +57,9 @@
    (:file "audio")                 ; raudio.c
    (:file "raygui")                ; raygui.h v5.0 (separate RAYGUI package)
    (:file "macro")))
+
+(asdf:defsystem #:cl-raylib/imago
+  :description "Optional JPG/TGA/PNM image support (formats raylib disables by default) through imago"
+  :depends-on (#:cl-raylib #:imago)
+  :pathname "src"
+  :components ((:file "imago")))

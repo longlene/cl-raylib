@@ -91,10 +91,16 @@ raylib/src/utils.h -> cl-raylib/src/utils.lisp
   (waveOut) backend in miniaudio.lisp, GetClipboardImage() the win32_clipboard.h port (win32-clipboard.lisp), the C
   runtime functions are loaded from ucrtbase.dll (msvcrt.dll as fallback).
 
+- ECL (26.5.5, macOS, `ecl` in /opt/homebrew/bin, needs `ulimit -n 10240` to link): all examples run and match
+  the SBCL captures except audio playback-position bars and two GPU-nondeterministic shaders; audio decoders give
+  identical samples. Keep the code portable: float bits through float-features (%bits->f32 etc. in raylib.lisp),
+  libm (fmodf, sinf...) instead of CL rem/sin where C uses them, no (fdefinition '(setf struct-accessor)).
+
 ### Known differences (all documented in code comments)
 - Undefined behavior in C (out-of-bounds reads, uninitialized memory) is treated as 0 in Lisp; matching it is not a goal.
 - LOG_FATAL does not exit the process; DecompressData uses chipz (same results for valid data).
-- JPG/TGA/PNM and other formats that raylib disables by default are provided through imago.
+- JPG/TGA/PNM and other formats that raylib disables by default are provided by the optional system
+  cl-raylib/imago (src/imago.lisp, registers *image-loaders*/*image-exporters*); the core does not depend on imago.
 
 ### TODO
 - The camera2d-* helpers in camera2d.lisp and the logging/timing extensions in utils.lisp are not raylib API; consider removing them.

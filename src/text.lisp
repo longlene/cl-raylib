@@ -1038,8 +1038,8 @@ conversions d i u x X o c s f F e E g G %"
                                             (sign (cond ((minusp (float-sign v)) "-") (plus "+") (space " ") (t "")))
                                             (digits
                                               (cond
-                                                ((sb-ext:float-nan-p v) (if (upper-case-p conv) "NAN" "nan"))
-                                                ((sb-ext:float-infinity-p v) (if (upper-case-p conv) "INF" "inf"))
+                                                ((float-features:float-nan-p v) (if (upper-case-p conv) "NAN" "nan"))
+                                                ((float-features:float-infinity-p v) (if (upper-case-p conv) "INF" "inf"))
                                                 (t
                                               (case conv
                                                 ((#\f #\F) (%c-format-fixed v prec))

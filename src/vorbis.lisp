@@ -2178,7 +2178,7 @@
   (let* ((magic (+ (* 1.5f0 (ash 1 (- 23 15))) (/ 0.5f0 (ash 1 15))))
          (temp (+ x magic))
          (addend (+ (ash (- 150 15) 23) (ash 1 22)))
-         (v (- (sb-kernel:single-float-bits temp) addend)))
+         (v (- (%f32->sbits temp) addend)))
     (if (> (%u32 (+ v 32768)) 65535)
         (if (< v 0) -32768 32767)
         v)))

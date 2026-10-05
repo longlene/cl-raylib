@@ -162,11 +162,11 @@
 (defun %m3d-s32 (data offset)
   (%i32 (%m3d-u32 data offset)))
 (defun %m3d-f32 (data offset)
-  (sb-kernel:make-single-float (%m3d-s32 data offset)))
+  (%bits->f32 (%m3d-u32 data offset)))
 (defun %m3d-f64 (data offset)
   "(float) of a double"
   (float-features:with-float-traps-masked t
-    (coerce (sb-kernel:make-double-float (%m3d-s32 data (+ offset 4)) (%m3d-u32 data offset)) 'single-float)))
+    (coerce (%bits->f64 (%m3d-u32 data (+ offset 4)) (%m3d-u32 data offset)) 'single-float)))
 
 (defun %m3d-magic-p (data offset magic)
   "M3D_CHUNKMAGIC()"
@@ -198,8 +198,8 @@
   (declare (type single-float x))
   (float-features:with-float-traps-masked t
     (let* ((x2 (* x 0.5))
-           (i (logand (- #x5f3759df (ash (logand (sb-kernel:single-float-bits x) #xffffffff) -1)) #xffffffff))
-           (y (sb-kernel:make-single-float (%i32 i))))
+           (i (logand (- #x5f3759df (ash (%f32->bits x) -1)) #xffffffff))
+           (y (%bits->f32 i)))
       (* y (- 1.5 (* (* x2 y) y))))))
 
 (defun %m3d-zlib-decode (data offset len)

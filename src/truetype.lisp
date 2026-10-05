@@ -1477,8 +1477,10 @@ Returns (values pixels width height xoff yoff), pixels NIL for empty glyphs"
     winding))
 
 (defun mod* (x y)
-  "C fmod(): result has the sign of X"
-  (rem x y))
+  "C fmod(): result has the sign of X
+   NOTE: libm call, CL rem is not exact on every implementation (ECL)"
+  (float-features:with-float-traps-masked t
+    (cffi:foreign-funcall "fmod" :double (float x 1d0) :double (float y 1d0) :double)))
 
 (defun %tt-cuberoot (x)
   (declare (type single-float x))

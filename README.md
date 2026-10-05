@@ -22,7 +22,8 @@ cgltf, ...), and only calls into C for the platform: GLFW, OpenGL, libm and the 
 
 ## Requirements
 
-- [SBCL](https://www.sbcl.org/) (developed with SBCL 2.6)
+- [SBCL](https://www.sbcl.org/) (developed with SBCL 2.6) or [ECL](https://ecl.common-lisp.dev/)
+  (tested with ECL 26.5 on macOS)
 - [Quicklisp](https://www.quicklisp.org/)
 - An OpenGL 3.3 capable GPU
 
@@ -90,6 +91,10 @@ Functions that return data through pointer arguments in C return Lisp values ins
 The `with-*` macros pair raylib's Begin/End calls and always run the End call, even on a non-local
 exit: `with-window`, `with-drawing`, `with-mode-2d`, `with-mode-3d`, `with-texture-mode`,
 `with-shader-mode`, `with-blend-mode`, `with-scissor-mode`, `with-audio-device`, ...
+
+Images load and export in the formats raylib enables by default (PNG, BMP, GIF, QOI, ...). JPG, TGA and
+PNM, which raylib disables by default, are available by loading the optional system
+`(ql:quickload :cl-raylib/imago)` (SBCL only: imago depends on serapeum, which does not build on ECL).
 
 ### macOS
 

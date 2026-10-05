@@ -159,7 +159,7 @@
 (defun color-from-hsv (hue saturation value)
   "Get a Color from HSV values, hue [0..360], saturation/value [0..1]"
   (flet ((channel (n)
-           (let* ((k (rem (+ n (/ hue 60.0)) 6))
+           (let* ((k (%fmodf (+ n (/ hue 60.0)) 6))
                   (k (min k (- 4.0 k) 1))
                   (k (max k 0)))
              (%u8 (* (- value (* value saturation k)) 255.0)))))
