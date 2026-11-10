@@ -687,7 +687,9 @@
   (projection CameraProjection))
 
 (defstruct camera3d
-  position target up fovy projection)
+  position target up fovy projection
+  ;; Lisp-only state for the SetCameraMode compatibility API.
+  (mode :camera-custom))
 
 (define-conversion-into-foreign-memory (object (type camera3d-type) pointer)
     (with-foreign-slots ((fovy projection) pointer (:struct %camera3d))
@@ -3112,18 +3114,52 @@
 ;;//------------------------------------------------------------------------------------
 ;;// Camera System Functions (Module: rcamera)
 ;;//------------------------------------------------------------------------------------
-;;RLAPI void UpdateCamera(Camera *camera, int mode);      // Update camera position for selected mode
+;; raylib 4 uses SetCameraMode and a one-argument UpdateCamera. Later
+;; versions removed SetCameraMode and added a mode argument to UpdateCamera.
+(defparameter *legacy-camera-api-p*
+  (not (null (foreign-symbol-pointer "SetCameraMode" :library 'libraylib))))
+
+(defvar *legacy-camera* nil)
+(defvar *legacy-camera-mode* nil)
+
+(defcfun ("SetCameraMode" %set-camera-mode) :void
+  (camera (:struct %camera3d))
+  (mode CameraMode))
+
+(defcfun ("UpdateCamera" %update-camera-legacy) :void
+  (camera (:pointer (:struct %camera3d))))
+
+;;RLAPI void UpdateCamera(Camera *camera, int mode);
 (defcfun ("UpdateCamera" %update-camera) :void
-  "Update camera position for selected mode"
   (camera (:pointer (:struct %camera3d)))
   (mode CameraMode))
 
-(defmacro update-camera (camera mode)
-  (let ((foreign-camera (gensym)))
-    `(cffi:with-foreign-object (,foreign-camera '(:struct %camera3d))
-       (convert-into-foreign-memory ,camera '(:struct %camera3d) ,foreign-camera)
-       (%update-camera ,foreign-camera ,mode)
-       (update-camera3d-from-foreign ,camera ,foreign-camera))))
+(defun %select-legacy-camera-mode (camera mode)
+  (%set-camera-mode camera mode)
+  (setf *legacy-camera* camera
+        *legacy-camera-mode* mode))
+
+(defun set-camera-mode (camera mode)
+  "Select CAMERA's mode for subsequent calls to UPDATE-CAMERA."
+  (when *legacy-camera-api-p*
+    (%select-legacy-camera-mode camera mode))
+  (setf (camera3d-mode camera) mode))
+
+(defun update-camera (camera &optional (mode (camera3d-mode camera)))
+  "Update CAMERA in place using MODE, or the mode selected by SET-CAMERA-MODE.
+An explicit MODE applies to this update only."
+  (with-foreign-object (foreign-camera '(:struct %camera3d))
+    (convert-into-foreign-memory camera '(:struct %camera3d) foreign-camera)
+    (if *legacy-camera-api-p*
+        (progn
+          ;; SetCameraMode resets mouse history and camera angles in raylib 4.
+          ;; Reconfigure only when switching cameras or modes.
+          (unless (and (eq camera *legacy-camera*)
+                       (eql mode *legacy-camera-mode*))
+            (%select-legacy-camera-mode camera mode))
+          (%update-camera-legacy foreign-camera))
+        (%update-camera foreign-camera mode))
+    (update-camera3d-from-foreign camera foreign-camera)))
 
 ;;RLAPI void UpdateCameraPro(Camera *camera, Vector3 movement, Vector3 rotation, float zoom); // Update camera movement/rotation
 (defcfun ("UpdateCameraPro" %update-camera-pro) :void
